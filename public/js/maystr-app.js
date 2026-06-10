@@ -1,0 +1,195 @@
+/* =====================================================================
+   MAYSTR APP — main Vue entry point
+   All rendering uses Vue string templates — no browser HTML parser quirks.
+   ===================================================================== */
+'use strict';
+
+(function () {
+    const { createApp, ref, computed } = Vue;
+    const { MModal, MBadge, MAvatar, AppointmentFormBody } = MaystrComponents;
+    const { DashboardPage, SchedulePage, RequestsPage, ArchivePage, PublicPageSettings, SettingsPage } = MaystrPages;
+
+    /* ── Guard: redirect to login if no token ── */
+    const token = localStorage.getItem('maystr_token');
+    if (!token) {
+        window.location.replace('/login');
+        return;
+    }
+
+    const api = makeAPI(token);
+
+    /* ── Hash routing ── */
+    const VALID_PAGES = ['dashboard', 'schedule', 'requests', 'archive', 'public', 'settings'];
+
+    function getPageFromHash() {
+        const hash = window.location.hash.replace(/^#\/?/, '');
+        return VALID_PAGES.includes(hash) ? hash : 'dashboard';
+    }
+
+    /* ── PageView: string-template router component ── */
+    const PageView = {
+        name: 'PageView',
+        props: ['page', 'api', 'user'],
+        emits: ['navigate', 'count', 'user-updated'],
+        components: { DashboardPage, SchedulePage, RequestsPage, ArchivePage, PublicPageSettings, SettingsPage },
+        template: [
+            '<dashboard-page       v-if="page===\'dashboard\'"  :api="api" :user="user" @navigate="$emit(\'navigate\',$event)"></dashboard-page>',
+            '<schedule-page        v-else-if="page===\'schedule\'" :api="api"></schedule-page>',
+            '<requests-page        v-else-if="page===\'requests\'" :api="api" @count="$emit(\'count\',$event)"></requests-page>',
+            '<archive-page         v-else-if="page===\'archive\'"  :api="api"></archive-page>',
+            '<public-page-settings v-else-if="page===\'public\'"   :api="api" :user="user"></public-page-settings>',
+            '<settings-page        v-else-if="page===\'settings\'" :api="api" :user="user" @user-updated="$emit(\'user-updated\')"></settings-page>',
+        ].join('')
+    };
+
+    /* ── Root app — full shell in string template ── */
+    const app = createApp({
+        components: {
+            MModal, MBadge, MAvatar, AppointmentFormBody, PageView,
+            DashboardPage, SchedulePage, RequestsPage, ArchivePage, PublicPageSettings, SettingsPage
+        },
+        setup() {
+            const page         = ref(getPageFromHash());
+            const user         = ref(null);
+            const pendingCount = ref(0);
+            const loading      = ref(true);
+
+            const pages = [
+                { id: 'dashboard', label: 'Дашборд',          icon: 'fa-gauge' },
+                { id: 'schedule',  label: 'Розклад',           icon: 'fa-calendar-days' },
+                { id: 'requests',  label: 'Запити',            icon: 'fa-inbox' },
+                { id: 'archive',   label: 'Архів',             icon: 'fa-box-archive' },
+                { id: 'public',    label: 'Публічна сторінка', icon: 'fa-globe' },
+                { id: 'settings',  label: 'Налаштування',      icon: 'fa-gear' },
+            ];
+
+            const pageMeta = {
+                dashboard: { title: 'Дашборд',          sub: () => new Date().toLocaleDateString('uk', { weekday: 'long', month: 'long', day: 'numeric' }) },
+                schedule:  { title: 'Розклад',           sub: () => 'Керуйте своїми записами' },
+                requests:  { title: 'Запити',            sub: () => pendingCount.value > 0 ? pendingCount.value + ' нових' : 'Нових запитів немає' },
+                archive:   { title: 'Архів',             sub: () => 'Минулі сесії' },
+                public:    { title: 'Публічна сторінка', sub: () => 'Налаштування вашого профілю' },
+                settings:  { title: 'Налаштування',      sub: () => 'Акаунт та параметри' },
+            };
+
+            async function init() {
+                try {
+                    const { data } = await api.get('/auth/me');
+                    user.value = data;
+                    const { data: rd } = await api.get('/booking-requests', { params: { status: 'pending', per_page: 1 } });
+                    pendingCount.value = rd.meta?.total ?? rd.total ?? 0;
+                } catch(e) {
+                    localStorage.removeItem('maystr_token');
+                    window.location.href = '/login';
+                    return;
+                }
+                loading.value = false;
+            }
+
+            function navigate(p) {
+                if (!VALID_PAGES.includes(p)) return;
+                page.value = p;
+                history.pushState({ page: p }, '', '/app#/' + p);
+            }
+
+            function logout() {
+                api.post('/auth/logout').catch(() => {});
+                localStorage.removeItem('maystr_token');
+                window.location.href = '/login';
+            }
+
+            function onUserUpdated() { init(); }
+
+            window.addEventListener('popstate', () => { page.value = getPageFromHash(); });
+
+            init();
+
+            return { page, user, pendingCount, loading, pages, pageMeta, navigate, logout, onUserUpdated, api };
+        },
+
+        /* ── Full app shell — Vue string template (single root) ── */
+        template: `
+<div id="maystr-root">
+<div v-if="loading" style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--bg);">
+  <div style="text-align:center;">
+    <div class="loader-spinner" style="margin:0 auto 12px;"></div>
+    <p style="color:var(--text-muted);font-size:11px;letter-spacing:2px;font-weight:700;">MAYSTR</p>
+  </div>
+</div>
+
+<div v-else class="app-shell">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-logo"><i class="fa fa-star"></i></div>
+    </div>
+    <nav class="sidebar-nav">
+      <button v-for="p in pages" :key="p.id"
+        :class="'nav-item' + (page === p.id ? ' active' : '')"
+        :data-tip="p.label"
+        @click="navigate(p.id)">
+        <i :class="'fa ' + p.icon"></i>
+        <span v-if="p.id === 'requests' && pendingCount > 0" class="nav-badge">{{ pendingCount }}</span>
+      </button>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-avatar" @click="navigate('settings')" :title="user ? user.name : ''">
+        {{ user?.name?.charAt(0)?.toUpperCase() ?? '?' }}
+      </div>
+      <button class="btn-logout" @click="logout" title="Вийти">
+        <i class="fa fa-arrow-right-from-bracket"></i>
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main content -->
+  <div class="main-area">
+    <header class="topbar">
+      <div>
+        <div class="topbar-title">{{ pageMeta[page]?.title }}</div>
+        <div class="topbar-sub">{{ pageMeta[page]?.sub() }}</div>
+      </div>
+      <div class="topbar-actions">
+        <div class="avatar av-sm" style="background:var(--accent);cursor:pointer;" @click="navigate('settings')">
+          {{ user?.name?.charAt(0)?.toUpperCase() ?? '?' }}
+        </div>
+      </div>
+    </header>
+
+    <div class="page-content">
+      <page-view
+        :page="page"
+        :api="api"
+        :user="user"
+        @navigate="navigate"
+        @count="pendingCount=$event"
+        @user-updated="onUserUpdated">
+      </page-view>
+    </div>
+  </div>
+
+  <!-- Mobile bottom nav -->
+  <nav class="mobile-nav">
+    <button v-for="p in pages" :key="p.id"
+      :class="'mob-nav-item' + (page === p.id ? ' active' : '')"
+      @click="navigate(p.id)">
+      <span style="position:relative;">
+        <i :class="'fa ' + p.icon"></i>
+        <span v-if="p.id === 'requests' && pendingCount > 0" class="mob-nav-dot"></span>
+      </span>
+      <span>{{ p.label === 'Публічна сторінка' ? 'Публічна' : p.label }}</span>
+    </button>
+  </nav>
+
+</div>
+`
+    });
+
+    app.mount('#app');
+    document.getElementById('pre-loader').style.display = 'none';
+
+    if (!window.location.hash) {
+        history.replaceState({ page: 'dashboard' }, '', '/app#/dashboard');
+    }
+})();
