@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', [AuthWebController::class, 'landing'])->name('landing');
 Route::get('/login', [AuthWebController::class, 'showLogin'])->name('login')->middleware('guest');
+Route::get('/register', [AuthWebController::class, 'showRegister'])->name('register')->middleware('guest');
 Route::post('/logout', [AuthWebController::class, 'logout'])->name('logout');
 
 // Deploy hook — requires ?key={DEPLOY_SECRET}
