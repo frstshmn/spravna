@@ -1,15 +1,15 @@
 /* =====================================================================
-   MAYSTR CORE — API client + shared Vue components
+   SPRAVNA CORE — API client + shared Vue components
    This is a plain .js file — no Blade processing, no template issues.
    ===================================================================== */
 'use strict';
 
-const { ref, reactive, computed, onMounted, watch, nextTick, provide, inject } = Vue;
+const { ref, reactive, computed, onMounted, onUnmounted, watch, nextTick, provide, inject } = Vue;
 
 /* ── helpers ── */
 function fmt(dt, opts) {
     if (!dt) return '—';
-    return new Date(dt).toLocaleDateString('en', opts || { month: 'short', day: 'numeric', year: 'numeric' });
+    return new Date(dt).toLocaleDateString('uk', opts || { month: 'short', day: 'numeric', year: 'numeric' });
 }
 function fmtTime(dt) {
     if (!dt) return '';
@@ -21,14 +21,14 @@ function fmtDT(dt) {
 }
 function fmtMoney(v, currency) {
     if (v == null) return '—';
-    return (currency || '$') + Number(v).toLocaleString(undefined, { minimumFractionDigits: 0 });
+    return (currency || '₴') + Number(v).toLocaleString(undefined, { minimumFractionDigits: 0 });
 }
 function timeAgo(dt) {
     const d = Math.floor((Date.now() - new Date(dt)) / 1000);
-    if (d < 60) return 'just now';
-    if (d < 3600) return Math.floor(d / 60) + 'm ago';
-    if (d < 86400) return Math.floor(d / 3600) + 'h ago';
-    return Math.floor(d / 86400) + 'd ago';
+    if (d < 60) return 'щойно';
+    if (d < 3600) return Math.floor(d / 60) + ' хв тому';
+    if (d < 86400) return Math.floor(d / 3600) + ' год тому';
+    return Math.floor(d / 86400) + ' дн тому';
 }
 function statusColor(s) {
     return { pending: '#f59e0b', confirmed: '#3b82f6', in_progress: '#8b5cf6', completed: '#22c55e', cancelled: '#ef4444', no_show: '#6b7280' }[s] ?? '#6b7280';
@@ -38,8 +38,8 @@ function initials(name) {
 }
 function durationLabel(min) {
     const h = Math.floor(min / 60), m = min % 60;
-    if (h && m) return h + 'h ' + m + 'm';
-    return h ? h + 'h' : m + 'm';
+    if (h && m) return h + 'г ' + m + 'хв';
+    return h ? h + 'г' : m + 'хв';
 }
 
 window.M = { fmt, fmtTime, fmtDT, fmtMoney, timeAgo, statusColor, initials, durationLabel };
@@ -52,7 +52,7 @@ function makeAPI(token) {
     });
     ax.interceptors.response.use(r => r, err => {
         if (err.response?.status === 401) {
-            localStorage.removeItem('maystr_token');
+            localStorage.removeItem('spravna_token');
             window.location.href = '/login';
         }
         return Promise.reject(err);
@@ -67,14 +67,20 @@ window.makeAPI = makeAPI;
 
 /* ── MModal ── */
 const MModal = {
-    props: { show: Boolean, title: String, size: String },
+    props: { show: Boolean, title: String, subtitle: String, size: String, icon: String },
     emits: ['close'],
     template: `
 <teleport to="body">
   <div v-if="show" class="modal-overlay" @mousedown.self="$emit('close')">
     <div :class="'modal-box' + (size === 'lg' ? ' modal-lg' : size === 'sm' ? ' modal-sm' : '')">
       <div class="modal-head">
-        <span class="modal-title">{{ title }}</span>
+        <div class="modal-head-text">
+          <span v-if="icon" class="modal-icon-badge"><i :class="'fa fa-' + icon"></i></span>
+          <div class="modal-title-col">
+            <span class="modal-title">{{ title }}</span>
+            <span v-if="subtitle" class="modal-subtitle">{{ subtitle }}</span>
+          </div>
+        </div>
         <button class="modal-close" @click="$emit('close')"><i class="fa fa-times"></i></button>
       </div>
       <slot></slot>
@@ -106,142 +112,6 @@ const MAvatar = {
     template: `<div :class="'avatar av-' + size">{{ ini }}</div>`
 };
 
-/* ── Appointment Form component ── */
-const AppointmentFormBody = {
-    props: { api: Object, existing: Object, initialDate: String, initialHour: Number },
-    emits: ['saved', 'cancel'],
-    components: { MModal },
-    setup(props, { emit }) {
-        const clients = ref([]);
-        const services = ref([]);
-        const saving = ref(false);
-        const error = ref('');
-
-        const defaultDT = () => {
-            if (props.initialDate) {
-                const d = new Date(props.initialDate + 'T' + String(props.initialHour || 10).padStart(2, '0') + ':00');
-                return d.toISOString().slice(0, 16);
-            }
-            const d = new Date(); d.setSeconds(0, 0); return d.toISOString().slice(0, 16);
-        };
-
-        const form = reactive({
-            client_id: props.existing?.client_id ?? '',
-            service_id: props.existing?.service_id ?? '',
-            scheduled_at: props.existing?.scheduled_at?.slice(0, 16) ?? defaultDT(),
-            duration: props.existing?.duration ?? 60,
-            status: props.existing?.status ?? 'confirmed',
-            price: props.existing?.price ?? '',
-            deposit: props.existing?.deposit ?? '',
-            deposit_paid: props.existing?.deposit_paid ?? false,
-            notes: props.existing?.notes ?? '',
-            internal_notes: props.existing?.internal_notes ?? '',
-        });
-
-        function onServiceChange() {
-            const s = services.value.find(s => s.id == form.service_id);
-            if (s) { form.duration = s.duration; if (s.price) form.price = s.price; }
-        }
-
-        async function save() {
-            if (!form.client_id) { error.value = 'Оберіть клієнта'; return; }
-            saving.value = true; error.value = '';
-            try {
-                const p = { ...form };
-                if (!p.service_id) delete p.service_id;
-                if (p.price === '' || p.price === null) delete p.price;
-                if (p.deposit === '' || p.deposit === null) delete p.deposit;
-                const res = props.existing
-                    ? await props.api.put('/appointments/' + props.existing.id, p)
-                    : await props.api.post('/appointments', p);
-                emit('saved', res.data);
-            } catch(e) { error.value = e.response?.data?.message || 'Не вдалося зберегти'; }
-            saving.value = false;
-        }
-
-        async function del() {
-            if (!confirm('Видалити цей запис?')) return;
-            await props.api.delete('/appointments/' + props.existing.id);
-            emit('saved', null);
-        }
-
-        onMounted(async () => {
-            const [c, s] = await Promise.all([
-                props.api.get('/clients', { params: { per_page: 200 } }),
-                props.api.get('/services', { params: { active_only: true } })
-            ]);
-            clients.value = c.data.data ?? c.data;
-            services.value = s.data;
-        });
-
-        return { form, clients, services, saving, error, onServiceChange, save, del };
-    },
-    template: `
-<div class="modal-body">
-  <div class="form-row">
-    <div class="form-group">
-      <label class="label">Клієнт *</label>
-      <select v-model="form.client_id" class="select" required>
-        <option value="">Оберіть клієнта…</option>
-        <option v-for="c in clients" :key="c.id" :value="c.id">{{ c.name }}</option>
-      </select>
-    </div>
-    <div class="form-group">
-      <label class="label">Послуга</label>
-      <select v-model="form.service_id" @change="onServiceChange" class="select">
-        <option value="">Без послуги</option>
-        <option v-for="s in services" :key="s.id" :value="s.id">{{ s.name }}</option>
-      </select>
-    </div>
-  </div>
-  <div class="form-row">
-    <div class="form-group">
-      <label class="label">Дата та час *</label>
-      <input type="datetime-local" v-model="form.scheduled_at" class="input">
-    </div>
-    <div class="form-group">
-      <label class="label">Тривалість (хв)</label>
-      <input type="number" v-model.number="form.duration" class="input" min="15" step="15">
-    </div>
-  </div>
-  <div class="form-row">
-    <div class="form-group">
-      <label class="label">Ціна</label>
-      <input type="number" v-model.number="form.price" class="input" placeholder="0.00" min="0" step="0.01">
-    </div>
-    <div class="form-group">
-      <label class="label">Статус</label>
-      <select v-model="form.status" class="select">
-        <option value="pending">Очікує</option>
-        <option value="confirmed">Підтверджено</option>
-        <option value="in_progress">Виконується</option>
-        <option value="completed">Завершено</option>
-        <option value="cancelled">Скасовано</option>
-        <option value="no_show">Не з'явився</option>
-      </select>
-    </div>
-  </div>
-  <div class="form-group">
-    <label class="label">Нотатки (видно клієнту)</label>
-    <textarea v-model="form.notes" class="textarea" placeholder="Нотатки до сесії…"></textarea>
-  </div>
-  <div class="form-group">
-    <label class="label">Внутрішні нотатки</label>
-    <textarea v-model="form.internal_notes" class="textarea" placeholder="Приватно…"></textarea>
-  </div>
-  <p v-if="error" style="color:var(--cancelled);font-size:12px;margin-top:4px;">{{ error }}</p>
-</div>
-<div class="modal-footer">
-  <button v-if="existing" class="btn btn-danger btn-sm" @click="del" style="margin-right:auto">
-    <i class="fa fa-trash"></i> Видалити
-  </button>
-  <button class="btn btn-ghost btn-sm" @click="$emit('cancel')">Скасувати</button>
-  <button class="btn btn-primary btn-sm" @click="save" :disabled="saving">
-    <i class="fa fa-check"></i> {{ saving ? 'Збереження…' : (existing ? 'Оновити' : 'Створити запис') }}
-  </button>
-</div>`
-};
-
 /* ── Client Form ── */
 const ClientFormBody = {
     props: { api: Object, existing: Object },
@@ -254,7 +124,7 @@ const ClientFormBody = {
             phone: props.existing?.phone ?? '',
             email: props.existing?.email ?? '',
             instagram: props.existing?.instagram ?? '',
-            birthday: props.existing?.birthday ?? '',
+            birthday: props.existing?.birthday ? props.existing.birthday.slice(0, 10) : '',
             source: props.existing?.source ?? '',
             notes: props.existing?.notes ?? '',
             medical_notes: props.existing?.medical_notes ?? '',
@@ -264,10 +134,10 @@ const ClientFormBody = {
             if (!form.name.trim()) { error.value = 'Ім\'я обов\'язкове'; return; }
             saving.value = true; error.value = '';
             try {
-                props.existing
+                const res = props.existing
                     ? await props.api.put('/clients/' + props.existing.id, form)
                     : await props.api.post('/clients', form);
-                emit('saved');
+                emit('saved', res.data);
             } catch(e) { error.value = 'Не вдалося зберегти'; }
             saving.value = false;
         }
@@ -324,6 +194,195 @@ const ClientFormBody = {
     {{ saving ? 'Збереження…' : (existing ? 'Оновити клієнта' : 'Додати клієнта') }}
   </button>
 </div>`
+};
+
+/* ── Appointment Form component ── */
+const AppointmentFormBody = {
+    props: { api: Object, existing: Object, initialDate: String, initialHour: Number },
+    emits: ['saved', 'cancel'],
+    components: { MModal, ClientFormBody },
+    setup(props, { emit }) {
+        const clients = ref([]);
+        const services = ref([]);
+        const saving = ref(false);
+        const error = ref('');
+        const showClientModal = ref(false);
+        const clientQuery = ref('');
+        const clientDropdownOpen = ref(false);
+
+        const defaultDT = () => {
+            if (props.initialDate) {
+                const d = new Date(props.initialDate + 'T' + String(props.initialHour || 10).padStart(2, '0') + ':00');
+                return d.toISOString().slice(0, 16);
+            }
+            const d = new Date(); d.setSeconds(0, 0); return d.toISOString().slice(0, 16);
+        };
+
+        const form = reactive({
+            client_id: props.existing?.client_id ?? '',
+            service_id: props.existing?.service_id ?? '',
+            scheduled_at: props.existing?.scheduled_at?.slice(0, 16) ?? defaultDT(),
+            duration: props.existing?.duration ?? 60,
+            status: props.existing?.status ?? 'confirmed',
+            price: props.existing?.price ?? '',
+            deposit: props.existing?.deposit ?? '',
+            deposit_paid: props.existing?.deposit_paid ?? false,
+            notes: props.existing?.notes ?? '',
+            internal_notes: props.existing?.internal_notes ?? '',
+        });
+
+        function onServiceChange() {
+            const s = services.value.find(s => s.id == form.service_id);
+            if (s) { form.duration = s.duration; if (s.price) form.price = s.price; }
+        }
+
+        async function save() {
+            if (!form.client_id) { error.value = 'Оберіть клієнта'; return; }
+            saving.value = true; error.value = '';
+            try {
+                const p = { ...form };
+                if (!p.service_id) delete p.service_id;
+                if (p.price === '' || p.price === null) delete p.price;
+                if (p.deposit === '' || p.deposit === null) delete p.deposit;
+                const res = props.existing
+                    ? await props.api.put('/appointments/' + props.existing.id, p)
+                    : await props.api.post('/appointments', p);
+                emit('saved', res.data);
+            } catch(e) { error.value = e.response?.data?.message || 'Не вдалося зберегти'; }
+            saving.value = false;
+        }
+
+        async function del() {
+            if (!confirm('Видалити цей запис?')) return;
+            await props.api.delete('/appointments/' + props.existing.id);
+            emit('saved', null);
+        }
+
+        function newClient() { showClientModal.value = true; }
+        function onClientCreated(client) {
+            clients.value = [client, ...clients.value];
+            form.client_id = client.id;
+            showClientModal.value = false;
+        }
+
+        const selectedClient = computed(() => clients.value.find(c => String(c.id) === String(form.client_id)) || null);
+        const filteredClients = computed(() => {
+            const q = clientQuery.value.trim().toLowerCase();
+            if (!q) return clients.value;
+            return clients.value.filter(c =>
+                c.name.toLowerCase().includes(q) || (c.phone && c.phone.includes(q))
+            );
+        });
+        function openClientDropdown() { clientDropdownOpen.value = true; clientQuery.value = ''; }
+        function selectClient(c) { form.client_id = c.id; clientQuery.value = ''; clientDropdownOpen.value = false; }
+        function onClientBlur() { setTimeout(() => { clientDropdownOpen.value = false; clientQuery.value = ''; }, 100); }
+        function onClientEnter() { if (filteredClients.value.length) selectClient(filteredClients.value[0]); }
+
+        onMounted(async () => {
+            const [c, s] = await Promise.all([
+                props.api.get('/clients', { params: { per_page: 200 } }),
+                props.api.get('/services', { params: { active_only: true } })
+            ]);
+            clients.value = c.data.data ?? c.data;
+            services.value = s.data;
+        });
+
+        return {
+            form, clients, services, saving, error, showClientModal, onServiceChange, save, del, newClient, onClientCreated,
+            clientQuery, clientDropdownOpen, selectedClient, filteredClients, openClientDropdown, selectClient, onClientBlur, onClientEnter,
+        };
+    },
+    template: `
+<div class="modal-body">
+  <div class="form-row">
+    <div class="form-group">
+      <label class="label">Клієнт *</label>
+      <div class="client-select-row">
+        <div class="client-combo">
+          <input
+            class="input"
+            :value="clientDropdownOpen ? clientQuery : (selectedClient ? selectedClient.name : '')"
+            @focus="openClientDropdown"
+            @input="clientQuery = $event.target.value"
+            @blur="onClientBlur"
+            @keydown.enter.prevent="onClientEnter"
+            @keydown.esc="onClientBlur"
+            placeholder="Пошук клієнта за іменем або телефоном…"
+            autocomplete="off"
+          >
+          <i class="fa fa-chevron-down client-combo-caret"></i>
+          <div v-if="clientDropdownOpen" class="client-combo-dropdown">
+            <div v-if="!filteredClients.length" class="client-combo-empty">Нічого не знайдено</div>
+            <div v-for="c in filteredClients" :key="c.id"
+                 :class="['client-combo-option', { active: c.id == form.client_id }]"
+                 @mousedown.prevent="selectClient(c)">
+              <span class="cco-name">{{ c.name }}</span>
+              <span v-if="c.phone" class="cco-phone">{{ c.phone }}</span>
+            </div>
+          </div>
+        </div>
+        <button type="button" class="btn-add-client" title="Додати нового клієнта" @click="newClient">
+          <i class="fa fa-user-plus"></i>
+        </button>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="label">Послуга</label>
+      <select v-model="form.service_id" @change="onServiceChange" class="select">
+        <option value="">Без послуги</option>
+        <option v-for="s in services" :key="s.id" :value="s.id">{{ s.name }}</option>
+      </select>
+    </div>
+  </div>
+  <div class="form-row">
+    <div class="form-group">
+      <label class="label">Дата та час *</label>
+      <input type="datetime-local" v-model="form.scheduled_at" class="input">
+    </div>
+    <div class="form-group">
+      <label class="label">Тривалість (хв)</label>
+      <input type="number" v-model.number="form.duration" class="input" min="15" step="15">
+    </div>
+  </div>
+  <div class="form-row">
+    <div class="form-group">
+      <label class="label">Ціна</label>
+      <input type="number" v-model.number="form.price" class="input" placeholder="0.00" min="0" step="0.01">
+    </div>
+    <div class="form-group">
+      <label class="label">Статус</label>
+      <select v-model="form.status" class="select">
+        <option value="pending">Очікує</option>
+        <option value="confirmed">Підтверджено</option>
+        <option value="in_progress">Виконується</option>
+        <option value="completed">Завершено</option>
+        <option value="cancelled">Скасовано</option>
+        <option value="no_show">Не з'явився</option>
+      </select>
+    </div>
+  </div>
+  <div class="form-group">
+    <label class="label">Нотатки (видно клієнту)</label>
+    <textarea v-model="form.notes" class="textarea" placeholder="Нотатки до сесії…"></textarea>
+  </div>
+  <div class="form-group">
+    <label class="label">Внутрішні нотатки</label>
+    <textarea v-model="form.internal_notes" class="textarea" placeholder="Приватно…"></textarea>
+  </div>
+  <p v-if="error" style="color:var(--cancelled);font-size:12px;margin-top:4px;">{{ error }}</p>
+</div>
+<div class="modal-footer">
+  <button v-if="existing" class="btn btn-danger btn-sm" @click="del" style="margin-right:auto">
+    <i class="fa fa-trash"></i> Видалити
+  </button>
+  <button class="btn btn-ghost btn-sm" @click="$emit('cancel')">Скасувати</button>
+  <button class="btn btn-primary btn-sm" @click="save" :disabled="saving">
+    <i class="fa fa-check"></i> {{ saving ? 'Збереження…' : (existing ? 'Оновити' : 'Створити запис') }}
+  </button>
+</div>
+<m-modal :show="showClientModal" title="Новий клієнт" subtitle="Додайте картку — і одразу оберіть її для запису" icon="user-plus" size="sm" @close="showClientModal=false">
+  <client-form-body :api="api" @saved="onClientCreated" @cancel="showClientModal=false"></client-form-body>
+</m-modal>`
 };
 
 /* ── Service Form ── */
@@ -521,7 +580,7 @@ const RespondFormBody = {
 };
 
 /* Export all shared components */
-window.MaystrComponents = {
+window.SpravnaComponents = {
     MModal, MBadge, MAvatar,
     AppointmentFormBody, ClientFormBody, ServiceFormBody, RespondFormBody
 };

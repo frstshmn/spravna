@@ -97,7 +97,7 @@ class PublicController extends Controller
         ]));
 
         return response()->json([
-            'message' => 'Your request has been submitted. The master will contact you shortly.',
+            'message' => 'Вашу заявку відправлено. Майстер зв\'яжеться з вами найближчим часом.',
             'id'      => $bookingRequest->id,
         ], 201);
     }

@@ -72,7 +72,7 @@ class AuthController extends Controller
 
         if (!$user || !Hash::check($data['password'], $user->password)) {
             throw ValidationException::withMessages([
-                'email' => ['The provided credentials are incorrect.'],
+                'email' => ['Введені дані для входу невірні.'],
             ]);
         }
 
@@ -88,7 +88,7 @@ class AuthController extends Controller
     public function logout(Request $request): JsonResponse
     {
         $request->user()->currentAccessToken()->delete();
-        return response()->json(['message' => 'Logged out']);
+        return response()->json(['message' => 'Ви вийшли з акаунту']);
     }
 
     public function me(Request $request): JsonResponse
@@ -104,13 +104,13 @@ class AuthController extends Controller
         ]);
 
         if (!Hash::check($data['current_password'], $request->user()->password)) {
-            return response()->json(['message' => 'Current password is incorrect'], 422);
+            return response()->json(['message' => 'Поточний пароль невірний'], 422);
         }
 
         $request->user()->update(['password' => $data['password']]);
         $request->user()->tokens()->delete();
         $token = $request->user()->createToken('auth')->plainTextToken;
 
-        return response()->json(['message' => 'Password changed', 'token' => $token]);
+        return response()->json(['message' => 'Пароль змінено', 'token' => $token]);
     }
 }

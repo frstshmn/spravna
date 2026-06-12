@@ -11,7 +11,7 @@ class Client extends Model
     protected $fillable = [
         'user_id', 'name', 'email', 'phone', 'birthday',
         'notes', 'medical_notes', 'instagram', 'source',
-        'is_vip', 'is_blocked',
+        'avatar_url', 'is_vip', 'is_blocked',
     ];
 
     protected function casts(): array

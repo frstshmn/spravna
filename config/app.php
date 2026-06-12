@@ -65,7 +65,7 @@ return [
     |
     */
 
-    'timezone' => 'UTC',
+    'timezone' => 'Europe/Kyiv',
 
     /*
     |--------------------------------------------------------------------------
@@ -122,5 +122,17 @@ return [
         'driver' => env('APP_MAINTENANCE_DRIVER', 'file'),
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Deploy Secret
+    |--------------------------------------------------------------------------
+    |
+    | Random key required as a "key" query parameter on the /deploy route to
+    | trigger a git pull + migration. Keep this private.
+    |
+    */
+
+    'deploy_secret' => env('DEPLOY_SECRET'),
 
 ];

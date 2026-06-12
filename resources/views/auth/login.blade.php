@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Вхід — Maystr</title>
+<title>Вхід — Spravna</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <link rel="stylesheet" href="/css/maystr.css">
 </head>
@@ -11,8 +11,8 @@
 <div class="auth-page">
     <div class="auth-box">
         <div class="auth-logo">
-            <div class="logo-icon"><i class="fa fa-star"></i></div>
-            <div class="logo-name">Maystr</div>
+            <div class="logo-icon"><i class="fa fa-asterisk"></i></div>
+            <div class="logo-name">Spravna</div>
             <p style="font-size:13px;color:var(--text-sub);margin-top:4px;">Увійдіть до свого акаунту</p>
         </div>
 
@@ -58,7 +58,7 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
             btn.disabled = false;
             return;
         }
-        localStorage.setItem('maystr_token', data.token);
+        localStorage.setItem('spravna_token', data.token);
         localStorage.setItem('maystr_user', JSON.stringify(data.user));
         window.location.href = '/app';
     } catch(ex) {

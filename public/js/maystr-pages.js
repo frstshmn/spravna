@@ -1,5 +1,5 @@
 /* =====================================================================
-   MAYSTR PAGES — all 6 page components
+   SPRAVNA PAGES — all 6 page components
    ===================================================================== */
 'use strict';
 /* ref, reactive, computed, onMounted, watch, nextTick are declared in maystr-core.js */
@@ -11,46 +11,135 @@
 const DashboardPage = {
     props: ['api', 'user'],
     emits: ['navigate'],
-    components: { MModal, MBadge, AppointmentFormBody },
+    components: { MModal, MBadge, AppointmentFormBody, ClientFormBody },
     setup(props) {
         const stats = ref({});
         const todayAppts = ref([]);
         const upcoming = ref([]);
-        const recentRequests = ref([]);
+        const topServices = ref([]);
         const chart = ref([]);
-        const calDate = ref(new Date());
-        const apptDates = ref([]);
-        const showNewAppt = ref(false);
+        const showApptModal = ref(false);
+        const editingAppt = ref(null);
+        const showClientModal = ref(false);
         const chartInstance = ref(null);
+        const now = ref(new Date());
+        let nowTimer = null;
 
-        const maxRevenue = computed(() => Math.max(1, ...chart.value.map(m => m.revenue)));
+        /* ── Today timeline ── */
+        const timelineRange = computed(() => {
+            let startH = 8, endH = 20;
+            todayAppts.value.forEach(a => {
+                if (!a.scheduled_at) return;
+                const s = new Date(a.scheduled_at);
+                const sh = s.getHours() + s.getMinutes() / 60;
+                const eh = sh + (a.duration || 60) / 60;
+                startH = Math.min(startH, Math.floor(sh));
+                endH = Math.max(endH, Math.ceil(eh));
+            });
+            return { start: startH, end: endH };
+        });
 
-        /* calendar helpers */
-        function localDate(y, mo, d) {
-            const dd = String(d).padStart(2, '0');
-            const mm = String(mo + 1).padStart(2, '0');
-            return `${y}-${mm}-${dd}`;
+        const timelineHours = computed(() => {
+            const { start, end } = timelineRange.value;
+            const span = end - start;
+            const step = span > 9 ? 2 : 1;
+            const hrs = [];
+            for (let h = start; h <= end; h += step) hrs.push(h);
+            return hrs;
+        });
+
+        function tickPos(h) {
+            const { start, end } = timelineRange.value;
+            return (h - start) / (end - start) * 100;
         }
-        function calDays() {
-            const y = calDate.value.getFullYear(), mo = calDate.value.getMonth();
-            const first = new Date(y, mo, 1).getDay();
-            const days_in = new Date(y, mo + 1, 0).getDate();
-            const days_prev = new Date(y, mo, 0).getDate();
-            const start = (first + 6) % 7; // Mon-start
-            const cells = [];
-            for (let i = start - 1; i >= 0; i--) cells.push({ d: days_prev - i, cur: false });
-            for (let i = 1; i <= days_in; i++) cells.push({ d: i, cur: true });
-            while (cells.length < 42) cells.push({ d: cells.length - days_in - start + 1, cur: false });
-            const today = new Date();
-            return cells.map(c => ({
-                ...c,
-                isToday: c.cur && c.d === today.getDate() && y === today.getFullYear() && mo === today.getMonth(),
-                hasEvent: c.cur && apptDates.value.includes(localDate(y, mo, c.d)),
-            }));
+
+        const trackHeight = computed(() => {
+            const span = timelineRange.value.end - timelineRange.value.start || 1;
+            const px = Math.max(28, Math.min(70, 480 / span));
+            return Math.round(span * px);
+        });
+
+        const timeline = computed(() => {
+            const { start, end } = timelineRange.value;
+            const span = end - start || 1;
+            const items = todayAppts.value
+                .filter(a => a.scheduled_at)
+                .map(a => {
+                    const s = new Date(a.scheduled_at);
+                    const sh = s.getHours() + s.getMinutes() / 60;
+                    const dur = (a.duration || 60) / 60;
+                    return {
+                        a, sh, eh: sh + dur,
+                        left: (sh - start) / span * 100,
+                        width: Math.max(dur / span * 100, 4),
+                    };
+                })
+                .sort((x, y) => x.sh - y.sh);
+            const laneEnds = [];
+            items.forEach(it => {
+                let lane = laneEnds.findIndex(e => it.sh >= e - 1 / 60);
+                if (lane === -1) { lane = laneEnds.length; laneEnds.push(0); }
+                laneEnds[lane] = it.eh;
+                it.lane = lane;
+            });
+            return { items, laneCount: Math.max(1, laneEnds.length) };
+        });
+
+        const nowPos = computed(() => {
+            const { start, end } = timelineRange.value;
+            const nh = now.value.getHours() + now.value.getMinutes() / 60;
+            if (nh < start || nh > end) return null;
+            return (nh - start) / (end - start) * 100;
+        });
+
+        const nowLabel = computed(() => now.value.toLocaleTimeString('uk', { hour: '2-digit', minute: '2-digit' }));
+
+        function apptTimeLabel(a) {
+            const s = new Date(a.scheduled_at);
+            const e = new Date(s.getTime() + (a.duration || 60) * 60000);
+            const fmt = d => d.toLocaleTimeString('uk', { hour: '2-digit', minute: '2-digit' });
+            return { start: fmt(s), end: fmt(e) };
         }
-        const calMonthLabel = computed(() => calDate.value.toLocaleDateString('en', { month: 'long', year: 'numeric' }));
-        function prevMonth() { calDate.value = new Date(calDate.value.getFullYear(), calDate.value.getMonth() - 1, 1); }
-        function nextMonth() { calDate.value = new Date(calDate.value.getFullYear(), calDate.value.getMonth() + 1, 1); }
+
+        /* ── Upcoming list (next 7 days, excluding today's appointments already shown above) ── */
+        const upcomingList = computed(() => {
+            const todayIds = new Set(todayAppts.value.map(a => a.id));
+            return upcoming.value.filter(a => !todayIds.has(a.id)).slice(0, 5);
+        });
+
+        function openAppt(a) { editingAppt.value = a; showApptModal.value = true; }
+        function newAppt() { editingAppt.value = null; showApptModal.value = true; }
+        function onApptSaved() { showApptModal.value = false; load(); }
+
+        function newClient() { showClientModal.value = true; }
+        function onClientSaved() { showClientModal.value = false; load(); }
+
+        /* ── Public page widget ── */
+        const pubSettings = reactive({ is_public: true, is_accepting_bookings: true });
+        const pubLinkCopied = ref(false);
+
+        watch(() => props.user?.profile, (profile) => {
+            if (!profile) return;
+            pubSettings.is_public = !!profile.is_public;
+            pubSettings.is_accepting_bookings = !!profile.is_accepting_bookings;
+        }, { immediate: true });
+
+        function copyPublicLink() {
+            const slug = props.user?.profile?.slug || '';
+            const url = window.location.origin + '/master/' + slug;
+            navigator.clipboard?.writeText(url);
+            pubLinkCopied.value = true;
+            setTimeout(() => pubLinkCopied.value = false, 2000);
+        }
+
+        async function togglePubSetting(key) {
+            pubSettings[key] = !pubSettings[key];
+            try {
+                await props.api.put('/profile', { [key]: pubSettings[key] });
+            } catch (e) {
+                pubSettings[key] = !pubSettings[key];
+            }
+        }
 
         /* chart */
         function drawChart() {
@@ -58,29 +147,31 @@ const DashboardPage = {
             if (!canvas || !chart.value.length) return;
             if (chartInstance.value) chartInstance.value.destroy();
             chartInstance.value = new Chart(canvas, {
-                type: 'bar',
+                type: 'line',
                 data: {
                     labels: chart.value.map(m => m.month),
                     datasets: [{
                         label: 'Revenue',
                         data: chart.value.map(m => m.revenue),
-                        backgroundColor: 'rgba(201,168,76,0.75)',
-                        borderColor: '#c9a84c',
-                        borderWidth: 1,
-                        borderRadius: 6,
-                        borderSkipped: false,
+                        backgroundColor: 'rgba(59,94,71,0.08)',
+                        borderColor: '#3b5e47',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 3,
+                        pointBackgroundColor: '#3b5e47',
                     }]
                 },
                 options: {
                     responsive: true, maintainAspectRatio: false,
                     plugins: { legend: { display: false }, tooltip: {
-                        backgroundColor: '#1a1614', borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1,
-                        titleColor: '#f5f0ea', bodyColor: '#9a9088',
+                        backgroundColor: '#1a1917', borderColor: 'rgba(0,0,0,0.1)', borderWidth: 1,
+                        titleColor: '#ffffff', bodyColor: '#a09890',
                         callbacks: { label: ctx => ' $' + ctx.parsed.y.toLocaleString() }
                     }},
                     scales: {
-                        x: { grid: { color: '#e4dbd0' }, ticks: { color: '#a89e94', font: { size: 11 } } },
-                        y: { grid: { color: '#e4dbd0' }, ticks: { color: '#a89e94', font: { size: 11 }, callback: v => '$' + (v >= 1000 ? (v/1000).toFixed(0)+'k' : v) } }
+                        x: { grid: { display: false }, ticks: { color: '#a09890', font: { size: 11 } } },
+                        y: { grid: { color: '#e2ddd6' }, ticks: { color: '#a09890', font: { size: 11 }, callback: v => '$' + (v >= 1000 ? (v/1000).toFixed(0)+'k' : v) } }
                     }
                 }
             });
@@ -92,158 +183,278 @@ const DashboardPage = {
                 stats.value = data.stats;
                 todayAppts.value = data.today_appointments;
                 upcoming.value = data.upcoming_appointments;
-                recentRequests.value = data.recent_requests;
+                topServices.value = data.top_services || [];
                 chart.value = data.revenue_chart;
-                // Collect appointment dates for calendar (use string slice — no UTC shift)
-                const all = [...todayAppts.value, ...upcoming.value];
-                apptDates.value = [...new Set(all.map(a => a.scheduled_at?.slice(0, 10)).filter(Boolean))];
                 nextTick(drawChart);
             } catch(e) {}
         }
 
-        onMounted(load);
-
-        const greeting = computed(() => {
-            const h = new Date().getHours();
-            const name = props.user?.name?.split(' ')[0] || 'майстре';
-            if (h < 12) return 'Доброго ранку, ' + name + '!';
-            if (h < 17) return 'Доброго дня, ' + name + '!';
-            return 'Доброго вечора, ' + name + '!';
+        onMounted(() => {
+            load();
+            now.value = new Date();
+            nowTimer = setInterval(() => { now.value = new Date(); }, 60000);
         });
+        onUnmounted(() => { if (nowTimer) clearInterval(nowTimer); });
 
-        return { stats, todayAppts, upcoming, recentRequests, chart, maxRevenue, calDate, calDays, calMonthLabel, prevMonth, nextMonth, apptDates, showNewAppt, greeting, load };
+        return {
+            stats, todayAppts, upcoming, upcomingList, topServices, chart,
+            showApptModal, editingAppt, openAppt, newAppt, onApptSaved,
+            showClientModal, newClient, onClientSaved,
+            timelineRange, timelineHours, timeline, tickPos, trackHeight, nowPos, nowLabel, apptTimeLabel,
+            pubSettings, pubLinkCopied, copyPublicLink, togglePubSetting,
+            load,
+        };
     },
     template: `
 <div>
-  <!-- Greeting -->
-  <div class="flex items-center justify-between mb-16">
-    <div>
-      <h1>{{ greeting }}</h1>
-      <p class="text-sub" style="font-size:13px;margin-top:2px;">{{ new Date().toLocaleDateString('en',{weekday:'long',month:'long',day:'numeric'}) }}</p>
-    </div>
-    <button class="btn btn-primary" @click="showNewAppt=true">
-      <i class="fa fa-plus"></i> Новий запис
-    </button>
-  </div>
-
-  <!-- Stats -->
-  <div class="dash-stats">
-    <div class="stat-card">
-      <div class="stat-icon-wrap" style="background:var(--accent-soft);color:var(--accent)"><i class="fa fa-calendar-day"></i></div>
-      <div class="stat-label">Сьогодні</div>
-      <div class="stat-value">{{ stats.today_appointments ?? '—' }}</div>
-      <div class="stat-trend">Запланованих сесій</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-icon-wrap" style="background:rgba(34,197,94,.14);color:#22c55e"><i class="fa fa-dollar-sign"></i></div>
-      <div class="stat-label">Дохід за місяць</div>
-      <div class="stat-value">{{ stats.month_revenue != null ? '$' + Number(stats.month_revenue).toLocaleString() : '—' }}</div>
-      <div class="stat-trend" :class="stats.revenue_change >= 0 ? 'trend-up' : 'trend-down'" v-if="stats.revenue_change !== null">
-        <i :class="'fa fa-arrow-' + (stats.revenue_change >= 0 ? 'up' : 'down')"></i>
-        {{ Math.abs(stats.revenue_change) }}% порівняно з минулим місяцем
-      </div>
-      <div v-else class="stat-trend">порівняно з минулим місяцем</div>
-    </div>
-    <div class="stat-card" style="cursor:pointer;" @click="$emit('navigate','requests')">
-      <div class="stat-icon-wrap" style="background:var(--pending-soft);color:var(--pending)"><i class="fa fa-inbox"></i></div>
-      <div class="stat-label">Нові запити</div>
-      <div class="stat-value" :style="stats.pending_requests > 0 ? 'color:var(--pending)' : ''">{{ stats.pending_requests ?? '—' }}</div>
-      <div class="stat-trend">Очікують відповіді</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-icon-wrap" style="background:var(--confirmed-soft);color:var(--confirmed)"><i class="fa fa-users"></i></div>
-      <div class="stat-label">Всього клієнтів</div>
-      <div class="stat-value">{{ stats.total_clients ?? '—' }}</div>
-      <div class="stat-trend">У вашій базі</div>
-    </div>
-  </div>
-
-  <!-- Chart + Calendar -->
-  <div class="dash-mid">
+  <!-- Top row: today timeline + key counters -->
+  <div class="dash-top-row">
+    <!-- Today timeline -->
     <div class="card">
       <div class="card-header">
-        <span class="card-title"><i class="fa fa-chart-bar" style="color:var(--accent);margin-right:6px;"></i>Дохід — останні 6 місяців</span>
+        <span class="card-title"><i class="fa fa-clock" style="color:var(--accent);margin-right:6px;"></i>Сьогодні</span>
+        <button class="btn btn-secondary btn-icon" @click="newAppt" title="Новий запис"><i class="fa fa-plus"></i></button>
       </div>
-      <div class="card-body" style="height:220px;">
-        <canvas id="revenue-chart"></canvas>
+      <div class="card-body">
+        <div v-if="!todayAppts.length" class="empty" style="padding:20px 0;">
+          <i class="fa fa-calendar-xmark"></i>
+          <p>Сьогодні немає записів</p>
+        </div>
+        <div v-else class="day-timeline-v">
+          <div class="day-timeline-ruler-v" :style="{height: trackHeight + 'px'}">
+            <span v-for="h in timelineHours" :key="h" class="day-timeline-tick-v" :style="{top: tickPos(h) + '%'}">{{ h }}:00</span>
+            <span v-for="it in timeline.items" :key="'s'+it.a.id" class="day-timeline-start-label-v" :style="{top: it.left + '%'}">
+              {{ new Date(it.a.scheduled_at).toLocaleTimeString('uk',{hour:'2-digit',minute:'2-digit'}) }}
+            </span>
+          </div>
+          <div class="day-timeline-track-v" :style="{height: trackHeight + 'px'}">
+            <div v-for="h in timelineHours" :key="'g'+h" class="day-timeline-gridline-v" :style="{top: tickPos(h) + '%'}"></div>
+            <div v-if="nowPos !== null" class="day-timeline-now-v" :style="{top: nowPos + '%'}">
+              <span class="day-timeline-now-label-v">{{ nowLabel }}</span>
+            </div>
+            <div v-for="it in timeline.items" :key="it.a.id" class="day-timeline-block-v"
+              :style="{top: it.left + '%', height: 'calc(' + it.width + '% - 4px)', left: (it.lane * 100 / timeline.laneCount) + '%', width: 'calc(' + (100 / timeline.laneCount) + '% - 6px)', background: it.a.service?.color || 'var(--accent)'}"
+              :title="(it.a.client?.name || '') + ' — ' + (it.a.service?.name || 'Запис')"
+              @click="openAppt(it.a)">
+              <span class="dtb-time">{{ new Date(it.a.scheduled_at).toLocaleTimeString('uk',{hour:'2-digit',minute:'2-digit'}) }}</span>
+              <span class="dtb-name truncate">{{ it.a.client?.name }}</span>
+            </div>
+          </div>
+        </div>
+        <div v-if="todayAppts.length" class="day-timeline-compact-v">
+          <div v-for="it in timeline.items" :key="'c'+it.a.id" class="day-timeline-compact-row" @click="openAppt(it.a)">
+            <div class="dtc-time">
+              <span class="dtc-time-start">{{ apptTimeLabel(it.a).start }}</span>
+              <span class="dtc-time-end">{{ apptTimeLabel(it.a).end }}</span>
+            </div>
+            <span class="dtc-bar" :style="{background: it.a.service?.color || 'var(--accent)'}"></span>
+            <div class="dtc-info">
+              <div class="dtc-name truncate">{{ it.a.client?.name }}</div>
+              <div class="dtc-sub truncate">{{ it.a.service?.name || 'Запис' }}</div>
+            </div>
+            <m-badge :status="it.a.status"></m-badge>
+          </div>
+        </div>
       </div>
     </div>
-    <div class="cal-card">
-      <div class="mini-cal">
-        <div class="mini-cal-head">
-          <button class="cal-nav-btn" @click="prevMonth"><i class="fa fa-chevron-left"></i></button>
-          <span class="mini-cal-title">{{ calMonthLabel }}</span>
-          <button class="cal-nav-btn" @click="nextMonth"><i class="fa fa-chevron-right"></i></button>
-        </div>
-        <div class="cal-grid">
-          <div v-for="d in ['M','T','W','T','F','S','S']" :key="d + Math.random()" class="cal-dname">{{ d }}</div>
-          <div v-for="(day,i) in calDays()" :key="i"
-            :class="'cal-day' + (day.isToday ? ' today' : '') + (day.hasEvent ? ' has-event' : '') + (!day.cur ? ' other-month' : '')"
-            :style="day.cur ? 'cursor:pointer' : ''"
-            @click="day.cur && $emit('navigate', 'schedule')">
-            {{ day.d }}
-          </div>
-        </div>
-        <div class="cal-legend">
-          <div class="cal-legend-item">
-            <span class="cal-legend-dot" style="background:var(--accent);"></span> Сесія
-          </div>
-          <div class="cal-legend-item">
-            <span class="cal-legend-dot" style="background:#fff;opacity:0.5;"></span> Сьогодні
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
 
-  <!-- Today + Requests -->
-  <div class="dash-bot">
-    <div class="card">
+    <!-- Counters column -->
+    <div class="flex flex-col gap-16">
+      <div class="dash-create-row flex-1">
+        <button class="dash-create-btn dash-create-btn-primary" @click="newAppt">
+          <span class="dcb-icon"><i class="fa fa-feather-pointed"></i></span>
+          <span class="dcb-label">
+            <span class="dcb-title">Створити сеанс</span>
+            <span class="dcb-sub">Новий запис</span>
+          </span>
+        </button>
+        <button class="dash-create-btn dash-create-btn-secondary" @click="newClient">
+          <span class="dcb-icon"><i class="fa fa-user-plus"></i></span>
+          <span class="dcb-label">
+            <span class="dcb-title">Додати клієнта</span>
+            <span class="dcb-sub">Нова картка</span>
+          </span>
+        </button>
+      </div>
+
+      <!-- Today's sessions count -->
+      <div class="stat-card flex-1" style="cursor:pointer;" @click="$emit('navigate','schedule')">
+        <div class="stat-left">
+          <div class="stat-label">Сесій сьогодні</div>
+          <div class="stat-value">{{ todayAppts.length }}</div>
+          <div class="stat-trend">{{ stats.month_sessions ?? 0 }} завершено цього місяця</div>
+        </div>
+        <div class="stat-right">
+          <div class="stat-icon-wrap" style="background:var(--accent-soft);color:var(--accent);">
+            <i class="fa fa-calendar-day"></i>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pending requests -->
+      <div class="stat-card stat-card-dark flex-1" style="cursor:pointer;" @click="$emit('navigate','requests')">
+        <div class="stat-left">
+          <div class="stat-label">Запити очікують</div>
+          <div class="stat-value">{{ stats.pending_requests ?? 0 }}</div>
+          <div class="stat-trend">Потребують відповіді</div>
+        </div>
+        <div class="stat-right">
+          <div class="stat-icon-wrap" style="background:rgba(255,255,255,0.15);color:#fff;">
+            <i class="fa fa-bell"></i>
+          </div>
+        </div>
+      </div>
+
+      <!-- Public page -->
+      <div class="stat-card dash-pubpage flex-1">
+        <div class="dash-pubpage-head">
+          <div class="stat-label">Публічна сторінка</div>
+          <div class="stat-icon-wrap" style="background:var(--accent-soft);color:var(--accent);">
+            <i class="fa fa-globe"></i>
+          </div>
+        </div>
+        <button class="dash-pubpage-copy" @click="copyPublicLink">
+          <i :class="pubLinkCopied ? 'fa fa-check' : 'fa fa-link'"></i>
+          {{ pubLinkCopied ? 'Скопійовано!' : 'Копіювати посилання' }}
+        </button>
+        <div class="dash-pubpage-toggles">
+          <div class="toggle-wrap">
+            <button :class="'toggle' + (pubSettings.is_public ? ' on' : '')" @click="togglePubSetting('is_public')"></button>
+            <span>Сторінка {{ pubSettings.is_public ? 'активна' : 'прихована' }}</span>
+          </div>
+          <div class="toggle-wrap">
+            <button :class="'toggle' + (pubSettings.is_accepting_bookings ? ' on' : '')" @click="togglePubSetting('is_accepting_bookings')"></button>
+            <span>{{ pubSettings.is_accepting_bookings ? 'Приймає' : 'Не приймає' }} запити</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Upcoming sessions -->
+    <div class="card dash-upcoming-card">
       <div class="card-header">
-        <span class="card-title"><i class="fa fa-clock" style="color:var(--accent);margin-right:6px;"></i>Розклад на сьогодні</span>
+        <span class="card-title"><i class="fa fa-calendar-week" style="color:var(--accent);margin-right:6px;"></i>Найближчі записи</span>
         <button class="btn btn-ghost btn-sm" @click="$emit('navigate','schedule')">Всі <i class="fa fa-arrow-right"></i></button>
       </div>
       <div class="card-body" style="padding-top:6px;padding-bottom:6px;">
-        <div v-if="!todayAppts.length" class="empty" style="padding:20px 0;">
-          <i class="fa fa-calendar-xmark"></i>
-          <p>Сьогодні сесій немає</p>
+        <div v-if="!upcomingList.length" class="empty" style="padding:20px 0;">
+          <i class="fa fa-calendar"></i><p>Немає майбутніх записів</p>
         </div>
-        <div v-for="a in todayAppts" :key="a.id" class="timeline-item">
-          <span class="tl-time">{{ $root ? '' : '' }}{{ a.scheduled_at ? new Date(a.scheduled_at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}) : '' }}</span>
-          <span class="tl-dot" :style="{background: a.service?.color || '#7c5cfc'}"></span>
+        <div v-else class="upcoming-header">
+          <span class="uh-time">Час</span>
+          <span class="uh-dot"></span>
+          <span class="uh-client">Клієнт</span>
+          <span class="uh-extra">Контакти</span>
+          <span class="uh-price">Сума</span>
+          <span class="uh-status">Статус</span>
+        </div>
+        <div v-for="a in upcomingList" :key="a.id" class="upcoming-row" style="cursor:pointer;" @click="openAppt(a)">
+          <span class="tl-time">{{ new Date(a.scheduled_at).toLocaleDateString('uk',{month:'short',day:'numeric'}) }}<br>{{ new Date(a.scheduled_at).toLocaleTimeString('uk',{hour:'2-digit',minute:'2-digit'}) }}</span>
+          <span class="tl-dot" :style="{background: a.service?.color || 'var(--accent)'}"></span>
           <div class="tl-body">
             <div class="tl-name truncate">{{ a.client?.name }}</div>
-            <div class="tl-svc">{{ a.service?.name || a.title || 'Appointment' }}</div>
+            <div class="tl-svc truncate">{{ a.service?.name || 'Запис' }}</div>
           </div>
-          <m-badge :status="a.status"></m-badge>
-        </div>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-header">
-        <span class="card-title"><i class="fa fa-inbox" style="color:var(--accent);margin-right:6px;"></i>Нові запити</span>
-        <button class="btn btn-ghost btn-sm" @click="$emit('navigate','requests')">Всі <i class="fa fa-arrow-right"></i></button>
-      </div>
-      <div class="card-body" style="padding-top:6px;padding-bottom:6px;">
-        <div v-if="!recentRequests.length" class="empty" style="padding:20px 0;">
-          <i class="fa fa-inbox"></i><p>Нових запитів немає</p>
-        </div>
-        <div v-for="r in recentRequests" :key="r.id" class="timeline-item" style="cursor:pointer;" @click="$emit('navigate','requests')">
-          <div class="avatar av-sm" style="margin-top:2px;">{{ r.client_name?.charAt(0).toUpperCase() }}</div>
-          <div class="flex-1 min-w-0">
-            <div class="tl-name truncate">{{ r.client_name }}</div>
-            <div class="tl-svc">{{ r.service?.name || 'General inquiry' }}</div>
+          <div class="upcoming-extra">
+            <div class="upcoming-phone" v-if="a.client?.phone"><i class="fa fa-phone"></i> {{ a.client.phone }}</div>
+            <div class="upcoming-duration" v-if="a.duration"><i class="fa fa-hourglass-half"></i> {{ a.duration }} хв</div>
           </div>
-          <m-badge status="pending"></m-badge>
+          <div class="upcoming-price" v-if="a.price">₴{{ Number(a.price).toLocaleString() }}</div>
+          <div class="upcoming-status"><m-badge :status="a.status"></m-badge></div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- New appointment modal -->
-  <m-modal :show="showNewAppt" title="Новий запис" @close="showNewAppt=false">
-    <appointment-form-body :api="api" @saved="showNewAppt=false; load()" @cancel="showNewAppt=false"></appointment-form-body>
+  <!-- Financial widgets -->
+  <div class="dash-section-title">Фінанси</div>
+  <div class="dash-mid">
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Дохід за 6 місяців</span>
+      </div>
+      <div class="balance-card-body">
+        <div class="balance-card-row">
+          <div class="balance-stat-item">
+            <span class="balance-stat-label">Цей місяць</span>
+            <span class="balance-stat-value">{{ stats.month_revenue != null ? '₴' + Number(stats.month_revenue).toLocaleString() : '₴0' }}</span>
+          </div>
+          <div class="balance-stat-item">
+            <span class="balance-stat-label">Минулий місяць</span>
+            <span class="balance-stat-value">{{ stats.last_month_revenue != null ? '₴' + Number(stats.last_month_revenue).toLocaleString() : '₴0' }}</span>
+          </div>
+          <div class="balance-stat-item" v-if="stats.revenue_change != null">
+            <span class="balance-stat-label">Зміна</span>
+            <span :class="'balance-stat-change ' + (stats.revenue_change >= 0 ? 'change-up' : 'change-down')">
+              <i :class="'fa fa-arrow-' + (stats.revenue_change >= 0 ? 'up' : 'down')" style="font-size:9px;"></i>
+              {{ Math.abs(stats.revenue_change) }}%
+            </span>
+          </div>
+        </div>
+        <div style="height:180px;margin-top:12px;">
+          <canvas id="revenue-chart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="flex flex-col gap-16">
+      <div class="stat-card flex-1">
+        <div class="stat-left">
+          <div class="stat-label">Дохід цього місяця</div>
+          <div class="stat-value">{{ stats.month_revenue != null ? '₴' + Number(stats.month_revenue).toLocaleString() : '₴0' }}</div>
+          <div class="stat-trend" :class="stats.revenue_change >= 0 ? 'trend-up' : 'trend-down'" v-if="stats.revenue_change != null">
+            <i :class="'fa fa-arrow-' + (stats.revenue_change >= 0 ? 'up' : 'down')"></i>
+            {{ Math.abs(stats.revenue_change) }}% порівняно з мин. місяцем
+          </div>
+          <div v-else class="stat-trend">порівняно з мин. місяцем</div>
+        </div>
+        <div class="stat-right">
+          <div class="stat-icon-wrap" style="background:var(--pending-soft);color:var(--pending);">
+            <i class="fa fa-coins"></i>
+          </div>
+        </div>
+      </div>
+      <div class="stat-card flex-1" style="cursor:pointer;" @click="$emit('navigate','clients')">
+        <div class="stat-left">
+          <div class="stat-label">Клієнти</div>
+          <div class="stat-value">{{ stats.total_clients ?? '—' }}</div>
+          <div class="stat-trend">У вашій базі</div>
+        </div>
+        <div class="stat-right">
+          <div class="stat-icon-wrap" style="background:var(--confirmed-soft);color:var(--confirmed);">
+            <i class="fa fa-users"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Top services -->
+  <div class="card" v-if="topServices.length">
+    <div class="card-header">
+      <span class="card-title"><i class="fa fa-ranking-star" style="color:var(--accent);margin-right:6px;"></i>Топ послуг цього місяця</span>
+    </div>
+    <div class="card-body" style="display:flex;flex-direction:column;gap:10px;">
+      <div v-for="s in topServices" :key="s.service_id" class="top-svc-row">
+        <span class="top-svc-dot" :style="{background: s.service?.color || 'var(--accent)'}"></span>
+        <span class="top-svc-name truncate">{{ s.service?.name || '—' }}</span>
+        <div class="top-svc-bar-wrap">
+          <div class="top-svc-bar" :style="{width: (s.count / topServices[0].count * 100) + '%', background: s.service?.color || 'var(--accent)'}"></div>
+        </div>
+        <span class="top-svc-count">{{ s.count }} {{ s.count === 1 ? 'сесія' : 'сесій' }}</span>
+        <span class="top-svc-revenue">₴{{ Number(s.revenue).toLocaleString() }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Appointment modal -->
+  <m-modal :show="showApptModal" :title="editingAppt ? 'Запис: ' + (editingAppt.client?.name || '') : 'Новий сеанс'" :subtitle="editingAppt ? 'Редагування запису' : 'Заплануйте новий запис для клієнта'" icon="calendar-plus" size="lg" @close="showApptModal=false">
+    <appointment-form-body :api="api" :existing="editingAppt" @saved="onApptSaved" @cancel="showApptModal=false"></appointment-form-body>
+  </m-modal>
+
+  <!-- New client modal -->
+  <m-modal :show="showClientModal" title="Новий клієнт" subtitle="Створіть картку клієнта з повною інформацією" icon="user-plus" size="sm" @close="showClientModal=false">
+    <client-form-body :api="api" @saved="onClientSaved" @cancel="showClientModal=false"></client-form-body>
   </m-modal>
 </div>`,
 };
@@ -424,7 +635,7 @@ const SchedulePage = {
   <!-- Month view -->
   <div v-else class="month-cal">
     <div class="month-hdr-row">
-      <div v-for="d in ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']" :key="d" class="month-hdr-cell">{{ d }}</div>
+      <div v-for="d in ['Пн','Вт','Ср','Чт','Пт','Сб','Нд']" :key="d" class="month-hdr-cell">{{ d }}</div>
     </div>
     <div class="month-grid">
       <div v-for="(day,i) in monthDays" :key="i"
@@ -522,7 +733,7 @@ const RequestsPage = {
         </div>
         <div class="flex items-center gap-8">
           <m-badge :status="r.status"></m-badge>
-          <span style="font-size:11px;color:var(--text-muted);">{{ r.created_at ? new Date(r.created_at).toLocaleDateString('en',{month:'short',day:'numeric'}) : '' }}</span>
+          <span style="font-size:11px;color:var(--text-muted);">{{ r.created_at ? new Date(r.created_at).toLocaleDateString('uk',{month:'short',day:'numeric'}) : '' }}</span>
         </div>
       </div>
       <div class="req-meta">
@@ -530,7 +741,7 @@ const RequestsPage = {
         <span v-if="r.client_email"><i class="fa fa-envelope"></i>{{ r.client_email }}</span>
         <span v-if="r.client_instagram"><i class="fa-brands fa-instagram"></i>{{ r.client_instagram }}</span>
         <span v-if="r.service"><i class="fa fa-scissors"></i>{{ r.service.name }}</span>
-        <span v-if="r.preferred_date"><i class="fa fa-calendar"></i>{{ new Date(r.preferred_date).toLocaleDateString('en',{month:'short',day:'numeric'}) }}{{ r.preferred_time ? ' ' + r.preferred_time : '' }}</span>
+        <span v-if="r.preferred_date"><i class="fa fa-calendar"></i>{{ new Date(r.preferred_date).toLocaleDateString('uk',{month:'short',day:'numeric'}) }}{{ r.preferred_time ? ' ' + r.preferred_time : '' }}</span>
       </div>
       <p v-if="r.message" class="req-msg">"{{ r.message }}"</p>
       <div v-if="r.status === 'pending'" class="flex gap-8" @click.stop>
@@ -617,7 +828,7 @@ const ArchivePage = {
             <td colspan="6" class="empty" style="text-align:center;padding:32px;">Сесій не знайдено</td>
           </tr>
           <tr v-for="a in appointments" :key="a.id" @click="openView(a)">
-            <td>{{ a.scheduled_at ? new Date(a.scheduled_at).toLocaleDateString('en',{month:'short',day:'numeric',year:'numeric'}) : '—' }}</td>
+            <td>{{ a.scheduled_at ? new Date(a.scheduled_at).toLocaleDateString('uk',{month:'short',day:'numeric',year:'numeric'}) : '—' }}</td>
             <td>
               <div class="flex items-center gap-8">
                 <div class="avatar av-xs">{{ a.client?.name?.charAt(0) }}</div>
@@ -626,7 +837,7 @@ const ArchivePage = {
             </td>
             <td style="color:var(--text-sub)">{{ a.service?.name || '—' }}</td>
             <td style="color:var(--text-sub)">{{ a.duration ? a.duration + ' хв' : '—' }}</td>
-            <td style="font-weight:600;">{{ a.price ? '$' + Number(a.price).toLocaleString() : '—' }}</td>
+            <td style="font-weight:600;">{{ a.price ? '₴' + Number(a.price).toLocaleString() : '—' }}</td>
             <td><m-badge :status="a.status"></m-badge></td>
           </tr>
         </tbody>
@@ -648,6 +859,402 @@ const ArchivePage = {
 };
 
 /* =====================================================================
+   4b. CLIENTS
+   ===================================================================== */
+const ClientsPage = {
+    props: ['api'],
+    components: { MModal, MBadge, MAvatar, ClientFormBody },
+    setup(props) {
+        const clients = ref([]);
+        const meta = ref({ current_page: 1, last_page: 1, total: 0 });
+        const loading = ref(false);
+        const search = ref('');
+        const vipOnly = ref(false);
+        const viewMode = ref('cards');
+
+        const showNewModal = ref(false);
+
+        const showDetailDrawer = ref(false);
+        const detail = ref(null);
+        const detailLoading = ref(false);
+        const editMode = ref(false);
+        const editForm = reactive({ name: '', phone: '', email: '', instagram: '', birthday: '', source: '', is_vip: false });
+        const originalForm = reactive({ name: '', phone: '', email: '', instagram: '', birthday: '', source: '', is_vip: false });
+        const savingEdit = ref(false);
+        const editError = ref('');
+
+        function isFieldDirty(field) { return editForm[field] !== originalForm[field]; }
+        const isDirty = computed(() => Object.keys(editForm).some(isFieldDirty));
+        const notesForm = reactive({ notes: '', medical_notes: '' });
+        const savingNotes = ref(false);
+        const notesSaved = ref(false);
+
+        let searchTimer = null;
+        let notesTimer = null;
+        let suppressNotesWatch = false;
+
+        async function load() {
+            loading.value = true;
+            try {
+                const { data } = await props.api.get('/clients', {
+                    params: {
+                        search: search.value || undefined,
+                        vip: vipOnly.value ? 1 : undefined,
+                        per_page: 60,
+                        page: meta.value.current_page,
+                    }
+                });
+                clients.value = data.data;
+                meta.value = data.meta ?? { current_page: data.current_page, last_page: data.last_page, total: data.total };
+            } catch(e) {}
+            loading.value = false;
+        }
+
+        function onSearchInput() {
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(() => { meta.value.current_page = 1; load(); }, 350);
+        }
+
+        function toggleVip() {
+            vipOnly.value = !vipOnly.value;
+            meta.value.current_page = 1;
+            load();
+        }
+
+        function changePage(p) { meta.value.current_page = p; load(); }
+
+        function openNew() { showNewModal.value = true; }
+
+        async function onNewSaved() {
+            showNewModal.value = false;
+            await load();
+        }
+
+        function closeDetail() {
+            showDetailDrawer.value = false;
+            detail.value = null;
+            editMode.value = false;
+        }
+
+        async function openDetail(c) {
+            showDetailDrawer.value = true;
+            detail.value = null;
+            editMode.value = false;
+            notesSaved.value = false;
+            detailLoading.value = true;
+            try {
+                const { data } = await props.api.get('/clients/' + c.id);
+                detail.value = data;
+                suppressNotesWatch = true;
+                notesForm.notes = data.client.notes || '';
+                notesForm.medical_notes = data.client.medical_notes || '';
+                nextTick(() => { suppressNotesWatch = false; });
+            } catch(e) {}
+            detailLoading.value = false;
+        }
+
+        function startEdit() {
+            const c = detail.value.client;
+            editForm.name = c.name || '';
+            editForm.phone = c.phone || '';
+            editForm.email = c.email || '';
+            editForm.instagram = c.instagram || '';
+            editForm.birthday = c.birthday ? c.birthday.slice(0, 10) : '';
+            editForm.source = c.source || '';
+            editForm.is_vip = !!c.is_vip;
+            Object.assign(originalForm, editForm);
+            editError.value = '';
+            editMode.value = true;
+        }
+
+        async function saveEdit() {
+            if (!editForm.name.trim()) { editError.value = 'Ім\'я обов\'язкове'; return; }
+            savingEdit.value = true; editError.value = '';
+            try {
+                const id = detail.value.client.id;
+                await props.api.put('/clients/' + id, editForm);
+                editMode.value = false;
+                await load();
+                const { data } = await props.api.get('/clients/' + id);
+                detail.value = data;
+                suppressNotesWatch = true;
+                notesForm.notes = data.client.notes || '';
+                notesForm.medical_notes = data.client.medical_notes || '';
+                nextTick(() => { suppressNotesWatch = false; });
+            } catch(e) { editError.value = 'Не вдалося зберегти'; }
+            savingEdit.value = false;
+        }
+
+        async function saveNotes() {
+            if (!detail.value) return;
+            savingNotes.value = true; notesSaved.value = false;
+            try {
+                await props.api.put('/clients/' + detail.value.client.id, {
+                    notes: notesForm.notes,
+                    medical_notes: notesForm.medical_notes,
+                });
+                detail.value.client.notes = notesForm.notes;
+                detail.value.client.medical_notes = notesForm.medical_notes;
+                notesSaved.value = true;
+            } catch(e) {}
+            savingNotes.value = false;
+        }
+
+        watch(() => [notesForm.notes, notesForm.medical_notes], () => {
+            if (suppressNotesWatch) return;
+            notesSaved.value = false;
+            clearTimeout(notesTimer);
+            notesTimer = setTimeout(saveNotes, 800);
+        });
+
+        function instagramUrl(handle) {
+            if (!handle) return '';
+            return 'https://instagram.com/' + handle.replace(/^@/, '');
+        }
+
+        onMounted(load);
+
+        return {
+            clients, meta, loading, search, vipOnly, viewMode,
+            showNewModal,
+            showDetailDrawer, detail, detailLoading, editMode,
+            editForm, savingEdit, editError, isFieldDirty, isDirty,
+            notesForm, savingNotes, notesSaved,
+            onSearchInput, toggleVip, changePage,
+            openNew, onNewSaved, closeDetail, openDetail, startEdit, saveEdit, saveNotes, instagramUrl,
+            M,
+        };
+    },
+    template: `
+<div>
+  <div class="clients-toolbar">
+    <div class="topbar-search clients-search">
+      <i class="fa fa-magnifying-glass topbar-search-icon"></i>
+      <input type="text" v-model="search" @input="onSearchInput" placeholder="Пошук за іменем, телефоном, email…">
+    </div>
+    <div class="chip-row" style="margin:0;">
+      <button :class="'chip' + (vipOnly ? ' active' : '')" @click="toggleVip"><i class="fa fa-star"></i> VIP</button>
+    </div>
+    <div class="view-toggle">
+      <button :class="'view-toggle-btn' + (viewMode==='cards' ? ' active' : '')" @click="viewMode='cards'" title="Картки"><i class="fa fa-grip"></i></button>
+      <button :class="'view-toggle-btn' + (viewMode==='list' ? ' active' : '')" @click="viewMode='list'" title="Список"><i class="fa fa-list"></i></button>
+    </div>
+    <button class="btn btn-primary" @click="openNew" style="margin-left:auto;"><i class="fa fa-plus"></i> Новий клієнт</button>
+  </div>
+
+  <div v-if="loading" class="empty"><i class="fa fa-spinner fa-spin"></i><p>Завантаження…</p></div>
+
+  <div v-else-if="!clients.length" class="empty">
+    <i class="fa fa-users"></i>
+    <p>Клієнтів не знайдено</p>
+  </div>
+
+  <!-- Card view -->
+  <div v-else-if="viewMode==='cards'" class="clients-grid">
+    <div v-for="c in clients" :key="c.id" class="client-card" @click="openDetail(c)">
+      <div v-if="c.is_vip" class="client-card-vip"><i class="fa fa-star"></i> VIP</div>
+      <img v-if="c.avatar_url" :src="c.avatar_url" class="client-card-avatar" :alt="c.name">
+      <m-avatar v-else :name="c.name" size="xl"></m-avatar>
+      <div class="client-card-name">{{ c.name }}</div>
+      <div class="client-card-info">
+        <div v-if="c.phone" class="client-card-row"><i class="fa fa-phone"></i> {{ c.phone }}</div>
+        <div v-if="c.instagram" class="client-card-row"><i class="fa fa-instagram"></i> {{ c.instagram.replace('@','') }}</div>
+        <div v-if="!c.phone && !c.instagram && c.email" class="client-card-row"><i class="fa fa-envelope"></i> {{ c.email }}</div>
+      </div>
+      <div class="client-card-stats">
+        <div class="client-card-stat">
+          <div class="client-card-stat-value">{{ c.total_visits ?? 0 }}</div>
+          <div class="client-card-stat-label">Візити</div>
+        </div>
+        <div class="client-card-stat">
+          <div class="client-card-stat-value">{{ M.fmtMoney(c.total_spent_sum || 0) }}</div>
+          <div class="client-card-stat-label">Витрачено</div>
+        </div>
+        <div class="client-card-stat">
+          <div class="client-card-stat-value">{{ c.last_visit_at ? M.fmt(c.last_visit_at, {month:'short',day:'numeric'}) : '—' }}</div>
+          <div class="client-card-stat-label">Останній візит</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- List view -->
+  <div v-else class="card">
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Клієнт</th>
+            <th>Контакти</th>
+            <th>Візити</th>
+            <th>Витрачено</th>
+            <th>Останній візит</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="c in clients" :key="c.id" @click="openDetail(c)">
+            <td>
+              <div class="flex items-center gap-8">
+                <img v-if="c.avatar_url" :src="c.avatar_url" class="avatar av-sm" style="object-fit:cover;" :alt="c.name">
+                <m-avatar v-else :name="c.name" size="sm"></m-avatar>
+                <div class="min-w-0">
+                  <div class="fw-700">{{ c.name }} <i v-if="c.is_vip" class="fa fa-star" style="color:#f59e0b;font-size:11px;"></i></div>
+                </div>
+              </div>
+            </td>
+            <td style="color:var(--text-sub)">
+              <div v-if="c.phone">{{ c.phone }}</div>
+              <div v-if="c.instagram" style="font-size:11px;color:var(--text-muted);"><i class="fa fa-instagram"></i> {{ c.instagram.replace('@','') }}</div>
+              <div v-if="!c.phone && !c.instagram">—</div>
+            </td>
+            <td>{{ c.total_visits ?? 0 }}</td>
+            <td style="font-weight:600;">{{ M.fmtMoney(c.total_spent_sum || 0) }}</td>
+            <td style="color:var(--text-sub)">{{ c.last_visit_at ? M.fmt(c.last_visit_at) : '—' }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Pagination -->
+  <div v-if="meta.last_page > 1" style="padding:12px 14px;display:flex;align-items:center;justify-content:space-between;">
+    <button class="btn btn-ghost btn-sm" :disabled="meta.current_page <= 1" @click="changePage(meta.current_page - 1)"><i class="fa fa-chevron-left"></i> Назад</button>
+    <span class="text-sub text-sm">Сторінка {{ meta.current_page }} з {{ meta.last_page }} &nbsp;·&nbsp; {{ meta.total }} всього</span>
+    <button class="btn btn-ghost btn-sm" :disabled="meta.current_page >= meta.last_page" @click="changePage(meta.current_page + 1)">Далі <i class="fa fa-chevron-right"></i></button>
+  </div>
+
+  <!-- New client modal -->
+  <m-modal :show="showNewModal" title="Новий клієнт" @close="showNewModal=false">
+    <client-form-body :api="api" :existing="null" @saved="onNewSaved" @cancel="showNewModal=false"></client-form-body>
+  </m-modal>
+
+  <!-- Detail / edit drawer -->
+  <teleport to="body">
+    <div v-if="showDetailDrawer" class="drawer-overlay" @mousedown.self="closeDetail"></div>
+    <transition name="drawer-slide">
+    <div v-if="showDetailDrawer" class="client-drawer">
+      <div class="modal-head">
+        <span class="modal-title">{{ editMode ? 'Редагувати клієнта' : (detail ? detail.client.name : 'Клієнт') }}</span>
+        <div class="flex items-center gap-8">
+          <button v-if="detail && !editMode && !detailLoading" class="btn btn-secondary btn-icon" @click="startEdit" title="Редагувати"><i class="fa fa-pen"></i></button>
+          <button v-if="editMode" :class="'btn btn-icon ' + (isDirty ? 'btn-save-dirty' : 'btn-secondary')" @click="saveEdit" :disabled="savingEdit" title="Зберегти">
+            <i :class="savingEdit ? 'fa fa-spinner fa-spin' : 'fa fa-check'"></i>
+          </button>
+          <button class="modal-close" @click="editMode ? (editMode=false) : closeDetail()" :title="editMode ? 'Скасувати' : 'Закрити'"><i class="fa fa-times"></i></button>
+        </div>
+      </div>
+
+      <div class="client-drawer-body">
+        <div v-if="detailLoading" class="empty"><i class="fa fa-spinner fa-spin"></i><p>Завантаження…</p></div>
+
+        <div v-else-if="detail" class="client-detail">
+
+          <div class="client-detail-head">
+            <img v-if="detail.client.avatar_url" :src="detail.client.avatar_url" class="client-detail-avatar" :alt="detail.client.name">
+            <m-avatar v-else :name="detail.client.name" size="xl"></m-avatar>
+            <div class="flex-1 min-w-0">
+              <template v-if="!editMode">
+                <div class="flex items-center gap-8">
+                  <div style="font-size:17px;font-weight:700;">{{ detail.client.name }}</div>
+                  <span v-if="detail.client.is_vip" class="badge" style="background:rgba(245,158,11,.15);color:#b45309;"><i class="fa fa-star"></i> VIP</span>
+                </div>
+                <div class="client-detail-meta">
+                  <span v-if="detail.client.phone"><i class="fa fa-phone"></i> {{ detail.client.phone }}</span>
+                  <span v-if="detail.client.email"><i class="fa fa-envelope"></i> {{ detail.client.email }}</span>
+                  <a v-if="detail.client.instagram" :href="instagramUrl(detail.client.instagram)" target="_blank" rel="noopener"><i class="fa fa-instagram"></i> {{ detail.client.instagram.replace('@','') }}</a>
+                  <span v-if="detail.client.birthday"><i class="fa fa-cake-candles"></i> {{ M.fmt(detail.client.birthday) }}</span>
+                  <span v-if="detail.client.source"><i class="fa fa-circle-info"></i> {{ detail.client.source }}</span>
+                </div>
+              </template>
+              <template v-else>
+                <div class="form-group mb-12">
+                  <input v-model="editForm.name" :class="'input' + (isFieldDirty('name') ? ' input-dirty' : '')" placeholder="Ім'я" style="font-size:15px;font-weight:700;">
+                </div>
+                <div class="client-detail-meta-edit">
+                  <div class="form-group"><label class="label">Телефон</label><input v-model="editForm.phone" :class="'input' + (isFieldDirty('phone') ? ' input-dirty' : '')" type="tel"></div>
+                  <div class="form-group"><label class="label">Email</label><input v-model="editForm.email" :class="'input' + (isFieldDirty('email') ? ' input-dirty' : '')" type="email"></div>
+                  <div class="form-group"><label class="label">Instagram</label><input v-model="editForm.instagram" :class="'input' + (isFieldDirty('instagram') ? ' input-dirty' : '')" placeholder="@handle"></div>
+                  <div class="form-group"><label class="label">День народження</label><input v-model="editForm.birthday" :class="'input' + (isFieldDirty('birthday') ? ' input-dirty' : '')" type="date"></div>
+                  <div class="form-group" style="grid-column: span 2;"><label class="label">Джерело</label><input v-model="editForm.source" :class="'input' + (isFieldDirty('source') ? ' input-dirty' : '')" placeholder="Instagram, рекомендація…"></div>
+                  <label :class="'vip-edit-toggle' + (isFieldDirty('is_vip') ? ' input-dirty' : '')">
+                    <input type="checkbox" v-model="editForm.is_vip"> <span>VIP клієнт</span>
+                  </label>
+                </div>
+                <p v-if="editError" style="color:var(--cancelled);font-size:12px;margin-top:8px;">{{ editError }}</p>
+              </template>
+            </div>
+          </div>
+
+          <div class="client-detail-stats">
+            <div class="stat-card" style="padding:12px 14px;">
+              <div class="stat-label">Витрачено всього</div>
+              <div class="stat-value" style="font-size:20px;">{{ M.fmtMoney(detail.total_spent) }}</div>
+            </div>
+            <div class="stat-card" style="padding:12px 14px;">
+              <div class="stat-label">Завершених візитів</div>
+              <div class="stat-value" style="font-size:20px;">{{ detail.visits_count }}</div>
+            </div>
+            <div class="stat-card" style="padding:12px 14px;">
+              <div class="stat-label">Клієнт з</div>
+              <div class="stat-value" style="font-size:20px;">{{ M.fmt(detail.client.created_at, {month:'short', year:'numeric'}) }}</div>
+            </div>
+          </div>
+
+          <div v-if="detail.spending_by_service && detail.spending_by_service.length" class="client-detail-section">
+            <div class="client-detail-section-title">Витрати за послугами</div>
+            <div class="spend-row" v-for="row in detail.spending_by_service" :key="row.service_id">
+              <span class="svc-dot" :style="{ background: row.service?.color || '#999' }"></span>
+              <span class="flex-1">{{ row.service?.name || 'Послуга' }}</span>
+              <span class="text-sub text-sm">{{ row.count }}x</span>
+              <span style="font-weight:600;">{{ M.fmtMoney(row.total) }}</span>
+            </div>
+          </div>
+
+          <div class="client-detail-section">
+            <div class="client-detail-section-title">Історія записів</div>
+            <div v-if="!detail.client.appointments || !detail.client.appointments.length" class="empty" style="padding:16px;">
+              <p>Записів ще немає</p>
+            </div>
+            <div v-else class="client-history">
+              <div class="history-row" v-for="a in detail.client.appointments" :key="a.id">
+                <span class="svc-dot" :style="{ background: a.service?.color || a.color || '#999' }"></span>
+                <div class="flex-1 min-w-0">
+                  <div class="fw-700" style="font-size:13px;">{{ a.service?.name || a.title }}</div>
+                  <div class="text-sub" style="font-size:11px;">{{ M.fmtDT(a.scheduled_at) }}</div>
+                </div>
+                <span style="font-weight:600;font-size:13px;">{{ a.price ? M.fmtMoney(a.price) : '—' }}</span>
+                <m-badge :status="a.status"></m-badge>
+              </div>
+            </div>
+          </div>
+
+          <div class="client-detail-section">
+            <div class="client-detail-section-title flex items-center gap-8" style="justify-content:space-between;">
+              <span>Нотатки</span>
+              <span class="notes-save-indicator">
+                <span v-if="savingNotes"><i class="fa fa-spinner fa-spin"></i> Збереження…</span>
+                <span v-else-if="notesSaved" style="color:var(--completed);"><i class="fa fa-check"></i> Збережено</span>
+              </span>
+            </div>
+            <div class="form-group mb-12">
+              <label class="label">Загальні нотатки</label>
+              <textarea v-model="notesForm.notes" class="textarea" rows="2" placeholder="Нотатки про клієнта…"></textarea>
+            </div>
+            <div class="form-group">
+              <label class="label">Медичні / шкірні нотатки (приватно)</label>
+              <textarea v-model="notesForm.medical_notes" class="textarea" rows="2" placeholder="Алергії, стани…"></textarea>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+    </transition>
+  </teleport>
+</div>`
+};
+
+/* =====================================================================
    5. PUBLIC PAGE SETTINGS
    ===================================================================== */
 const PublicPageSettings = {
@@ -663,7 +1270,7 @@ const PublicPageSettings = {
             name: '',
             bio: '', specialty: '', phone: '', city: '', country: '',
             instagram: '', website: '', booking_notice: '',
-            cancellation_policy: '', is_public: true, is_accepting_bookings: true, currency: 'USD',
+            cancellation_policy: '', is_public: true, is_accepting_bookings: true, currency: 'UAH',
         });
 
         const publicUrl = computed(() => {
@@ -879,7 +1486,7 @@ const SettingsPage = {
         function editSvc(s) { editingSvc.value = s; showSvcModal.value = true; }
         function newSvc() { editingSvc.value = null; showSvcModal.value = true; }
         async function deleteSvc(s) {
-            if (!confirm('Delete "' + s.name + '"?')) return;
+            if (!confirm('Видалити «' + s.name + '»?')) return;
             await props.api.delete('/services/' + s.id); loadServices();
         }
         async function toggleSvc(s) {
@@ -909,10 +1516,10 @@ const SettingsPage = {
         const dayNames = ['Неділя','Понеділок','Вівторок','Середа','Четвер','П\'ятниця','Субота'];
 
         function priceDisplay(s) {
-            if (s.price_on_request) return 'On request';
-            if (s.price) return '$' + s.price;
-            if (s.price_from && s.price_to) return '$' + s.price_from + ' – $' + s.price_to;
-            if (s.price_from) return 'from $' + s.price_from;
+            if (s.price_on_request) return 'За запитом';
+            if (s.price) return '₴' + s.price;
+            if (s.price_from && s.price_to) return '₴' + s.price_from + ' – ₴' + s.price_to;
+            if (s.price_from) return 'від ₴' + s.price_from;
             return '—';
         }
 
@@ -1056,4 +1663,4 @@ const SettingsPage = {
 };
 
 /* Export all pages */
-window.MaystrPages = { DashboardPage, SchedulePage, RequestsPage, ArchivePage, PublicPageSettings, SettingsPage };
+window.SpravnaPages = { DashboardPage, SchedulePage, RequestsPage, ArchivePage, ClientsPage, PublicPageSettings, SettingsPage };

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Maystr — CRM для майстрів</title>
+<title>Spravna — CRM для майстрів</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <link rel="stylesheet" href="/css/maystr.css">
 </head>
@@ -11,8 +11,8 @@
 <div class="landing">
     <nav class="landing-nav">
         <div style="display:flex;align-items:center;gap:10px;">
-            <div class="brand-logo"><i class="fa fa-star"></i></div>
-            <span class="brand-name">Maystr</span>
+            <div class="brand-logo"><i class="fa fa-asterisk"></i></div>
+            <span class="brand-name">Spravna</span>
         </div>
         <a href="{{ route('login') }}" class="btn btn-primary btn-sm">
             <i class="fa fa-arrow-right-to-bracket"></i> Увійти
@@ -20,8 +20,8 @@
     </nav>
 
     <div class="landing-hero">
-        <div style="display:inline-flex;align-items:center;gap:8px;background:var(--accent-soft);border:1px solid rgba(201,168,76,.3);border-radius:var(--r-full);padding:5px 14px;font-size:12px;color:var(--accent-text);margin-bottom:20px;">
-            <i class="fa fa-star"></i> Для тату-майстрів, нейлістів, бровістів та інших
+        <div style="display:inline-flex;align-items:center;gap:8px;background:var(--accent-soft);border:1px solid rgba(59,94,71,.25);border-radius:var(--r-full);padding:5px 14px;font-size:12px;color:var(--accent-text);margin-bottom:20px;">
+            <i class="fa fa-asterisk"></i> Для тату-майстрів, нейлістів, бровістів та інших
         </div>
         <h1 class="hero-title">
             Твоє мистецтво.<br>
@@ -53,7 +53,7 @@
     </div>
 
     <footer style="text-align:center;padding:20px;color:var(--text-muted);font-size:12px;border-top:1px solid var(--border);">
-        © {{ date('Y') }} Maystr. Всі права захищено.
+        © {{ date('Y') }} Spravna. Всі права захищено.
     </footer>
 </div>
 </body>

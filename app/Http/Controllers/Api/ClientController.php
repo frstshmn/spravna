@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Client;
+use App\Services\InstagramService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -27,6 +28,8 @@ class ClientController extends Controller
         }
 
         $clients = $query->withCount(['appointments as total_visits' => fn($q) => $q->where('status', 'completed')])
+            ->withSum(['appointments as total_spent_sum' => fn($q) => $q->where('status', 'completed')], 'price')
+            ->withMax(['appointments as last_visit_at' => fn($q) => $q->where('status', 'completed')], 'scheduled_at')
             ->orderBy('name')
             ->paginate($request->integer('per_page', 30));
 
@@ -47,6 +50,13 @@ class ClientController extends Controller
             'is_vip'        => 'boolean',
         ]);
 
+        if (!empty($data['instagram'])) {
+            $avatarUrl = app(InstagramService::class)->fetchAvatar($data['instagram']);
+            if ($avatarUrl) {
+                $data['avatar_url'] = $avatarUrl;
+            }
+        }
+
         $client = $request->user()->clients()->create($data);
         return response()->json($client, 201);
     }
@@ -55,12 +65,20 @@ class ClientController extends Controller
     {
         $this->authorizeClient($request, $client);
 
-        $client->load(['appointments' => fn($q) => $q->with('service')->orderByDesc('scheduled_at')->limit(20)]);
+        $client->load(['appointments' => fn($q) => $q->with('service')->orderByDesc('scheduled_at')->limit(50)]);
+
+        $spendingByService = $client->appointments()
+            ->where('status', 'completed')
+            ->selectRaw('service_id, COUNT(*) as count, SUM(price) as total')
+            ->groupBy('service_id')
+            ->with('service:id,name,color')
+            ->get();
 
         return response()->json([
-            'client'        => $client,
-            'total_spent'   => $client->total_spent,
-            'visits_count'  => $client->visits_count,
+            'client'              => $client,
+            'total_spent'         => $client->total_spent,
+            'visits_count'        => $client->visits_count,
+            'spending_by_service' => $spendingByService,
         ]);
     }
 
@@ -80,6 +98,13 @@ class ClientController extends Controller
             'is_vip'        => 'boolean',
             'is_blocked'    => 'boolean',
         ]);
+
+        if (!empty($data['instagram']) && $data['instagram'] !== $client->instagram) {
+            $avatarUrl = app(InstagramService::class)->fetchAvatar($data['instagram']);
+            if ($avatarUrl) {
+                $data['avatar_url'] = $avatarUrl;
+            }
+        }
 
         $client->update($data);
         return response()->json($client);

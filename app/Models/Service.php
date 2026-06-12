@@ -37,12 +37,12 @@ class Service extends Model
 
     public function getPriceDisplayAttribute(): string
     {
-        if ($this->price_on_request) return 'On request';
+        if ($this->price_on_request) return 'За запитом';
         if ($this->price) return number_format($this->price, 0);
         if ($this->price_from && $this->price_to) {
             return number_format($this->price_from, 0) . ' – ' . number_format($this->price_to, 0);
         }
-        if ($this->price_from) return 'from ' . number_format($this->price_from, 0);
+        if ($this->price_from) return 'від ' . number_format($this->price_from, 0);
         return '—';
     }
 
@@ -50,8 +50,8 @@ class Service extends Model
     {
         $hours = intdiv($this->duration, 60);
         $mins = $this->duration % 60;
-        if ($hours && $mins) return "{$hours}h {$mins}m";
-        if ($hours) return "{$hours}h";
-        return "{$mins}m";
+        if ($hours && $mins) return "{$hours}г {$mins}хв";
+        if ($hours) return "{$hours}г";
+        return "{$mins}хв";
     }
 }

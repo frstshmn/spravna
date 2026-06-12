@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Maystr</title>
+<title>Spravna</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous">
 <link rel="stylesheet" href="/css/maystr.css">
 </head>
@@ -12,7 +12,7 @@
 <!-- Pre-loader (shown before Vue mounts) -->
 <div id="pre-loader">
     <div class="loader-spinner"></div>
-    <span class="loader-text">MAYSTR</span>
+    <span class="loader-text">SPRAVNA</span>
 </div>
 
 <!-- Mount point — Vue renders the full app shell via string template in maystr-app.js -->

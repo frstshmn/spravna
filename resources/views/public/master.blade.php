@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>{{ $master->name }} — Maystr</title>
-<meta name="description" content="{{ $profile->bio ?? $master->name . ' — ' . ucfirst($profile->specialty ?? 'Master') }}">
+<title>{{ $master->name }} — Spravna</title>
+<meta name="description" content="{{ $profile->bio ?? $master->name . ' — ' . ucfirst($profile->specialty ?? 'Майстер') }}">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <link rel="stylesheet" href="/css/maystr.css">
 <script src="/js/vendor/vue.global.prod.js"></script>
@@ -13,11 +13,11 @@
 <body>
 <div class="pub-page">
     <!-- Sticky header -->
-    <header style="position:sticky;top:0;z-index:50;background:rgba(11,11,16,.85);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);">
+    <header style="position:sticky;top:0;z-index:50;background:rgba(255,255,255,0.35);backdrop-filter:blur(var(--blur-lg));-webkit-backdrop-filter:blur(var(--blur-lg));border-bottom:1px solid var(--border);">
         <div class="pub-container" style="height:56px;display:flex;align-items:center;justify-content:space-between;">
             <div style="display:flex;align-items:center;gap:8px;">
-                <div class="brand-logo" style="width:24px;height:24px;font-size:11px;"><i class="fa fa-star"></i></div>
-                <span class="brand-name" style="font-size:15px;">Maystr</span>
+                <div class="brand-logo" style="width:24px;height:24px;font-size:11px;"><i class="fa fa-asterisk"></i></div>
+                <span class="brand-name" style="font-size:15px;">Spravna</span>
             </div>
             @if($profile->is_accepting_bookings)
             <a href="#book" class="btn btn-primary btn-sm">
@@ -59,7 +59,7 @@
                     @endif
                     @if($profile->website)
                     <a href="{{ $profile->website }}" target="_blank" style="display:flex;align-items:center;gap:5px;color:var(--text-sub);font-size:13px;">
-                        <i class="fa fa-globe" style="color:var(--accent);"></i> Website
+                        <i class="fa fa-globe" style="color:var(--accent);"></i> Сайт
                     </a>
                     @endif
                 </div>
@@ -121,7 +121,7 @@
     </div>
 
     <footer style="border-top:1px solid var(--border);padding:20px;text-align:center;color:var(--text-muted);font-size:12px;">
-        Працює на <a href="/" style="color:var(--accent);">Maystr</a>
+        Працює на <a href="/" style="color:var(--accent);">Spravna</a>
     </footer>
 </div>
 
