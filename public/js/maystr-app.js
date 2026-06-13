@@ -6,11 +6,11 @@
 
 (function () {
     const { createApp, ref, computed } = Vue;
-    const { MModal, MBadge, MAvatar, AppointmentFormBody } = SpravnaComponents;
+    const { MModal, MBadge, MAvatar, AppointmentFormBody, OnboardingWizard } = SpravnaComponents;
     const { DashboardPage, SchedulePage, RequestsPage, ArchivePage, ClientsPage, PublicPageSettings, SettingsPage } = SpravnaPages;
 
     /* ── Guard: redirect to login if no token ── */
-    const token = localStorage.getItem('spravna_token');
+    const token = getToken();
     if (!token) {
         window.location.replace('/login');
         return;
@@ -46,7 +46,7 @@
     /* ── Root app — full shell in string template ── */
     const app = createApp({
         components: {
-            MModal, MBadge, MAvatar, AppointmentFormBody, PageView,
+            MModal, MBadge, MAvatar, AppointmentFormBody, OnboardingWizard, PageView,
             DashboardPage, SchedulePage, RequestsPage, ArchivePage, ClientsPage, PublicPageSettings, SettingsPage
         },
         setup() {
@@ -82,7 +82,7 @@
                     const { data: rd } = await api.get('/booking-requests', { params: { status: 'pending', per_page: 1 } });
                     pendingCount.value = rd.meta?.total ?? rd.total ?? 0;
                 } catch(e) {
-                    localStorage.removeItem('spravna_token');
+                    clearAuth();
                     window.location.href = '/login';
                     return;
                 }
@@ -97,17 +97,21 @@
 
             function logout() {
                 api.post('/auth/logout').catch(() => {});
-                localStorage.removeItem('spravna_token');
+                clearAuth();
                 window.location.href = '/login';
             }
 
             function onUserUpdated() { init(); }
 
+            function onOnboardingDone() {
+                if (user.value) user.value.onboarding_completed_at = new Date().toISOString();
+            }
+
             window.addEventListener('popstate', () => { page.value = getPageFromPath(); });
 
             init();
 
-            return { page, user, pendingCount, loading, pages, pageMeta, navigate, logout, onUserUpdated, api };
+            return { page, user, pendingCount, loading, pages, pageMeta, navigate, logout, onUserUpdated, onOnboardingDone, api };
         },
 
         /* ── Full app shell — Vue string template (single root) ── */
@@ -188,6 +192,8 @@
       <span>{{ p.label === 'Публічна сторінка' ? 'Публічна' : p.label }}</span>
     </button>
   </nav>
+
+  <onboarding-wizard v-if="!user?.onboarding_completed_at" :api="api" @done="onOnboardingDone"></onboarding-wizard>
 
 </div>
 `

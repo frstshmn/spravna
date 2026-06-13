@@ -68,4 +68,12 @@ class ProfileController extends Controller
 
         return response()->json(['avatar_url' => asset('storage/' . $path)]);
     }
+
+    public function completeOnboarding(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $user->update(['onboarding_completed_at' => now()]);
+
+        return response()->json($user->fresh()->load('profile'));
+    }
 }

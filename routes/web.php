@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\Web\Admin\AuthWebController as AdminAuthWebController;
+use App\Http\Controllers\Web\Admin\PanelController as AdminPanelController;
 use App\Http\Controllers\Web\AuthWebController;
 use App\Http\Controllers\Web\DashboardWebController;
 use App\Http\Controllers\Web\DeployController;
@@ -16,6 +18,12 @@ Route::get('/deploy', [DeployController::class, 'deploy'])->name('deploy');
 
 // Public master page
 Route::get('/master/{slug}', [PublicProfileController::class, 'show'])->name('master.public');
+
+// Admin
+Route::get('/admin/login', [AdminAuthWebController::class, 'showLogin'])->name('admin.login');
+Route::get('/admin/{any?}', [AdminPanelController::class, 'index'])
+    ->where('any', '.*')
+    ->name('admin.app');
 
 // SPA — token-guarded in JS
 Route::get('/app/{any?}', [DashboardWebController::class, 'index'])

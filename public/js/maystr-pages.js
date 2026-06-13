@@ -48,20 +48,25 @@ const DashboardPage = {
             return hrs;
         });
 
-        function tickPos(h) {
-            const { start, end } = timelineRange.value;
-            return (h - start) / (end - start) * 100;
-        }
-
         const trackHeight = computed(() => {
             const span = timelineRange.value.end - timelineRange.value.start || 1;
             const px = Math.max(28, Math.min(70, 480 / span));
             return Math.round(span * px);
         });
 
+        function tickPos(h) {
+            const { start, end } = timelineRange.value;
+            return (h - start) / (end - start) * trackHeight.value;
+        }
+
+        /* Strictly stacked, one-per-line timeline: items are positioned by time
+           but never allowed to overlap — each block starts no earlier than
+           the bottom edge of the previous one. */
         const timeline = computed(() => {
             const { start, end } = timelineRange.value;
             const span = end - start || 1;
+            const track = trackHeight.value;
+            const MIN_H = 30, GAP = 4;
             const items = todayAppts.value
                 .filter(a => a.scheduled_at)
                 .map(a => {
@@ -70,26 +75,24 @@ const DashboardPage = {
                     const dur = (a.duration || 60) / 60;
                     return {
                         a, sh, eh: sh + dur,
-                        left: (sh - start) / span * 100,
-                        width: Math.max(dur / span * 100, 4),
+                        top: (sh - start) / span * track,
+                        height: Math.max((dur / span * track) - GAP, MIN_H),
                     };
                 })
                 .sort((x, y) => x.sh - y.sh);
-            const laneEnds = [];
+            let bottom = 0;
             items.forEach(it => {
-                let lane = laneEnds.findIndex(e => it.sh >= e - 1 / 60);
-                if (lane === -1) { lane = laneEnds.length; laneEnds.push(0); }
-                laneEnds[lane] = it.eh;
-                it.lane = lane;
+                it.top = Math.max(it.top, bottom);
+                bottom = it.top + it.height + GAP;
             });
-            return { items, laneCount: Math.max(1, laneEnds.length) };
+            return { items, height: Math.max(track, bottom - GAP) };
         });
 
         const nowPos = computed(() => {
             const { start, end } = timelineRange.value;
             const nh = now.value.getHours() + now.value.getMinutes() / 60;
             if (nh < start || nh > end) return null;
-            return (nh - start) / (end - start) * 100;
+            return (nh - start) / (end - start) * trackHeight.value;
         });
 
         const nowLabel = computed(() => now.value.toLocaleTimeString('uk', { hour: '2-digit', minute: '2-digit' }));
@@ -221,19 +224,19 @@ const DashboardPage = {
           <p>Сьогодні немає записів</p>
         </div>
         <div v-else class="day-timeline-v">
-          <div class="day-timeline-ruler-v" :style="{height: trackHeight + 'px'}">
-            <span v-for="h in timelineHours" :key="h" class="day-timeline-tick-v" :style="{top: tickPos(h) + '%'}">{{ h }}:00</span>
-            <span v-for="it in timeline.items" :key="'s'+it.a.id" class="day-timeline-start-label-v" :style="{top: it.left + '%'}">
+          <div class="day-timeline-ruler-v" :style="{height: timeline.height + 'px'}">
+            <span v-for="h in timelineHours" :key="h" class="day-timeline-tick-v" :style="{top: tickPos(h) + 'px'}">{{ h }}:00</span>
+            <span v-for="it in timeline.items" :key="'s'+it.a.id" class="day-timeline-start-label-v" :style="{top: it.top + 'px'}">
               {{ new Date(it.a.scheduled_at).toLocaleTimeString('uk',{hour:'2-digit',minute:'2-digit'}) }}
             </span>
           </div>
-          <div class="day-timeline-track-v" :style="{height: trackHeight + 'px'}">
-            <div v-for="h in timelineHours" :key="'g'+h" class="day-timeline-gridline-v" :style="{top: tickPos(h) + '%'}"></div>
-            <div v-if="nowPos !== null" class="day-timeline-now-v" :style="{top: nowPos + '%'}">
+          <div class="day-timeline-track-v" :style="{height: timeline.height + 'px'}">
+            <div v-for="h in timelineHours" :key="'g'+h" class="day-timeline-gridline-v" :style="{top: tickPos(h) + 'px'}"></div>
+            <div v-if="nowPos !== null" class="day-timeline-now-v" :style="{top: nowPos + 'px'}">
               <span class="day-timeline-now-label-v">{{ nowLabel }}</span>
             </div>
             <div v-for="it in timeline.items" :key="it.a.id" class="day-timeline-block-v"
-              :style="{top: it.left + '%', height: 'calc(' + it.width + '% - 4px)', left: (it.lane * 100 / timeline.laneCount) + '%', width: 'calc(' + (100 / timeline.laneCount) + '% - 6px)', background: it.a.service?.color || 'var(--accent)'}"
+              :style="{top: it.top + 'px', height: it.height + 'px', left: 0, width: 'calc(100% - 6px)', background: it.a.service?.color || 'var(--accent)'}"
               :title="(it.a.client?.name || '') + ' — ' + (it.a.service?.name || 'Запис')"
               @click="openAppt(it.a)">
               <span class="dtb-time">{{ new Date(it.a.scheduled_at).toLocaleTimeString('uk',{hour:'2-digit',minute:'2-digit'}) }}</span>
@@ -462,20 +465,28 @@ const DashboardPage = {
 /* =====================================================================
    2. SCHEDULE
    ===================================================================== */
+const PX_PER_MIN = 0.8; // 24px per 30-minute slot
+
 const SchedulePage = {
     props: ['api'],
-    components: { MModal, MBadge, AppointmentFormBody },
+    components: { MModal, MBadge, AppointmentFormBody, RespondFormBody },
     setup(props) {
         const view = ref('week');
         const currentDate = ref(new Date());
         const appointments = ref([]);
+        const bookingRequests = ref([]);
+        const showRequests = ref(true);
         const workingHours = ref([]);
         const showModal = ref(false);
         const modalTitle = ref('');
         const editingAppt = ref(null);
         const newApptDate = ref('');
         const newApptHour = ref(9);
+        const newApptMinute = ref(0);
         const hours = Array.from({ length: 13 }, (_, i) => i + 8); // 8–20
+        const halfSlots = hours.flatMap(h => [{ hour: h, minute: 0 }, { hour: h, minute: 30 }]);
+        const gridHeight = halfSlots.length * 24;
+        const gridStartMin = hours[0] * 60;
 
         /* ── Week helpers ── */
         function getWeekStart(d) {
@@ -485,13 +496,7 @@ const SchedulePage = {
             return dt;
         }
         const weekStart = computed(() => getWeekStart(currentDate.value));
-        function localDateStr(d) {
-            // Format as YYYY-MM-DD in local time (avoids UTC shift)
-            const y = d.getFullYear();
-            const m = String(d.getMonth() + 1).padStart(2, '0');
-            const day = String(d.getDate()).padStart(2, '0');
-            return `${y}-${m}-${day}`;
-        }
+        const localDateStr = M.localDateStr;
         const weekDays = computed(() => Array.from({ length: 7 }, (_, i) => {
             const d = new Date(weekStart.value); d.setDate(d.getDate() + i);
             const today = new Date();
@@ -513,13 +518,179 @@ const SchedulePage = {
         function prevMonth() { currentDate.value = new Date(currentDate.value.getFullYear(), currentDate.value.getMonth() - 1, 1); loadAppointments(); }
         function nextMonth() { currentDate.value = new Date(currentDate.value.getFullYear(), currentDate.value.getMonth() + 1, 1); loadAppointments(); }
 
-        function getAppts(date, hour) {
-            return appointments.value.filter(a => {
-                if (!a.scheduled_at) return false;
-                // Use string slicing to avoid UTC↔local timezone shift
-                return a.scheduled_at.slice(0, 10) === date &&
-                       parseInt(a.scheduled_at.slice(11, 13)) === hour;
+        function dayAppts(date) {
+            return appointments.value.filter(a => a.scheduled_at && localDateStr(new Date(a.scheduled_at)) === date);
+        }
+
+        function apptStyle(a) {
+            const start = new Date(a.scheduled_at);
+            const startMin = start.getHours() * 60 + start.getMinutes();
+            const top = (startMin - gridStartMin) * PX_PER_MIN;
+            const height = (a.duration || 60) * PX_PER_MIN;
+            return { top: Math.max(top, 0) + 'px', height: Math.max(height, 20) + 'px' };
+        }
+
+        function apptTimeRange(a) {
+            const start = new Date(a.scheduled_at);
+            const end = new Date(start.getTime() + (a.duration || 60) * 60000);
+            return M.fmtTime(start) + '–' + M.fmtTime(end);
+        }
+
+        function apptTypeLabel(a) {
+            if (a.type === 'block') return '';
+            return a.service?.name || '';
+        }
+
+        function apptOverlaps(a, date) {
+            const start = new Date(a.scheduled_at).getTime();
+            const end = start + (a.duration || 60) * 60000;
+            return dayAppts(date).some(b => {
+                if (b.id === a.id) return false;
+                const bStart = new Date(b.scheduled_at).getTime();
+                const bEnd = bStart + (b.duration || 60) * 60000;
+                return start < bEnd && end > bStart;
             });
+        }
+
+        /* ── Drag & drop rescheduling ── */
+        const draggingId = ref(null);
+        const draggingDuration = ref(60);
+        const dropPreview = ref(null);
+        function onApptDragStart(a) { draggingId.value = a.id; draggingDuration.value = a.duration || 60; }
+        function onApptDragEnd() { draggingId.value = null; dropPreview.value = null; }
+        function snapMinutes(e) {
+            const rect = e.currentTarget.getBoundingClientRect();
+            const offsetY = e.clientY - rect.top;
+            let minutes = gridStartMin + offsetY / PX_PER_MIN;
+            return Math.max(0, Math.round(minutes / 15) * 15);
+        }
+        function onDayDragOver(e, date) {
+            if (!draggingId.value) return;
+            const minutes = snapMinutes(e);
+            dropPreview.value = {
+                date,
+                top: (minutes - gridStartMin) * PX_PER_MIN,
+                height: draggingDuration.value * PX_PER_MIN,
+            };
+        }
+        async function onDayDrop(e, date) {
+            const id = draggingId.value;
+            draggingId.value = null;
+            dropPreview.value = null;
+            if (!id) return;
+            const appt = appointments.value.find(a => a.id === id);
+            if (!appt) return;
+            const minutes = snapMinutes(e);
+            const hour = Math.floor(minutes / 60), minute = minutes % 60;
+            const scheduled_at = `${date}T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+            const prev = appt.scheduled_at;
+            appt.scheduled_at = scheduled_at;
+            try {
+                await props.api.put(`/appointments/${id}`, { scheduled_at });
+            } catch (err) {
+                appt.scheduled_at = prev;
+            }
+        }
+
+        /* ── Current time marker ── */
+        const now = ref(new Date());
+        let nowTimer = null;
+        onMounted(() => { nowTimer = setInterval(() => { now.value = new Date(); }, 60000); });
+        onUnmounted(() => clearInterval(nowTimer));
+        function nowLineVisible() {
+            const mins = now.value.getHours() * 60 + now.value.getMinutes();
+            return mins >= gridStartMin && mins <= (hours[hours.length - 1] + 1) * 60;
+        }
+        function nowLineStyle() {
+            const mins = now.value.getHours() * 60 + now.value.getMinutes();
+            return { top: ((mins - gridStartMin) * PX_PER_MIN) + 'px' };
+        }
+        function nowTimeLabel() {
+            return String(now.value.getHours()).padStart(2, '0') + ':' + String(now.value.getMinutes()).padStart(2, '0');
+        }
+
+        /* ── Day start/end boundary markers ── */
+        function slotEdgeClass(dayIdx, idx) {
+            const slot = halfSlots[idx];
+            if (isOffHours(dayIdx, slot.hour)) return '';
+            const prev = halfSlots[idx - 1];
+            const next = halfSlots[idx + 1];
+            let cls = '';
+            if (idx === 0 || isOffHours(dayIdx, prev.hour)) cls += ' day-start';
+            if (idx === halfSlots.length - 1 || isOffHours(dayIdx, next.hour)) cls += ' day-end';
+            return cls;
+        }
+
+        /* ── Booking requests (dashed blocks) ── */
+        function dayRequests(date) {
+            if (!showRequests.value) return [];
+            return bookingRequests.value.filter(r => r.preferred_time && r.preferred_date && localDateStr(new Date(r.preferred_date)) === date);
+        }
+
+        function requestStyle(r) {
+            const [hh, mm] = r.preferred_time.split(':').map(Number);
+            const startMin = hh * 60 + (mm || 0);
+            const top = (startMin - gridStartMin) * PX_PER_MIN;
+            const duration = r.service?.duration || 60;
+            const height = duration * PX_PER_MIN;
+            return { top: Math.max(top, 0) + 'px', height: Math.max(height, 20) + 'px' };
+        }
+
+        async function loadBookingRequests() {
+            try {
+                const { data } = await props.api.get('/booking-requests', { params: { status: 'pending', per_page: 100 } });
+                bookingRequests.value = data.data ?? data;
+            } catch(e) {}
+        }
+
+        /* ── Booking request modal ── */
+        const showRespondModal = ref(false);
+        const selectedRequest = ref(null);
+        function openRequest(r) { selectedRequest.value = r; showRespondModal.value = true; }
+        function onResponded() { showRespondModal.value = false; loadBookingRequests(); loadAppointments(); }
+
+        /* ── Prep/lunch automation ── */
+        const prepDuration = ref(parseInt(localStorage.getItem('spravna_prep_duration') || '15'));
+        const prepAutoEnabled = ref(localStorage.getItem('spravna_prep_auto') === '1');
+        const prepApplying = ref(false);
+        watch(prepDuration, v => localStorage.setItem('spravna_prep_duration', v));
+        watch(prepAutoEnabled, v => localStorage.setItem('spravna_prep_auto', v ? '1' : '0'));
+
+        function hasPrepBefore(a) {
+            const start = new Date(a.scheduled_at).getTime();
+            return appointments.value.some(b => b.type === 'block' && new Date(b.scheduled_at).getTime() + (b.duration || 0) * 60000 === start);
+        }
+        function sessionsWithoutPrep() {
+            return appointments.value.filter(a => a.type !== 'block' && !hasPrepBefore(a));
+        }
+        async function createPrepBefore(appt, duration) {
+            const start = new Date(appt.scheduled_at);
+            const prepStart = new Date(start.getTime() - duration * 60000);
+            try {
+                await props.api.post('/appointments', {
+                    type: 'block', title: 'Підготовка',
+                    scheduled_at: M.toLocalInput(prepStart),
+                    duration,
+                });
+            } catch (e) {}
+        }
+        async function applyPrepToWeek() {
+            const missing = sessionsWithoutPrep();
+            if (!missing.length) return;
+            prepApplying.value = true;
+            for (const a of missing) await createPrepBefore(a, prepDuration.value);
+            await loadAppointments();
+            prepApplying.value = false;
+        }
+        async function removeAutoPrep() {
+            const blocks = appointments.value.filter(a => a.type === 'block' && a.title === 'Підготовка');
+            if (!blocks.length) return;
+            prepApplying.value = true;
+            for (const b of blocks) {
+                try { await props.api.delete(`/appointments/${b.id}`); } catch (e) {}
+            }
+            await loadAppointments();
+            prepApplying.value = false;
         }
 
         function isOffHours(dayIdx, hour) {
@@ -552,18 +723,25 @@ const SchedulePage = {
 
         function monthAppts(date) {
             if (!date) return [];
-            return appointments.value.filter(a => a.scheduled_at?.slice(0, 10) === date);
+            return appointments.value.filter(a => a.scheduled_at && localDateStr(new Date(a.scheduled_at)) === date);
         }
 
         /* ── Modal ── */
-        function openNew(date, hour) {
-            editingAppt.value = null; newApptDate.value = date; newApptHour.value = hour;
+        function openNew(date, hour, minute) {
+            editingAppt.value = null; newApptDate.value = date; newApptHour.value = hour; newApptMinute.value = minute ?? 0;
             modalTitle.value = 'Новий запис'; showModal.value = true;
         }
         function openEdit(appt) {
             editingAppt.value = appt; modalTitle.value = 'Редагувати запис'; showModal.value = true;
         }
-        function onSaved() { showModal.value = false; loadAppointments(); }
+        async function onSaved(appt) {
+            showModal.value = false;
+            const wasNew = !editingAppt.value;
+            if (wasNew && appt && appt.type === 'appointment' && prepAutoEnabled.value) {
+                await createPrepBefore(appt, prepDuration.value);
+            }
+            loadAppointments();
+        }
 
         async function loadAppointments() {
             try {
@@ -572,8 +750,8 @@ const SchedulePage = {
                     start = weekDays.value[0].date; end = weekDays.value[6].date;
                 } else {
                     const y = currentDate.value.getFullYear(), mo = currentDate.value.getMonth();
-                    start = new Date(y, mo, 1).toISOString().slice(0, 10);
-                    end = new Date(y, mo + 1, 0).toISOString().slice(0, 10);
+                    start = localDateStr(new Date(y, mo, 1));
+                    end = localDateStr(new Date(y, mo + 1, 0));
                 }
                 const { data } = await props.api.get('/appointments', { params: { start, end } });
                 appointments.value = data;
@@ -582,12 +760,21 @@ const SchedulePage = {
 
         onMounted(async () => {
             loadAppointments();
+            loadBookingRequests();
             try { const { data } = await props.api.get('/schedule/working-hours'); workingHours.value = data; } catch(e) {}
         });
 
         watch(view, loadAppointments);
 
-        return { view, currentDate, weekDays, weekLabel, monthLabel, monthDays, appointments, hours, showModal, modalTitle, editingAppt, newApptDate, newApptHour, prevWeek, nextWeek, prevMonth, nextMonth, getAppts, monthAppts, openNew, openEdit, onSaved, isOffHours };
+        return {
+            M, view, currentDate, weekDays, weekLabel, monthLabel, monthDays, appointments, hours, halfSlots, gridHeight,
+            showModal, modalTitle, editingAppt, newApptDate, newApptHour, newApptMinute,
+            prevWeek, nextWeek, prevMonth, nextMonth, dayAppts, monthAppts, apptStyle, apptTimeRange, apptTypeLabel, apptOverlaps,
+            openNew, openEdit, onSaved, isOffHours, showRequests, dayRequests, requestStyle, localDateStr,
+            onApptDragStart, onApptDragEnd, onDayDrop, onDayDragOver, dropPreview, nowLineVisible, nowLineStyle, nowTimeLabel, slotEdgeClass, draggingId,
+            showRespondModal, selectedRequest, openRequest, onResponded,
+            prepDuration, prepAutoEnabled, prepApplying, sessionsWithoutPrep, applyPrepToWeek, removeAutoPrep,
+        };
     },
     template: `
 <div>
@@ -600,8 +787,11 @@ const SchedulePage = {
     <button class="btn btn-ghost btn-sm" @click="view==='week' ? prevWeek() : prevMonth()"><i class="fa fa-chevron-left"></i></button>
     <span style="font-size:13px;font-weight:600;min-width:180px;text-align:center;">{{ view==='week' ? weekLabel : monthLabel }}</span>
     <button class="btn btn-ghost btn-sm" @click="view==='week' ? nextWeek() : nextMonth()"><i class="fa fa-chevron-right"></i></button>
-    <button class="btn btn-ghost btn-sm" @click="currentDate=new Date();view==='week'?null:null;loadAppointments ? loadAppointments() : null">Сьогодні</button>
-    <button class="btn btn-primary btn-sm" style="margin-left:auto;" @click="openNew(new Date().toISOString().slice(0,10), 10)">
+    <button class="btn btn-ghost btn-sm" @click="currentDate=new Date();loadAppointments()">Сьогодні</button>
+    <label class="req-filter-toggle">
+      <input type="checkbox" v-model="showRequests"> <i class="fa fa-clock-rotate-left"></i> Запити
+    </label>
+    <button class="btn btn-primary btn-sm" style="margin-left:auto;" @click="openNew(localDateStr(new Date()), 10, 0)">
       <i class="fa fa-plus"></i> Новий запис
     </button>
   </div>
@@ -615,20 +805,37 @@ const SchedulePage = {
         <div class="wday">{{ day.label }}</div>
         <div class="wdate">{{ day.num }}</div>
       </div>
-      <!-- Time rows -->
-      <template v-for="hour in hours" :key="hour">
-        <div class="week-time-label">{{ String(hour).padStart(2,'0') }}</div>
-        <div v-for="(day, di) in weekDays" :key="day.date + hour"
-          :class="'week-cell' + (isOffHours(di, hour) ? ' off-hours' : '')"
-          @click="openNew(day.date, hour)">
-          <div v-for="a in getAppts(day.date, hour)" :key="a.id"
-            class="appt-chip"
-            :style="{background: a.service?.color || a.color || '#7c5cfc', color:'#fff'}"
-            @click.stop="openEdit(a)">
-            {{ a.client?.name || a.title }}
-          </div>
+      <!-- Time column -->
+      <div class="week-time-col" :style="{height: gridHeight+'px'}">
+        <div v-for="slot in halfSlots" :key="slot.hour+'-'+slot.minute" class="week-time-slot">
+          <span v-if="slot.minute===0">{{ String(slot.hour).padStart(2,'0') }}:00</span>
         </div>
-      </template>
+      </div>
+      <!-- Day columns -->
+      <div v-for="(day, di) in weekDays" :key="day.date" :class="'week-day-col' + (day.isToday ? ' today' : '')" :style="{height: gridHeight+'px'}"
+        @dragover.prevent="onDayDragOver($event, day.date)" @drop="onDayDrop($event, day.date)">
+        <div v-for="(slot, si) in halfSlots" :key="slot.hour+'-'+slot.minute"
+          :class="'week-half-cell' + (isOffHours(di, slot.hour) ? ' off-hours' : '') + (slot.minute===30 ? ' half' : '') + slotEdgeClass(di, si)"
+          @click="openNew(day.date, slot.hour, slot.minute)">
+        </div>
+        <div v-if="day.isToday && nowLineVisible()" class="now-line" :style="nowLineStyle()" :data-time="nowTimeLabel()"></div>
+        <div v-if="dropPreview && dropPreview.date===day.date" class="drop-preview" :style="{top: dropPreview.top+'px', height: dropPreview.height+'px'}"></div>
+        <div v-for="r in dayRequests(day.date)" :key="'req'+r.id"
+          class="req-block" :style="requestStyle(r)"
+          :title="r.client_name + ' · ' + r.preferred_time?.slice(0,5) + (r.service ? ' · ' + r.service.name : '')"
+          @click.stop="openRequest(r)">
+          <div class="appt-block-name">{{ r.client_name }}</div>
+          <div class="appt-block-meta">{{ r.preferred_time?.slice(0,5) }}<span v-if="r.service"> · {{ r.service.name }}</span></div>
+        </div>
+        <div v-for="a in dayAppts(day.date)" :key="a.id"
+          :class="'appt-block' + (a.type==='block' ? ' is-block' : '') + (apptOverlaps(a, day.date) ? ' overlap' : '') + (draggingId===a.id ? ' dragging' : '')"
+          :style="[apptStyle(a), a.type!=='block' ? {background: a.service?.color || a.color || '#7c5cfc', color:'#fff'} : {}]"
+          draggable="true" @dragstart="onApptDragStart(a)" @dragend="onApptDragEnd"
+          @click.stop="openEdit(a)">
+          <div class="appt-block-name">{{ a.type==='block' ? (a.title || a.title_display || 'Перерва') : (a.client?.name || a.title_display) }}</div>
+          <div class="appt-block-meta">{{ apptTimeRange(a) }}<span v-if="apptTypeLabel(a)"> · {{ apptTypeLabel(a) }}</span></div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -643,11 +850,39 @@ const SchedulePage = {
         @click="day.cur && openNew(day.date, 10)">
         <div class="mday-num">{{ day.d }}</div>
         <div v-for="a in monthAppts(day.date)" :key="a.id"
-          class="mday-appt"
-          :style="{background: (a.service?.color || '#7c5cfc') + '33', color: a.service?.color || '#7c5cfc'}"
+          :class="'mday-appt' + (a.type==='block' ? ' is-block' : '')"
+          :style="a.type!=='block' ? {background: (a.service?.color || '#7c5cfc') + '33', color: a.service?.color || '#7c5cfc'} : {}"
           @click.stop="openEdit(a)">
-          {{ a.client?.name }}
+          {{ M.fmtTime(a.scheduled_at) }} {{ a.type==='block' ? (a.title || 'Перерва') : (a.client?.name || a.title_display) }}
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Prep/lunch automation -->
+  <div v-if="view==='week'" class="prep-automation">
+    <div class="prep-automation-hdr">
+      <i class="fa fa-mug-hot"></i>
+      <h3>Автоматична підготовка / обід</h3>
+    </div>
+    <div class="prep-automation-body">
+      <div class="prep-row">
+        <span class="prep-label">Тривалість перед сесією:</span>
+        <div class="chip-row">
+          <button v-for="d in [15,30,60]" :key="d" type="button" :class="'chip' + (prepDuration===d ? ' active' : '')" @click="prepDuration=d">{{ d }} хв</button>
+        </div>
+      </div>
+      <label class="prep-toggle">
+        <input type="checkbox" v-model="prepAutoEnabled">
+        Додавати автоматично перед кожним новим записом
+      </label>
+      <div class="prep-actions">
+        <button class="btn btn-ghost btn-sm" :disabled="prepApplying || !sessionsWithoutPrep().length" @click="applyPrepToWeek">
+          <i class="fa fa-wand-magic-sparkles"></i> Додати підготовку до записів цього тижня ({{ sessionsWithoutPrep().length }})
+        </button>
+        <button class="btn btn-ghost btn-sm" :disabled="prepApplying" @click="removeAutoPrep">
+          <i class="fa fa-trash"></i> Прибрати підготовку цього тижня
+        </button>
       </div>
     </div>
   </div>
@@ -659,9 +894,15 @@ const SchedulePage = {
       :existing="editingAppt"
       :initial-date="newApptDate"
       :initial-hour="newApptHour"
+      :initial-minute="newApptMinute"
       @saved="onSaved"
       @cancel="showModal=false">
     </appointment-form-body>
+  </m-modal>
+
+  <!-- Booking request modal -->
+  <m-modal :show="showRespondModal" title="Відповідь на запит" size="lg" @close="showRespondModal=false">
+    <respond-form-body v-if="selectedRequest" :api="api" :request="selectedRequest" @responded="onResponded" @cancel="showRespondModal=false"></respond-form-body>
   </m-modal>
 </div>`
 };

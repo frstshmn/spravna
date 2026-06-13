@@ -20,8 +20,8 @@ class ScheduleController extends Controller
         $data = $request->validate([
             'hours'                   => 'required|array',
             'hours.*.day_of_week'     => 'required|integer|min:0|max:6',
-            'hours.*.start_time'      => 'required|date_format:H:i',
-            'hours.*.end_time'        => 'required|date_format:H:i',
+            'hours.*.start_time'      => 'required|date_format:H:i,H:i:s',
+            'hours.*.end_time'        => 'required|date_format:H:i,H:i:s',
             'hours.*.is_working'      => 'required|boolean',
         ]);
 

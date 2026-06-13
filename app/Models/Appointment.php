@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class Appointment extends Model
 {
     protected $fillable = [
-        'user_id', 'client_id', 'service_id', 'title',
+        'user_id', 'client_id', 'service_id', 'type', 'title',
         'scheduled_at', 'duration', 'status', 'price',
         'deposit', 'deposit_paid', 'notes', 'internal_notes', 'color',
     ];
@@ -45,7 +45,13 @@ class Appointment extends Model
 
     public function getTitleDisplayAttribute(): string
     {
-        return $this->title ?? ($this->service?->name ?? 'Appointment');
+        if ($this->title) {
+            return $this->title;
+        }
+        if ($this->type === 'block') {
+            return 'Перерва';
+        }
+        return $this->service?->name ?? 'Запис';
     }
 
     public static function statusColor(string $status): string

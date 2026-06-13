@@ -76,6 +76,12 @@ class AuthController extends Controller
             ]);
         }
 
+        if (!$user->is_active) {
+            throw ValidationException::withMessages([
+                'email' => ['Цей акаунт призупинено. Зверніться до підтримки.'],
+            ]);
+        }
+
         $user->tokens()->delete();
         $token = $user->createToken('auth')->plainTextToken;
 

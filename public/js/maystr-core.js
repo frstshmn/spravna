@@ -13,11 +13,22 @@ function fmt(dt, opts) {
 }
 function fmtTime(dt) {
     if (!dt) return '';
-    return new Date(dt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return new Date(dt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
 }
 function fmtDT(dt) {
     if (!dt) return '—';
     return fmt(dt) + ' ' + fmtTime(dt);
+}
+function fmtFullDate(dt) {
+    if (!dt) return '—';
+    const d = new Date(dt);
+    const dayMonth = d.toLocaleDateString('uk', { day: 'numeric', month: 'long' });
+    const weekday = d.toLocaleDateString('uk', { weekday: 'long' });
+    return `${dayMonth} ${d.getFullYear()} (${weekday})`;
+}
+function fmtFull(dt) {
+    if (!dt) return '—';
+    return fmtFullDate(dt) + ' ' + fmtTime(dt);
 }
 function fmtMoney(v, currency) {
     if (v == null) return '—';
@@ -41,8 +52,30 @@ function durationLabel(min) {
     if (h && m) return h + 'г ' + m + 'хв';
     return h ? h + 'г' : m + 'хв';
 }
+function pad2(n) { return String(n).padStart(2, '0'); }
+function localDateStr(d) {
+    d = d instanceof Date ? d : new Date(d);
+    return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+}
+function toLocalInput(d) {
+    d = d instanceof Date ? d : new Date(d);
+    return localDateStr(d) + 'T' + pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+}
 
-window.M = { fmt, fmtTime, fmtDT, fmtMoney, timeAgo, statusColor, initials, durationLabel };
+window.M = { fmt, fmtTime, fmtDT, fmtFull, fmtFullDate, fmtMoney, timeAgo, statusColor, initials, durationLabel, localDateStr, toLocalInput };
+
+/* ── Auth storage (supports "remember me": localStorage vs sessionStorage) ── */
+function getToken() {
+    return localStorage.getItem('spravna_token') || sessionStorage.getItem('spravna_token');
+}
+function clearAuth() {
+    localStorage.removeItem('spravna_token');
+    localStorage.removeItem('maystr_user');
+    sessionStorage.removeItem('spravna_token');
+    sessionStorage.removeItem('maystr_user');
+}
+window.getToken = getToken;
+window.clearAuth = clearAuth;
 
 /* ── API factory ── */
 function makeAPI(token) {
@@ -52,7 +85,7 @@ function makeAPI(token) {
     });
     ax.interceptors.response.use(r => r, err => {
         if (err.response?.status === 401) {
-            localStorage.removeItem('spravna_token');
+            clearAuth();
             window.location.href = '/login';
         }
         return Promise.reject(err);
@@ -97,7 +130,10 @@ const MBadge = {
             const map = {
                 pending: 'Очікує', confirmed: 'Підтверджено', in_progress: 'Виконується',
                 completed: 'Завершено', cancelled: 'Скасовано', no_show: 'Не з\'явився',
-                accepted: 'Прийнято', declined: 'Відхилено', converted: 'Конвертовано'
+                accepted: 'Прийнято', declined: 'Відхилено', converted: 'Конвертовано',
+                master: 'Майстер', admin: 'Адмін',
+                free: 'Free', pro: 'Pro', premium: 'Premium',
+                trialing: 'Триал', active: 'Активна', past_due: 'Заборгованість', expired: 'Завершена',
             };
             return map[s] || (s || '').replace('_', ' ');
         }
@@ -110,6 +146,125 @@ const MAvatar = {
     props: { name: String, size: { default: 'md' } },
     computed: { ini() { return M.initials(this.name); } },
     template: `<div :class="'avatar av-' + size">{{ ini }}</div>`
+};
+
+/* ── MDateTimePicker (custom 24h date+time picker) ── */
+const MDateTimePicker = {
+    props: { modelValue: String },
+    emits: ['update:modelValue'],
+    setup(props, { emit }) {
+        const open = ref(false);
+
+        function parse(val) {
+            if (val) {
+                const [datePart, timePart] = val.split('T');
+                const [y, mo, d] = datePart.split('-').map(Number);
+                const [hh, mm] = (timePart || '00:00').split(':').map(Number);
+                return { y, mo, d, hh, mm };
+            }
+            const now = new Date();
+            return { y: now.getFullYear(), mo: now.getMonth() + 1, d: now.getDate(), hh: now.getHours(), mm: now.getMinutes() };
+        }
+
+        const parsed = ref(parse(props.modelValue));
+        const viewMonth = ref(new Date(parsed.value.y, parsed.value.mo - 1, 1));
+
+        watch(() => props.modelValue, v => { parsed.value = parse(v); });
+
+        function emitValue() {
+            const { y, mo, d, hh, mm } = parsed.value;
+            emit('update:modelValue', `${y}-${pad2(mo)}-${pad2(d)}T${pad2(hh)}:${pad2(mm)}`);
+        }
+
+        const displayLabel = computed(() => {
+            const { y, mo, d, hh, mm } = parsed.value;
+            return `${pad2(d)}.${pad2(mo)}.${y}, ${pad2(hh)}:${pad2(mm)}`;
+        });
+
+        const monthLabel = computed(() => viewMonth.value.toLocaleDateString('uk', { month: 'long', year: 'numeric' }));
+
+        const calendarDays = computed(() => {
+            const y = viewMonth.value.getFullYear(), mo = viewMonth.value.getMonth();
+            const first = (new Date(y, mo, 1).getDay() + 6) % 7;
+            const daysIn = new Date(y, mo + 1, 0).getDate();
+            const cells = [];
+            for (let i = 0; i < first; i++) cells.push(null);
+            for (let i = 1; i <= daysIn; i++) cells.push(i);
+            return cells;
+        });
+
+        function selectDay(day) {
+            if (!day) return;
+            parsed.value = { ...parsed.value, y: viewMonth.value.getFullYear(), mo: viewMonth.value.getMonth() + 1, d: day };
+            emitValue();
+        }
+        function prevMonth() { viewMonth.value = new Date(viewMonth.value.getFullYear(), viewMonth.value.getMonth() - 1, 1); }
+        function nextMonth() { viewMonth.value = new Date(viewMonth.value.getFullYear(), viewMonth.value.getMonth() + 1, 1); }
+        function setHour(h) { parsed.value = { ...parsed.value, hh: h }; emitValue(); }
+        function setMinute(m) { parsed.value = { ...parsed.value, mm: m }; emitValue(); }
+        function isSelectedDay(day) {
+            return !!day && parsed.value.y === viewMonth.value.getFullYear() && parsed.value.mo === viewMonth.value.getMonth() + 1 && parsed.value.d === day;
+        }
+        function isToday(day) {
+            const t = new Date();
+            return !!day && t.getFullYear() === viewMonth.value.getFullYear() && t.getMonth() === viewMonth.value.getMonth() && t.getDate() === day;
+        }
+
+        const hourOptions = Array.from({ length: 24 }, (_, i) => i);
+        const minuteOptions = Array.from({ length: 12 }, (_, i) => i * 5);
+
+        function toggle() {
+            open.value = !open.value;
+            if (open.value) viewMonth.value = new Date(parsed.value.y, parsed.value.mo - 1, 1);
+        }
+        function close() { open.value = false; }
+
+        return {
+            open, parsed, displayLabel, monthLabel, calendarDays, selectDay, prevMonth, nextMonth,
+            setHour, setMinute, isSelectedDay, isToday, hourOptions, minuteOptions, toggle, close, pad2,
+        };
+    },
+    template: `
+<div class="dt-picker">
+  <button type="button" class="dt-trigger input" @click="toggle">
+    <i class="fa fa-calendar-days"></i>
+    <span>{{ displayLabel }}</span>
+  </button>
+  <teleport to="body">
+    <div v-if="open" class="dt-pop-overlay" @mousedown.self="close">
+      <div class="dt-pop">
+        <div class="dt-pop-cal">
+          <div class="dt-pop-cal-head">
+            <button type="button" class="dt-nav" @click="prevMonth"><i class="fa fa-chevron-left"></i></button>
+            <span class="dt-month-label">{{ monthLabel }}</span>
+            <button type="button" class="dt-nav" @click="nextMonth"><i class="fa fa-chevron-right"></i></button>
+          </div>
+          <div class="dt-pop-weekdays">
+            <span v-for="d in ['Пн','Вт','Ср','Чт','Пт','Сб','Нд']" :key="d">{{ d }}</span>
+          </div>
+          <div class="dt-pop-days">
+            <button v-for="(day,i) in calendarDays" :key="i" type="button"
+              :class="['dt-day', { empty: !day, selected: isSelectedDay(day), today: isToday(day) }]"
+              :disabled="!day" @click="selectDay(day)">{{ day }}</button>
+          </div>
+        </div>
+        <div class="dt-pop-time">
+          <div class="dt-pop-time-label"><i class="fa fa-clock"></i> Час (24г)</div>
+          <div class="dt-pop-time-row">
+            <select class="select dt-time-select" :value="parsed.hh" @change="setHour(+$event.target.value)">
+              <option v-for="h in hourOptions" :key="h" :value="h">{{ pad2(h) }}</option>
+            </select>
+            <span class="dt-time-sep">:</span>
+            <select class="select dt-time-select" :value="parsed.mm" @change="setMinute(+$event.target.value)">
+              <option v-for="m in minuteOptions" :key="m" :value="m">{{ pad2(m) }}</option>
+            </select>
+          </div>
+        </div>
+        <button type="button" class="btn btn-primary btn-sm dt-pop-done" @click="close">Готово</button>
+      </div>
+    </div>
+  </teleport>
+</div>`
 };
 
 /* ── Client Form ── */
@@ -198,9 +353,9 @@ const ClientFormBody = {
 
 /* ── Appointment Form component ── */
 const AppointmentFormBody = {
-    props: { api: Object, existing: Object, initialDate: String, initialHour: Number },
+    props: { api: Object, existing: Object, initialDate: String, initialHour: Number, initialMinute: Number },
     emits: ['saved', 'cancel'],
-    components: { MModal, ClientFormBody },
+    components: { MModal, ClientFormBody, MDateTimePicker },
     setup(props, { emit }) {
         const clients = ref([]);
         const services = ref([]);
@@ -209,19 +364,21 @@ const AppointmentFormBody = {
         const showClientModal = ref(false);
         const clientQuery = ref('');
         const clientDropdownOpen = ref(false);
+        const blockPresets = ['Підготовка', 'Обід', 'Перерва'];
 
         const defaultDT = () => {
             if (props.initialDate) {
-                const d = new Date(props.initialDate + 'T' + String(props.initialHour || 10).padStart(2, '0') + ':00');
-                return d.toISOString().slice(0, 16);
+                return `${props.initialDate}T${pad2(props.initialHour ?? 10)}:${pad2(props.initialMinute ?? 0)}`;
             }
-            const d = new Date(); d.setSeconds(0, 0); return d.toISOString().slice(0, 16);
+            return M.toLocalInput(new Date());
         };
 
         const form = reactive({
+            type: props.existing?.type ?? 'appointment',
+            title: props.existing?.title ?? '',
             client_id: props.existing?.client_id ?? '',
             service_id: props.existing?.service_id ?? '',
-            scheduled_at: props.existing?.scheduled_at?.slice(0, 16) ?? defaultDT(),
+            scheduled_at: props.existing?.scheduled_at ? M.toLocalInput(new Date(props.existing.scheduled_at)) : defaultDT(),
             duration: props.existing?.duration ?? 60,
             status: props.existing?.status ?? 'confirmed',
             price: props.existing?.price ?? '',
@@ -237,13 +394,25 @@ const AppointmentFormBody = {
         }
 
         async function save() {
-            if (!form.client_id) { error.value = 'Оберіть клієнта'; return; }
+            if (form.type === 'appointment' && !form.client_id) { error.value = 'Оберіть клієнта'; return; }
+            if (form.type === 'block' && !form.title.trim()) { error.value = 'Вкажіть назву перерви'; return; }
             saving.value = true; error.value = '';
             try {
                 const p = { ...form };
-                if (!p.service_id) delete p.service_id;
-                if (p.price === '' || p.price === null) delete p.price;
-                if (p.deposit === '' || p.deposit === null) delete p.deposit;
+                if (form.type === 'block') {
+                    delete p.client_id;
+                    delete p.service_id;
+                    delete p.price;
+                    delete p.deposit;
+                    delete p.deposit_paid;
+                    delete p.notes;
+                    delete p.status;
+                } else {
+                    p.title = p.title?.trim() ? p.title.trim() : null;
+                    if (!p.service_id) delete p.service_id;
+                    if (p.price === '' || p.price === null) delete p.price;
+                    if (p.deposit === '' || p.deposit === null) delete p.deposit;
+                }
                 const res = props.existing
                     ? await props.api.put('/appointments/' + props.existing.id, p)
                     : await props.api.post('/appointments', p);
@@ -290,10 +459,21 @@ const AppointmentFormBody = {
         return {
             form, clients, services, saving, error, showClientModal, onServiceChange, save, del, newClient, onClientCreated,
             clientQuery, clientDropdownOpen, selectedClient, filteredClients, openClientDropdown, selectClient, onClientBlur, onClientEnter,
+            blockPresets,
         };
     },
     template: `
 <div class="modal-body">
+  <div class="form-row appt-type-toggle">
+    <button type="button" :class="'btn btn-sm flex-1 ' + (form.type==='appointment' ? 'btn-primary' : 'btn-ghost')" @click="form.type='appointment'">
+      <i class="fa fa-user"></i> Запис клієнта
+    </button>
+    <button type="button" :class="'btn btn-sm flex-1 ' + (form.type==='block' ? 'btn-primary' : 'btn-ghost')" @click="form.type='block'">
+      <i class="fa fa-mug-hot"></i> Підготовка / обід
+    </button>
+  </div>
+
+  <template v-if="form.type==='appointment'">
   <div class="form-row">
     <div class="form-group">
       <label class="label">Клієнт *</label>
@@ -334,16 +514,31 @@ const AppointmentFormBody = {
       </select>
     </div>
   </div>
+  </template>
+
+  <template v-else>
+  <div class="form-group">
+    <label class="label">Тип перерви</label>
+    <div class="block-presets">
+      <button v-for="p in blockPresets" :key="p" type="button"
+        :class="'preset-chip' + (form.title===p ? ' active' : '')" @click="form.title=p">{{ p }}</button>
+    </div>
+    <input v-model="form.title" class="input" placeholder="Напр. Підготовка, Обід…" style="margin-top:8px;">
+  </div>
+  </template>
+
   <div class="form-row">
     <div class="form-group">
       <label class="label">Дата та час *</label>
-      <input type="datetime-local" v-model="form.scheduled_at" class="input">
+      <m-date-time-picker v-model="form.scheduled_at"></m-date-time-picker>
     </div>
     <div class="form-group">
       <label class="label">Тривалість (хв)</label>
-      <input type="number" v-model.number="form.duration" class="input" min="15" step="15">
+      <input type="number" v-model.number="form.duration" class="input" min="5" step="5">
     </div>
   </div>
+
+  <template v-if="form.type==='appointment'">
   <div class="form-row">
     <div class="form-group">
       <label class="label">Ціна</label>
@@ -365,6 +560,8 @@ const AppointmentFormBody = {
     <label class="label">Нотатки (видно клієнту)</label>
     <textarea v-model="form.notes" class="textarea" placeholder="Нотатки до сесії…"></textarea>
   </div>
+  </template>
+
   <div class="form-group">
     <label class="label">Внутрішні нотатки</label>
     <textarea v-model="form.internal_notes" class="textarea" placeholder="Приватно…"></textarea>
@@ -498,6 +695,7 @@ const ServiceFormBody = {
 const RespondFormBody = {
     props: { api: Object, request: Object },
     emits: ['responded', 'cancel'],
+    components: { MDateTimePicker },
     setup(props, { emit }) {
         const responding = ref(false);
         const error = ref('');
@@ -505,7 +703,7 @@ const RespondFormBody = {
         const form = reactive({
             status: 'accepted',
             response_message: '',
-            scheduled_at: props.request?.preferred_date ? props.request.preferred_date + 'T' + (props.request.preferred_time || '10:00') : '',
+            scheduled_at: props.request?.preferred_date ? M.localDateStr(props.request.preferred_date) + 'T' + (props.request.preferred_time || '10:00') : '',
             duration: props.request?.service?.duration ?? 60,
             price: props.request?.service?.price ?? '',
         });
@@ -527,7 +725,7 @@ const RespondFormBody = {
             } catch(e) { error.value = e.response?.data?.message || 'Помилка'; }
             responding.value = false;
         }
-        return { form, mode, responding, error, respond };
+        return { M, form, mode, responding, error, respond };
     },
     template: `
 <div class="modal-body">
@@ -535,7 +733,7 @@ const RespondFormBody = {
     <p style="font-weight:600;font-size:13px;margin-bottom:2px;">{{ request.client_name }}</p>
     <p style="font-size:12px;color:var(--text-sub);">{{ request.client_phone || request.client_email || request.client_instagram }}</p>
     <p v-if="request.service" style="font-size:12px;margin-top:4px;"><i class="fa fa-scissors" style="color:var(--accent);margin-right:4px;"></i>{{ request.service.name }}</p>
-    <p v-if="request.preferred_date" style="font-size:12px;"><i class="fa fa-calendar" style="color:var(--accent);margin-right:4px;"></i>Бажано: {{ request.preferred_date }} {{ request.preferred_time }}</p>
+    <p v-if="request.preferred_date" style="font-size:12px;"><i class="fa fa-calendar" style="color:var(--accent);margin-right:4px;"></i>Бажано: {{ M.fmtFullDate(request.preferred_date) }}{{ request.preferred_time ? ' ' + request.preferred_time : '' }}</p>
     <p v-if="request.message" style="font-size:12px;color:var(--text-sub);margin-top:6px;font-style:italic;">"{{ request.message }}"</p>
   </div>
 
@@ -552,7 +750,7 @@ const RespondFormBody = {
     <div class="form-row">
       <div class="form-group">
         <label class="label">Дата та час *</label>
-        <input type="datetime-local" v-model="form.scheduled_at" class="input">
+        <m-date-time-picker v-model="form.scheduled_at"></m-date-time-picker>
       </div>
       <div class="form-group">
         <label class="label">Тривалість (хв)</label>
@@ -579,8 +777,274 @@ const RespondFormBody = {
 </div>`
 };
 
+/* ── Onboarding Wizard (first-login setup, skippable step by step) ── */
+const OnboardingWizard = {
+    props: { api: Object },
+    emits: ['done'],
+    setup(props, { emit }) {
+        const step = ref(1);
+        const saving = ref(false);
+        const error = ref('');
+
+        const form = reactive({
+            name: '', specialty: '', bio: '', city: '', country: '', phone: '', instagram: '', website: '',
+        });
+        const avatarUrl = ref(null);
+        const avatarUploading = ref(false);
+        const fileInput = ref(null);
+
+        const dayNames = ['Неділя', 'Понеділок', 'Вівторок', 'Середа', 'Четвер', 'П\'ятниця', 'Субота'];
+        const workingHours = ref([]);
+
+        const services = ref([]);
+        const svcForm = reactive({ name: '', category: '', duration: 60, price: '' });
+        const addingSvc = ref(false);
+
+        async function loadProfile() {
+            try {
+                const { data } = await props.api.get('/profile');
+                form.name = data.name || '';
+                const p = data.profile || {};
+                ['specialty', 'bio', 'city', 'country', 'phone', 'instagram', 'website'].forEach(k => { form[k] = p[k] ?? ''; });
+                avatarUrl.value = p.avatar ? '/storage/' + p.avatar : null;
+            } catch (e) {}
+        }
+
+        async function loadHours() {
+            try {
+                const { data } = await props.api.get('/schedule/working-hours');
+                const days = [0, 1, 2, 3, 4, 5, 6];
+                workingHours.value = days.map(d => data.find(h => h.day_of_week === d) || { day_of_week: d, start_time: '09:00', end_time: '18:00', is_working: d >= 1 && d <= 5 });
+            } catch (e) {}
+        }
+
+        function pickAvatar() { fileInput.value?.click(); }
+        async function onAvatarChange(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            avatarUploading.value = true; error.value = '';
+            const fd = new FormData();
+            fd.append('avatar', file);
+            try {
+                const { data } = await props.api.post('/profile/avatar', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+                avatarUrl.value = data.avatar_url;
+            } catch (e) {
+                error.value = 'Не вдалося завантажити фото';
+            }
+            avatarUploading.value = false;
+            e.target.value = '';
+        }
+
+        async function saveStep1(next) {
+            saving.value = true; error.value = '';
+            try {
+                await props.api.put('/profile', form);
+                if (next) step.value = 2;
+            } catch (e) { error.value = 'Не вдалося зберегти'; }
+            saving.value = false;
+        }
+
+        async function saveStep2(next) {
+            saving.value = true; error.value = '';
+            try {
+                await props.api.put('/schedule/working-hours', { hours: workingHours.value });
+                if (next) step.value = 3;
+            } catch (e) { error.value = 'Не вдалося зберегти'; }
+            saving.value = false;
+        }
+
+        async function addService() {
+            if (!svcForm.name.trim()) return;
+            addingSvc.value = true; error.value = '';
+            try {
+                const { data } = await props.api.post('/services', {
+                    name: svcForm.name, category: svcForm.category || null,
+                    duration: svcForm.duration, price: svcForm.price || null,
+                });
+                services.value.push(data);
+                svcForm.name = ''; svcForm.category = ''; svcForm.duration = 60; svcForm.price = '';
+            } catch (e) { error.value = 'Не вдалося додати послугу'; }
+            addingSvc.value = false;
+        }
+
+        async function removeService(s) {
+            await props.api.delete('/services/' + s.id);
+            services.value = services.value.filter(x => x.id !== s.id);
+        }
+
+        async function finish() {
+            saving.value = true;
+            try { await props.api.post('/onboarding/complete'); } catch (e) {}
+            emit('done');
+        }
+
+        function skipStep() {
+            if (step.value < 3) step.value += 1;
+            else finish();
+        }
+
+        onMounted(() => { loadProfile(); loadHours(); });
+
+        return {
+            step, saving, error, form, avatarUrl, avatarUploading, fileInput,
+            dayNames, workingHours, services, svcForm, addingSvc,
+            pickAvatar, onAvatarChange, saveStep1, saveStep2, addService, removeService, finish, skipStep,
+        };
+    },
+    template: `
+<teleport to="body">
+  <div class="modal-overlay">
+    <div class="modal-box modal-lg">
+      <div class="modal-head">
+        <div class="modal-head-text">
+          <span class="modal-icon-badge"><i class="fa fa-wand-magic-sparkles"></i></span>
+          <div class="modal-title-col">
+            <span class="modal-title">Налаштування профілю</span>
+            <span class="modal-subtitle">Крок {{ step }} з 3 — усе можна змінити пізніше</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="onboarding-dots">
+        <span v-for="n in 3" :key="n" :class="'onboarding-dot' + (n===step ? ' active' : '') + (n<step ? ' done' : '')"></span>
+      </div>
+
+      <!-- Step 1: General info, social media, avatar -->
+      <div v-if="step===1" class="modal-body">
+        <div class="onboarding-avatar-row">
+          <div class="avatar av-xl">
+            <img v-if="avatarUrl" :src="avatarUrl" :alt="form.name">
+            <span v-else>{{ form.name?.charAt(0)?.toUpperCase() || '?' }}</span>
+          </div>
+          <div>
+            <button type="button" class="btn btn-secondary btn-sm" @click="pickAvatar" :disabled="avatarUploading">
+              <i class="fa fa-camera"></i> {{ avatarUploading ? 'Завантаження…' : 'Завантажити фото' }}
+            </button>
+            <input ref="fileInput" type="file" accept="image/*" style="display:none;" @change="onAvatarChange">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="label">Ім'я</label>
+            <input v-model="form.name" class="input">
+          </div>
+          <div class="form-group">
+            <label class="label">Спеціалізація</label>
+            <select v-model="form.specialty" class="select">
+              <option value="">Оберіть…</option>
+              <option value="tattoo">Тату-майстер</option>
+              <option value="nails">Нейл-майстер</option>
+              <option value="brows">Бровіст</option>
+              <option value="lashes">Майстер вій</option>
+              <option value="piercing">П'єрсер</option>
+              <option value="pmu">Перманентний макіяж</option>
+              <option value="hair">Перукар</option>
+              <option value="massage">Масажист</option>
+              <option value="other">Інше</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="label">Про себе</label>
+          <textarea v-model="form.bio" class="textarea" placeholder="Розкажіть клієнтам про себе…"></textarea>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label class="label">Місто</label><input v-model="form.city" class="input"></div>
+          <div class="form-group"><label class="label">Країна</label><input v-model="form.country" class="input"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label class="label">Телефон</label><input v-model="form.phone" class="input" type="tel"></div>
+          <div class="form-group"><label class="label">Instagram</label><input v-model="form.instagram" class="input" placeholder="@handle"></div>
+        </div>
+        <div class="form-group">
+          <label class="label">Сайт</label>
+          <input v-model="form.website" class="input" type="url" placeholder="https://…">
+        </div>
+      </div>
+
+      <!-- Step 2: Working hours -->
+      <div v-if="step===2" class="modal-body">
+        <p class="onboarding-hint">Вкажіть, коли ви приймаєте клієнтів. Це можна змінити пізніше у налаштуваннях.</p>
+        <div v-for="h in workingHours" :key="h.day_of_week" class="wh-row">
+          <span class="wh-day">{{ dayNames[h.day_of_week] }}</span>
+          <button type="button" :class="'toggle' + (h.is_working ? ' on' : '')" @click="h.is_working = !h.is_working" style="flex-shrink:0;"></button>
+          <template v-if="h.is_working">
+            <input type="time" v-model="h.start_time" class="input" style="max-width:110px;">
+            <span style="color:var(--text-muted);font-size:13px;">—</span>
+            <input type="time" v-model="h.end_time" class="input" style="max-width:110px;">
+          </template>
+          <span v-else style="font-size:13px;color:var(--text-muted);">Вихідний</span>
+        </div>
+      </div>
+
+      <!-- Step 3: Services -->
+      <div v-if="step===3" class="modal-body">
+        <p class="onboarding-hint">Додайте послуги, які ви пропонуєте. Можна додати кілька або зробити це пізніше.</p>
+        <div v-if="services.length" class="onboarding-svc-list">
+          <div v-for="s in services" :key="s.id" class="svc-card">
+            <div class="svc-dot" :style="{background: s.color || '#c9a84c'}"></div>
+            <div class="svc-info">
+              <div class="svc-name">{{ s.name }}</div>
+              <div class="svc-meta">{{ s.category || '—' }} &nbsp;·&nbsp; {{ s.duration ? s.duration + ' хв' : '' }}</div>
+            </div>
+            <button type="button" class="btn btn-ghost btn-sm btn-icon" @click="removeService(s)"><i class="fa fa-trash"></i></button>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="label">Назва послуги</label>
+            <input v-model="svcForm.name" class="input" placeholder="напр. Стрижка">
+          </div>
+          <div class="form-group">
+            <label class="label">Тривалість (хв)</label>
+            <input type="number" v-model.number="svcForm.duration" class="input" min="15" step="15">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="label">Категорія</label>
+            <select v-model="svcForm.category" class="select">
+              <option value="">Без категорії</option>
+              <option value="tattoo">Тату</option><option value="nails">Нігті</option>
+              <option value="brows">Брови</option><option value="lashes">Вії</option>
+              <option value="piercing">Пірсинг</option><option value="pmu">Перманент</option>
+              <option value="hair">Волосся</option><option value="other">Інше</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="label">Ціна</label>
+            <input type="number" v-model.number="svcForm.price" class="input" min="0" placeholder="0.00">
+          </div>
+        </div>
+        <button type="button" class="btn btn-secondary btn-sm" @click="addService" :disabled="addingSvc || !svcForm.name.trim()">
+          <i class="fa fa-plus"></i> Додати послугу
+        </button>
+      </div>
+
+      <p v-if="error" style="color:var(--cancelled);font-size:12px;padding:0 20px;">{{ error }}</p>
+
+      <div class="modal-footer" style="justify-content:space-between;">
+        <button type="button" class="btn btn-ghost btn-sm" @click="finish">Пропустити все</button>
+        <div style="display:flex;gap:8px;">
+          <button type="button" class="btn btn-ghost btn-sm" @click="skipStep">Пропустити крок</button>
+          <button v-if="step===1" type="button" class="btn btn-primary btn-sm" @click="saveStep1(true)" :disabled="saving">
+            {{ saving ? 'Збереження…' : 'Далі' }}
+          </button>
+          <button v-if="step===2" type="button" class="btn btn-primary btn-sm" @click="saveStep2(true)" :disabled="saving">
+            {{ saving ? 'Збереження…' : 'Далі' }}
+          </button>
+          <button v-if="step===3" type="button" class="btn btn-primary btn-sm" @click="finish" :disabled="saving">
+            {{ saving ? 'Завершення…' : 'Завершити' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</teleport>`
+};
+
 /* Export all shared components */
 window.SpravnaComponents = {
-    MModal, MBadge, MAvatar,
+    MModal, MBadge, MAvatar, MDateTimePicker, OnboardingWizard,
     AppointmentFormBody, ClientFormBody, ServiceFormBody, RespondFormBody
 };

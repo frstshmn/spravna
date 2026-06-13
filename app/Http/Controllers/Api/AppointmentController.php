@@ -38,13 +38,14 @@ class AppointmentController extends Controller
         if ($request->boolean('calendar')) {
             return response()->json($appointments->map(fn($a) => [
                 'id'    => $a->id,
-                'title' => $a->title_display . ' — ' . $a->client->name,
+                'title' => $a->client ? $a->title_display . ' — ' . $a->client->name : $a->title_display,
                 'start' => $a->scheduled_at->toIso8601String(),
                 'end'   => $a->ends_at->toIso8601String(),
                 'color' => $a->color ?? $a->service?->color ?? Appointment::statusColor($a->status),
                 'extendedProps' => [
                     'status'  => $a->status,
-                    'client'  => $a->client->name,
+                    'type'    => $a->type,
+                    'client'  => $a->client?->name,
                     'service' => $a->service?->name,
                     'price'   => $a->price,
                 ],
@@ -57,11 +58,12 @@ class AppointmentController extends Controller
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'client_id'     => 'required|exists:clients,id',
+            'client_id'     => 'nullable|required_if:type,appointment|exists:clients,id',
             'service_id'    => 'nullable|exists:services,id',
+            'type'          => 'in:appointment,block',
             'title'         => 'nullable|string|max:255',
             'scheduled_at'  => 'required|date',
-            'duration'      => 'required|integer|min:15',
+            'duration'      => 'required|integer|min:5',
             'status'        => 'in:pending,confirmed,in_progress,completed,cancelled,no_show',
             'price'         => 'nullable|numeric|min:0',
             'deposit'       => 'nullable|numeric|min:0',
@@ -71,8 +73,13 @@ class AppointmentController extends Controller
             'color'         => 'nullable|string|max:7',
         ]);
 
-        // Verify client belongs to this master
-        $request->user()->clients()->findOrFail($data['client_id']);
+        if (($data['type'] ?? 'appointment') === 'appointment') {
+            // Verify client belongs to this master
+            $request->user()->clients()->findOrFail($data['client_id']);
+        } else {
+            $data['client_id'] = null;
+            $data['service_id'] = null;
+        }
 
         $appointment = $request->user()->appointments()->create($data);
 
@@ -90,11 +97,12 @@ class AppointmentController extends Controller
         $this->authorizeAppointment($request, $appointment);
 
         $data = $request->validate([
-            'client_id'      => 'exists:clients,id',
+            'client_id'      => 'nullable|required_if:type,appointment|exists:clients,id',
             'service_id'     => 'nullable|exists:services,id',
+            'type'           => 'in:appointment,block',
             'title'          => 'nullable|string|max:255',
             'scheduled_at'   => 'date',
-            'duration'       => 'integer|min:15',
+            'duration'       => 'integer|min:5',
             'status'         => 'in:pending,confirmed,in_progress,completed,cancelled,no_show',
             'price'          => 'nullable|numeric|min:0',
             'deposit'        => 'nullable|numeric|min:0',
@@ -103,6 +111,11 @@ class AppointmentController extends Controller
             'internal_notes' => 'nullable|string',
             'color'          => 'nullable|string|max:7',
         ]);
+
+        if (($data['type'] ?? $appointment->type) === 'block') {
+            $data['client_id'] = null;
+            $data['service_id'] = null;
+        }
 
         $appointment->update($data);
         return response()->json($appointment->load(['client', 'service']));
