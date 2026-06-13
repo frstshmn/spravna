@@ -57,16 +57,18 @@ class ProfileController extends Controller
         $request->validate(['avatar' => 'required|image|max:2048']);
 
         $user = $request->user();
-        $profile = $user->profile;
+        $profile = $user->profile ?? $user->profile()->create([
+            'slug' => Str::slug($user->name) . '-' . $user->id,
+        ]);
 
-        if ($profile?->avatar) {
+        if ($profile->avatar) {
             Storage::disk('public')->delete($profile->avatar);
         }
 
         $path = $request->file('avatar')->store('avatars', 'public');
         $profile->update(['avatar' => $path]);
 
-        return response()->json(['avatar_url' => asset('storage/' . $path)]);
+        return response()->json(['avatar' => $path, 'avatar_url' => asset('storage/' . $path)]);
     }
 
     public function completeOnboarding(Request $request): JsonResponse

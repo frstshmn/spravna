@@ -107,11 +107,13 @@
                 if (user.value) user.value.onboarding_completed_at = new Date().toISOString();
             }
 
+            const avatarSrc = computed(() => M.avatarSrc(user.value?.profile));
+
             window.addEventListener('popstate', () => { page.value = getPageFromPath(); });
 
             init();
 
-            return { page, user, pendingCount, loading, pages, pageMeta, navigate, logout, onUserUpdated, onOnboardingDone, api };
+            return { page, user, pendingCount, loading, pages, pageMeta, navigate, logout, onUserUpdated, onOnboardingDone, avatarSrc, api };
         },
 
         /* ── Full app shell — Vue string template (single root) ── */
@@ -142,7 +144,8 @@
     </nav>
     <div class="sidebar-footer">
       <div class="user-avatar" @click="navigate('settings')" :title="user ? user.name : ''">
-        {{ user?.name?.charAt(0)?.toUpperCase() ?? '?' }}
+        <img v-if="avatarSrc" :src="avatarSrc" :alt="user.name">
+        <template v-else>{{ user?.name?.charAt(0)?.toUpperCase() ?? '?' }}</template>
       </div>
       <button class="btn-logout" @click="logout" title="Вийти">
         <i class="fa fa-arrow-right-from-bracket"></i>
@@ -163,7 +166,8 @@
           <span v-if="pendingCount > 0" class="topbar-btn-dot"></span>
         </button>
         <div class="avatar av-sm" style="background:var(--accent);cursor:pointer;" @click="navigate('settings')">
-          {{ user?.name?.charAt(0)?.toUpperCase() ?? '?' }}
+          <img v-if="avatarSrc" :src="avatarSrc" :alt="user.name">
+          <template v-else>{{ user?.name?.charAt(0)?.toUpperCase() ?? '?' }}</template>
         </div>
       </div>
     </header>

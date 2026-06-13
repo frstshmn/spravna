@@ -1344,6 +1344,11 @@ tbody td { padding: 11px 14px; font-size: 13px; vertical-align: middle; }
 .dt-time-sep { font-weight: 700; }
 .dt-pop-done { width: 100%; }
 
+/* ── MTimePicker (time-only variant) ── */
+.tp-picker { width: auto; }
+.tp-trigger { width: auto; min-width: 92px; justify-content: center; }
+.tp-pop { max-width: 200px; align-items: center; }
+
 /* ── Appointment form: type toggle + block presets ── */
 .appt-type-toggle { margin-bottom: 4px; }
 .block-presets { display: flex; gap: 6px; flex-wrap: wrap; }
@@ -1413,7 +1418,7 @@ tbody td { padding: 11px 14px; font-size: 13px; vertical-align: middle; }
 .onboarding-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border-2); transition: var(--t); }
 .onboarding-dot.active { width: 20px; border-radius: 4px; background: var(--accent); }
 .onboarding-dot.done { background: var(--accent-soft); }
-.onboarding-avatar-row { display: flex; align-items: center; gap: 14px; }
+.avatar-upload-row { display: flex; align-items: center; gap: 14px; }
 .onboarding-hint { font-size: 13px; color: var(--text-sub); }
 .onboarding-svc-list { border: 1px solid var(--border); border-radius: var(--r-md); overflow: hidden; }
 

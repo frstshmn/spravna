@@ -61,8 +61,11 @@ function toLocalInput(d) {
     d = d instanceof Date ? d : new Date(d);
     return localDateStr(d) + 'T' + pad2(d.getHours()) + ':' + pad2(d.getMinutes());
 }
+function avatarSrc(profile) {
+    return profile?.avatar ? '/storage/' + profile.avatar : null;
+}
 
-window.M = { fmt, fmtTime, fmtDT, fmtFull, fmtFullDate, fmtMoney, timeAgo, statusColor, initials, durationLabel, localDateStr, toLocalInput };
+window.M = { fmt, fmtTime, fmtDT, fmtFull, fmtFullDate, fmtMoney, timeAgo, statusColor, initials, durationLabel, localDateStr, toLocalInput, avatarSrc };
 
 /* ── Auth storage (supports "remember me": localStorage vs sessionStorage) ── */
 function getToken() {
@@ -143,9 +146,9 @@ const MBadge = {
 
 /* ── MAvatar ── */
 const MAvatar = {
-    props: { name: String, size: { default: 'md' } },
+    props: { name: String, size: { default: 'md' }, src: String },
     computed: { ini() { return M.initials(this.name); } },
-    template: `<div :class="'avatar av-' + size">{{ ini }}</div>`
+    template: `<div :class="'avatar av-' + size"><img v-if="src" :src="src" :alt="name"><template v-else>{{ ini }}</template></div>`
 };
 
 /* ── MDateTimePicker (custom 24h date+time picker) ── */
@@ -259,6 +262,63 @@ const MDateTimePicker = {
               <option v-for="m in minuteOptions" :key="m" :value="m">{{ pad2(m) }}</option>
             </select>
           </div>
+        </div>
+        <button type="button" class="btn btn-primary btn-sm dt-pop-done" @click="close">Готово</button>
+      </div>
+    </div>
+  </teleport>
+</div>`
+};
+
+/* ── MTimePicker (custom 24h time-only picker) ── */
+const MTimePicker = {
+    props: { modelValue: String },
+    emits: ['update:modelValue'],
+    setup(props, { emit }) {
+        const open = ref(false);
+
+        function parse(val) {
+            const [hh, mm] = (val || '00:00').split(':').map(Number);
+            return { hh: hh || 0, mm: mm || 0 };
+        }
+
+        const parsed = ref(parse(props.modelValue));
+        watch(() => props.modelValue, v => { parsed.value = parse(v); });
+
+        function emitValue() {
+            emit('update:modelValue', `${pad2(parsed.value.hh)}:${pad2(parsed.value.mm)}`);
+        }
+
+        const displayLabel = computed(() => `${pad2(parsed.value.hh)}:${pad2(parsed.value.mm)}`);
+
+        function setHour(h) { parsed.value = { ...parsed.value, hh: h }; emitValue(); }
+        function setMinute(m) { parsed.value = { ...parsed.value, mm: m }; emitValue(); }
+
+        const hourOptions = Array.from({ length: 24 }, (_, i) => i);
+        const minuteOptions = Array.from({ length: 12 }, (_, i) => i * 5);
+
+        function toggle() { open.value = !open.value; }
+        function close() { open.value = false; }
+
+        return { open, parsed, displayLabel, hourOptions, minuteOptions, setHour, setMinute, toggle, close, pad2 };
+    },
+    template: `
+<div class="dt-picker tp-picker">
+  <button type="button" class="dt-trigger input tp-trigger" @click="toggle">
+    <i class="fa fa-clock"></i>
+    <span>{{ displayLabel }}</span>
+  </button>
+  <teleport to="body">
+    <div v-if="open" class="dt-pop-overlay" @mousedown.self="close">
+      <div class="dt-pop tp-pop">
+        <div class="dt-pop-time-row">
+          <select class="select dt-time-select" :value="parsed.hh" @change="setHour(+$event.target.value)">
+            <option v-for="h in hourOptions" :key="h" :value="h">{{ pad2(h) }}</option>
+          </select>
+          <span class="dt-time-sep">:</span>
+          <select class="select dt-time-select" :value="parsed.mm" @change="setMinute(+$event.target.value)">
+            <option v-for="m in minuteOptions" :key="m" :value="m">{{ pad2(m) }}</option>
+          </select>
         </div>
         <button type="button" class="btn btn-primary btn-sm dt-pop-done" @click="close">Готово</button>
       </div>
@@ -781,6 +841,7 @@ const RespondFormBody = {
 const OnboardingWizard = {
     props: { api: Object },
     emits: ['done'],
+    components: { MTimePicker },
     setup(props, { emit }) {
         const step = ref(1);
         const saving = ref(false);
@@ -911,7 +972,7 @@ const OnboardingWizard = {
 
       <!-- Step 1: General info, social media, avatar -->
       <div v-if="step===1" class="modal-body">
-        <div class="onboarding-avatar-row">
+        <div class="avatar-upload-row">
           <div class="avatar av-xl">
             <img v-if="avatarUrl" :src="avatarUrl" :alt="form.name">
             <span v-else>{{ form.name?.charAt(0)?.toUpperCase() || '?' }}</span>
@@ -969,9 +1030,9 @@ const OnboardingWizard = {
           <span class="wh-day">{{ dayNames[h.day_of_week] }}</span>
           <button type="button" :class="'toggle' + (h.is_working ? ' on' : '')" @click="h.is_working = !h.is_working" style="flex-shrink:0;"></button>
           <template v-if="h.is_working">
-            <input type="time" v-model="h.start_time" class="input" style="max-width:110px;">
+            <m-time-picker v-model="h.start_time"></m-time-picker>
             <span style="color:var(--text-muted);font-size:13px;">—</span>
-            <input type="time" v-model="h.end_time" class="input" style="max-width:110px;">
+            <m-time-picker v-model="h.end_time"></m-time-picker>
           </template>
           <span v-else style="font-size:13px;color:var(--text-muted);">Вихідний</span>
         </div>
@@ -1045,6 +1106,6 @@ const OnboardingWizard = {
 
 /* Export all shared components */
 window.SpravnaComponents = {
-    MModal, MBadge, MAvatar, MDateTimePicker, OnboardingWizard,
+    MModal, MBadge, MAvatar, MDateTimePicker, MTimePicker, OnboardingWizard,
     AppointmentFormBody, ClientFormBody, ServiceFormBody, RespondFormBody
 };

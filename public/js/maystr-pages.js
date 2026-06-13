@@ -1690,7 +1690,7 @@ const PublicPageSettings = {
 const SettingsPage = {
     props: ['api', 'user'],
     emits: ['user-updated'],
-    components: { MModal, MBadge, ServiceFormBody },
+    components: { MModal, MBadge, MTimePicker, ServiceFormBody },
     setup(props, { emit }) {
         const tab = ref('profile');
         const workingHours = ref([]);
@@ -1708,6 +1708,32 @@ const SettingsPage = {
             name: props.user?.name || '',
             email: props.user?.email || '',
         });
+
+        const avatarUrl = ref(M.avatarSrc(props.user?.profile));
+        const avatarUploading = ref(false);
+        const fileInput = ref(null);
+
+        function pickAvatar() { fileInput.value?.click(); }
+        async function onAvatarChange(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            avatarUploading.value = true;
+            const fd = new FormData();
+            fd.append('avatar', file);
+            try {
+                const { data } = await props.api.post('/profile/avatar', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+                avatarUrl.value = data.avatar_url;
+                emit('user-updated');
+            } catch (e) {}
+            avatarUploading.value = false;
+            e.target.value = '';
+        }
+
+        function applyToAll(h) {
+            workingHours.value.forEach(d => {
+                if (d.is_working) { d.start_time = h.start_time; d.end_time = h.end_time; }
+            });
+        }
 
         async function loadHours() {
             const { data } = await props.api.get('/schedule/working-hours');
@@ -1766,7 +1792,12 @@ const SettingsPage = {
 
         onMounted(() => { loadHours(); loadServices(); });
 
-        return { tab, workingHours, services, savingProfile, savedProfile, savingHours, savedHours, showSvcModal, editingSvc, profileForm, pwForm, pwError, pwSaved, savingPw, dayNames, priceDisplay, saveHours, loadServices, editSvc, newSvc, deleteSvc, toggleSvc, onSvcSaved, saveProfile, changePassword };
+        return {
+            tab, workingHours, services, savingProfile, savedProfile, savingHours, savedHours, showSvcModal, editingSvc,
+            profileForm, pwForm, pwError, pwSaved, savingPw, dayNames, priceDisplay, saveHours, loadServices, editSvc, newSvc,
+            deleteSvc, toggleSvc, onSvcSaved, saveProfile, changePassword,
+            avatarUrl, avatarUploading, fileInput, pickAvatar, onAvatarChange, applyToAll,
+        };
     },
     template: `
 <div>
@@ -1794,6 +1825,25 @@ const SettingsPage = {
 
       <!-- Profile -->
       <template v-if="tab==='profile'">
+        <div class="card">
+          <div class="card-header"><span class="card-title">Фото профілю</span></div>
+          <div class="card-body">
+            <div class="avatar-upload-row">
+              <div class="avatar av-xl">
+                <img v-if="avatarUrl" :src="avatarUrl" :alt="profileForm.name">
+                <span v-else>{{ profileForm.name?.charAt(0)?.toUpperCase() || '?' }}</span>
+              </div>
+              <div>
+                <button type="button" class="btn btn-secondary btn-sm" @click="pickAvatar" :disabled="avatarUploading">
+                  <i class="fa fa-camera"></i> {{ avatarUploading ? 'Завантаження…' : 'Змінити фото' }}
+                </button>
+                <input ref="fileInput" type="file" accept="image/*" style="display:none;" @change="onAvatarChange">
+                <p style="font-size:11px;color:var(--text-muted);margin-top:6px;">JPG або PNG, до 2 МБ</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div class="card">
           <div class="card-header"><span class="card-title">Дані акаунту</span></div>
           <div class="card-body" style="display:flex;flex-direction:column;gap:12px;">
@@ -1831,9 +1881,12 @@ const SettingsPage = {
               <span class="wh-day">{{ dayNames[h.day_of_week] }}</span>
               <button :class="'toggle' + (h.is_working ? ' on' : '')" @click="h.is_working = !h.is_working" style="flex-shrink:0;"></button>
               <template v-if="h.is_working">
-                <input type="time" v-model="h.start_time" class="input" style="max-width:110px;">
+                <m-time-picker v-model="h.start_time"></m-time-picker>
                 <span style="color:var(--text-muted);font-size:13px;">—</span>
-                <input type="time" v-model="h.end_time" class="input" style="max-width:110px;">
+                <m-time-picker v-model="h.end_time"></m-time-picker>
+                <button type="button" class="btn btn-ghost btn-sm" style="margin-left:auto;" @click="applyToAll(h)" title="Застосувати цей час до всіх робочих днів">
+                  <i class="fa fa-arrows-up-down"></i> До всіх днів
+                </button>
               </template>
               <span v-else style="font-size:13px;color:var(--text-muted);">Вихідний</span>
             </div>
