@@ -22,6 +22,24 @@ class DeployController extends Controller
         $storageLink  = Process::path(base_path())->run([PHP_BINARY, 'artisan', 'storage:link', '--force']);
         $migrate      = Process::path(base_path())->run([PHP_BINARY, 'artisan', 'migrate', '--force']);
 
+        // Fix permissions so the web server can read uploaded files
+        $storagePublic = storage_path('app/public');
+        $fixPermsOk    = false;
+        $fixPermsError = '';
+        try {
+            $iterator = new \RecursiveIteratorIterator(
+                new \RecursiveDirectoryIterator($storagePublic, \RecursiveDirectoryIterator::SKIP_DOTS),
+                \RecursiveIteratorIterator::SELF_FIRST
+            );
+            foreach ($iterator as $item) {
+                chmod($item->getPathname(), $item->isDir() ? 0755 : 0644);
+            }
+            chmod($storagePublic, 0755);
+            $fixPermsOk = true;
+        } catch (\Throwable $e) {
+            $fixPermsError = $e->getMessage();
+        }
+
         return response()->json([
             'git_pull' => [
                 'ok'     => $pull->successful(),
@@ -37,6 +55,10 @@ class DeployController extends Controller
                 'ok'     => $migrate->successful(),
                 'output' => $migrate->output(),
                 'error'  => $migrate->errorOutput(),
+            ],
+            'fix_perms' => [
+                'ok'    => $fixPermsOk,
+                'error' => $fixPermsError,
             ],
         ]);
     }
