@@ -19,7 +19,7 @@ class DeployController extends Controller
         }
 
         $pull = Process::path(base_path())->run(['git', 'pull']);
-        $migrate = Process::path(base_path())->run(['php', 'artisan', 'migrate', '--force']);
+        $migrate = Process::path(base_path())->run([PHP_BINARY, 'artisan', 'migrate', '--force']);
 
         return response()->json([
             'git_pull' => [
