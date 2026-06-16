@@ -1582,6 +1582,7 @@ const SettingsPage = {
             form.name = data.name || '';
             form.email = data.email || '';
             const p = data.profile || {};
+            avatarUrl.value = M.avatarSrc(p);
             ['bio','specialty','phone','city','country','instagram','website','booking_notice','cancellation_policy','is_public','is_accepting_bookings','show_availability','currency'].forEach(k => {
                 if (p[k] !== undefined && p[k] !== null) form[k] = p[k];
             });
@@ -1597,7 +1598,7 @@ const SettingsPage = {
             fd.append('avatar', file);
             try {
                 const { data } = await props.api.post('/profile/avatar', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
-                avatarUrl.value = data.avatar_url;
+                avatarUrl.value = M.avatarSrc({ avatar: data.avatar });
                 emit('user-updated');
             } catch (e) {}
             avatarUploading.value = false;
