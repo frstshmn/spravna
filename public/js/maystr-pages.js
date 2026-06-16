@@ -1542,11 +1542,12 @@ const MAvatarCropper = {
     emits: ['save', 'cancel'],
     setup(props, { emit }) {
         const VIEW = 280, OUT = 400;
-        const imgRef    = ref(null);
-        const imageUrl  = ref('');
-        const natW      = ref(0), natH = ref(0);
-        const userScale = ref(1);
-        const ox = ref(0), oy = ref(0);
+        const imgRef     = ref(null);
+        const imageUrl   = ref('');
+        const natW       = ref(0), natH = ref(0);
+        const userScale  = ref(1);
+        const ox         = ref(0), oy = ref(0);
+        const isDragging = ref(false);
 
         const baseScale  = computed(() => (natW.value && natH.value) ? Math.max(VIEW / natW.value, VIEW / natH.value) : 1);
         const totalScale = computed(() => baseScale.value * userScale.value);
@@ -1563,6 +1564,7 @@ const MAvatarCropper = {
         function onPtrDown(e) {
             e.currentTarget.setPointerCapture(e.pointerId);
             ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+            isDragging.value = true;
         }
         function onPtrMove(e) {
             const prev = ptrs.get(e.pointerId);
@@ -1582,7 +1584,11 @@ const MAvatarCropper = {
             }
             ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
         }
-        function onPtrUp(e) { ptrs.delete(e.pointerId); if (ptrs.size < 2) lastDist = 0; }
+        function onPtrUp(e) {
+            ptrs.delete(e.pointerId);
+            if (ptrs.size < 2) lastDist = 0;
+            if (ptrs.size === 0) isDragging.value = false;
+        }
         function onWheel(e) {
             e.preventDefault();
             userScale.value = Math.max(1, Math.min(5, userScale.value - e.deltaY / 400));
@@ -1611,26 +1617,43 @@ const MAvatarCropper = {
             transform: `translate(calc(-50% + ${ox.value}px), calc(-50% + ${oy.value}px)) scale(${totalScale.value})`,
             transformOrigin: 'center',
         }));
-        return { imgRef, imageUrl, imgStyle, onPtrDown, onPtrMove, onPtrUp, onWheel, onImgLoad, save };
+        const cropStyle = computed(() => ({
+            position: 'relative',
+            width: 'min(280px, calc(100vw - 80px))',
+            height: 'min(280px, calc(100vw - 80px))',
+            overflow: 'hidden',
+            borderRadius: '50%',
+            background: 'var(--bg-sub)',
+            cursor: isDragging.value ? 'grabbing' : 'grab',
+            touchAction: 'none',
+            flexShrink: '0',
+            boxShadow: '0 0 0 3px var(--accent)',
+        }));
+        return { imgRef, imageUrl, imgStyle, cropStyle, onPtrDown, onPtrMove, onPtrUp, onWheel, onImgLoad, save };
     },
     template: `
 <div class="modal-overlay">
-  <div class="modal-box" style="max-width:360px;">
-    <div class="modal-header">
-      <span class="modal-title">Обрізати фото</span>
-      <button class="btn-icon" @click="$emit('cancel')"><i class="fa fa-times"></i></button>
+  <div class="modal-box" style="max-width:400px;">
+    <div class="modal-head">
+      <div class="modal-head-text">
+        <div class="modal-icon-badge"><i class="fa fa-crop-simple"></i></div>
+        <div class="modal-title-col">
+          <span class="modal-title">Обрізати фото</span>
+          <span class="modal-subtitle">Перетягніть · прокрутіть або зведіть для масштабу</span>
+        </div>
+      </div>
+      <button class="modal-close" @click="$emit('cancel')"><i class="fa fa-times"></i></button>
     </div>
-    <div class="modal-body" style="display:flex;flex-direction:column;align-items:center;gap:12px;padding-top:8px;">
-      <p style="font-size:12px;color:var(--text-sub);text-align:center;margin:0;">Перетягніть щоб вирівняти · Прокрутіть або зведіть для масштабу</p>
-      <div style="position:relative;width:280px;height:280px;overflow:hidden;border-radius:50%;background:var(--bg-sub);cursor:grab;touch-action:none;flex-shrink:0;box-shadow:0 0 0 3px var(--accent);"
+    <div class="modal-body" style="align-items:center;gap:16px;">
+      <div :style="cropStyle"
            @pointerdown="onPtrDown" @pointermove="onPtrMove" @pointerup="onPtrUp" @pointercancel="onPtrUp" @wheel.prevent="onWheel">
         <img ref="imgRef" :src="imageUrl" :style="imgStyle" @load="onImgLoad" @dragstart.prevent>
       </div>
-      <p style="font-size:11px;color:var(--text-muted);text-align:center;margin:0;">Збережеться як квадрат 400×400 px</p>
+      <p style="font-size:11px;color:var(--text-muted);text-align:center;margin:0;">Результат: квадрат 400×400 px · JPG</p>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-secondary" @click="$emit('cancel')">Скасувати</button>
-      <button class="btn btn-primary" @click="save"><i class="fa fa-check"></i> Зберегти</button>
+      <button class="btn btn-secondary" style="flex:1;" @click="$emit('cancel')">Скасувати</button>
+      <button class="btn btn-primary" style="flex:1;" @click="save"><i class="fa fa-check"></i> Зберегти</button>
     </div>
   </div>
 </div>`
