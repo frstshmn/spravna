@@ -1685,6 +1685,11 @@ const SettingsPage = {
         const pwForm = reactive({ current_password: '', password: '', password_confirmation: '' });
         const pwError = ref(''); const pwSaved = ref(false); const savingPw = ref(false);
 
+        const formLoaded = ref(false);
+        const hoursLoaded = ref(false);
+        const profileDirty = ref(false);
+        const hoursDirty = ref(false);
+
         const form = reactive({
             name: props.user?.name || '',
             email: props.user?.email || '',
@@ -1703,6 +1708,11 @@ const SettingsPage = {
 
         const publicUrl = computed(() => window.location.origin + '/master/' + (profile.value?.slug || ''));
 
+        watch(() => [form.name, form.bio, form.specialty, form.phone, form.city, form.country, form.instagram, form.website],
+            () => { if (formLoaded.value) profileDirty.value = true; });
+
+        watch(workingHours, () => { if (hoursLoaded.value) hoursDirty.value = true; }, { deep: true });
+
         async function load() {
             const { data } = await props.api.get('/profile');
             profile.value = data.profile;
@@ -1714,6 +1724,8 @@ const SettingsPage = {
                 if (p[k] !== undefined && p[k] !== null) form[k] = p[k];
             });
             form.social_links = { facebook: '', tiktok: '', telegram: '', whatsapp: '', ...(p.social_links || {}) };
+            await nextTick();
+            formLoaded.value = true;
         }
 
         function pickAvatar() { fileInput.value?.click(); }
@@ -1747,10 +1759,13 @@ const SettingsPage = {
             const { data } = await props.api.get('/schedule/working-hours');
             const days = [0,1,2,3,4,5,6];
             workingHours.value = days.map(d => data.find(h => h.day_of_week === d) || { day_of_week: d, start_time: '09:00', end_time: '18:00', is_working: d >= 1 && d <= 5 });
+            await nextTick();
+            hoursLoaded.value = true;
         }
         async function saveHours() {
             savingHours.value = true;
             await props.api.put('/schedule/working-hours', { hours: workingHours.value });
+            hoursDirty.value = false;
             savedHours.value = true; savingHours.value = false;
             setTimeout(() => savedHours.value = false, 2000);
         }
@@ -1775,6 +1790,7 @@ const SettingsPage = {
                 name: form.name, bio: form.bio, specialty: form.specialty, phone: form.phone,
                 city: form.city, country: form.country, instagram: form.instagram, website: form.website,
             });
+            profileDirty.value = false;
             savedProfile.value = true; savingProfile.value = false;
             emit('user-updated');
             setTimeout(() => savedProfile.value = false, 2000);
@@ -1789,6 +1805,11 @@ const SettingsPage = {
             });
             savedPublic.value = true; savingPublic.value = false;
             setTimeout(() => savedPublic.value = false, 2500);
+        }
+
+        async function saveAll() {
+            if (profileDirty.value) await saveProfile();
+            if (hoursDirty.value) await saveHours();
         }
 
         function copyLink() {
@@ -1807,7 +1828,7 @@ const SettingsPage = {
             savingPw.value = false;
         }
 
-        const dayNames = ['Неділя','Понеділок','Вівторок','Середа','Четвер','П\'ятниця','Субота'];
+        const dayNames = ['Нд','Пн','Вт','Ср','Чт','Пт','Сб'];
 
         function priceDisplay(s) {
             if (s.price_on_request) return 'За запитом';
@@ -1822,6 +1843,7 @@ const SettingsPage = {
         return {
             M, tab, workingHours, services, form, profile, user,
             savingProfile, savedProfile, savingPublic, savedPublic, savingHours, savedHours,
+            profileDirty, hoursDirty, saveAll,
             showSvcModal, editingSvc, copied, publicUrl,
             pwForm, pwError, pwSaved, savingPw, dayNames, priceDisplay, saveHours, loadServices, editSvc, newSvc,
             deleteSvc, toggleSvc, onSvcSaved, saveProfile, savePublicSettings, copyLink, changePassword,
@@ -1843,106 +1865,174 @@ const SettingsPage = {
       <button :class="'settings-nav-item' + (tab==='public' ? ' active' : '')" @click="tab='public'">
         <i class="fa fa-globe"></i> Публічна сторінка
       </button>
-      <button :class="'settings-nav-item' + (tab==='hours' ? ' active' : '')" @click="tab='hours'">
-        <i class="fa fa-clock"></i> Робочі години
-      </button>
-      <button :class="'settings-nav-item' + (tab==='services' ? ' active' : '')" @click="tab='services'">
-        <i class="fa fa-scissors"></i> Послуги
-      </button>
-      <button :class="'settings-nav-item' + (tab==='security' ? ' active' : '')" @click="tab='security'">
-        <i class="fa fa-lock"></i> Безпека
+      <button :class="'settings-nav-item' + (tab==='subscription' ? ' active' : '')" @click="tab='subscription'">
+        <i class="fa fa-crown"></i> Підписка
       </button>
     </div>
 
     <!-- Panels -->
     <div class="settings-panel">
 
-      <!-- Profile -->
+      <!-- Profile: 2×2 tiles -->
       <template v-if="tab==='profile'">
-        <div class="card">
-          <div class="card-header"><span class="card-title">Фото профілю</span></div>
-          <div class="card-body">
-            <div class="avatar-upload-row">
-              <div class="avatar av-xl">
-                <img v-if="avatarUrl" :src="avatarUrl" :alt="form.name">
-                <span v-else>{{ form.name?.charAt(0)?.toUpperCase() || '?' }}</span>
-              </div>
-              <div>
-                <button type="button" class="btn btn-secondary btn-sm" @click="pickAvatar" :disabled="avatarUploading">
-                  <i class="fa fa-camera"></i> {{ avatarUploading ? 'Завантаження…' : 'Змінити фото' }}
-                </button>
-                <input ref="fileInput" type="file" accept="image/*" style="display:none;" @change="onAvatarChange">
-                <p style="font-size:11px;color:var(--text-muted);margin-top:6px;">JPG або PNG, до 2 МБ</p>
-              </div>
-            </div>
-          </div>
-        </div>
+        <div class="settings-tiles">
 
-        <div class="card">
-          <div class="card-header"><span class="card-title">Особиста інформація</span></div>
-          <div class="card-body" style="display:flex;flex-direction:column;gap:12px;">
-            <div class="form-row">
-              <div class="form-group">
-                <label class="label">Повне ім'я</label>
-                <input v-model="form.name" class="input">
-              </div>
-              <div class="form-group">
-                <label class="label">Електронна пошта</label>
-                <input v-model="form.email" class="input" disabled style="opacity:.6;">
-              </div>
+          <!-- Tile 1: Personal info + avatar -->
+          <div :class="'card settings-tile' + (profileDirty ? ' tile-dirty' : '')">
+            <div class="card-header">
+              <span class="card-title"><i class="fa fa-user" style="margin-right:6px;opacity:.5;"></i>Особиста інформація</span>
+              <span v-if="profileDirty" class="dirty-badge">Змінено</span>
             </div>
-            <div class="form-row">
-              <div class="form-group">
-                <label class="label">Спеціалізація</label>
-                <select v-model="form.specialty" class="select">
-                  <option value="">Оберіть…</option>
-                  <option value="tattoo">Тату-майстер</option>
-                  <option value="nails">Нейл-майстер</option>
-                  <option value="brows">Бровіст</option>
-                  <option value="lashes">Майстер вій</option>
-                  <option value="piercing">П'єрсер</option>
-                  <option value="pmu">Перманентний макіяж</option>
-                  <option value="hair">Перукар</option>
-                  <option value="massage">Масажист</option>
-                  <option value="other">Інше</option>
-                </select>
+            <div class="card-body" style="display:flex;flex-direction:column;gap:12px;">
+              <div class="avatar-upload-row">
+                <div class="avatar av-lg">
+                  <img v-if="avatarUrl" :src="avatarUrl" :alt="form.name">
+                  <span v-else>{{ form.name?.charAt(0)?.toUpperCase() || '?' }}</span>
+                </div>
+                <div>
+                  <button type="button" class="btn btn-secondary btn-sm" @click="pickAvatar" :disabled="avatarUploading">
+                    <i class="fa fa-camera"></i> {{ avatarUploading ? 'Завантаження…' : 'Змінити фото' }}
+                  </button>
+                  <input ref="fileInput" type="file" accept="image/*" style="display:none;" @change="onAvatarChange">
+                  <p style="font-size:11px;color:var(--text-muted);margin-top:4px;">JPG або PNG, до 2 МБ</p>
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="label">Повне ім'я</label>
+                  <input v-model="form.name" class="input">
+                </div>
+                <div class="form-group">
+                  <label class="label">Спеціалізація</label>
+                  <select v-model="form.specialty" class="select">
+                    <option value="">Оберіть…</option>
+                    <option value="tattoo">Тату-майстер</option>
+                    <option value="nails">Нейл-майстер</option>
+                    <option value="brows">Бровіст</option>
+                    <option value="lashes">Майстер вій</option>
+                    <option value="piercing">П'єрсер</option>
+                    <option value="pmu">Перманентний макіяж</option>
+                    <option value="hair">Перукар</option>
+                    <option value="massage">Масажист</option>
+                    <option value="other">Інше</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="label">Телефон</label>
+                  <input v-model="form.phone" class="input" type="tel">
+                </div>
+                <div class="form-group">
+                  <label class="label">Instagram</label>
+                  <input v-model="form.instagram" class="input" placeholder="@handle">
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="label">Місто</label>
+                  <input v-model="form.city" class="input">
+                </div>
+                <div class="form-group">
+                  <label class="label">Країна</label>
+                  <input v-model="form.country" class="input">
+                </div>
               </div>
               <div class="form-group">
-                <label class="label">Телефон</label>
-                <input v-model="form.phone" class="input" type="tel">
-              </div>
-            </div>
-            <div class="form-row">
-              <div class="form-group">
-                <label class="label">Місто</label>
-                <input v-model="form.city" class="input">
-              </div>
-              <div class="form-group">
-                <label class="label">Країна</label>
-                <input v-model="form.country" class="input">
-              </div>
-            </div>
-            <div class="form-row">
-              <div class="form-group">
-                <label class="label">Instagram</label>
-                <input v-model="form.instagram" class="input" placeholder="@handle">
+                <label class="label">Про себе</label>
+                <textarea v-model="form.bio" class="textarea" rows="3" placeholder="Розкажіть клієнтам про себе…"></textarea>
               </div>
               <div class="form-group">
                 <label class="label">Сайт</label>
                 <input v-model="form.website" class="input" type="url" placeholder="https://…">
               </div>
             </div>
-            <div class="form-group">
-              <label class="label">Про себе</label>
-              <textarea v-model="form.bio" class="textarea" placeholder="Розкажіть клієнтам про себе…"></textarea>
+          </div>
+
+          <!-- Tile 2: Working hours -->
+          <div :class="'card settings-tile' + (hoursDirty ? ' tile-dirty' : '')">
+            <div class="card-header">
+              <span class="card-title"><i class="fa fa-clock" style="margin-right:6px;opacity:.5;"></i>Робочі години</span>
+              <span v-if="hoursDirty" class="dirty-badge">Змінено</span>
             </div>
-            <div class="flex justify-end gap-8">
-              <p v-if="savedProfile" style="color:var(--completed);font-size:13px;align-self:center;"><i class="fa fa-check"></i> Збережено</p>
-              <button class="btn btn-primary btn-sm" @click="saveProfile" :disabled="savingProfile">
-                {{ savingProfile ? 'Збереження…' : 'Зберегти зміни' }}
-              </button>
+            <div class="card-body" style="display:flex;flex-direction:column;gap:4px;padding-top:10px;padding-bottom:12px;">
+              <div v-for="h in workingHours" :key="h.day_of_week" class="wh-row wh-compact">
+                <span class="wh-day-short">{{ dayNames[h.day_of_week] }}</span>
+                <button :class="'toggle' + (h.is_working ? ' on' : '')" @click="h.is_working = !h.is_working" style="flex-shrink:0;"></button>
+                <template v-if="h.is_working">
+                  <m-time-picker v-model="h.start_time"></m-time-picker>
+                  <span style="color:var(--text-muted);font-size:12px;flex-shrink:0;">—</span>
+                  <m-time-picker v-model="h.end_time"></m-time-picker>
+                </template>
+                <span v-else style="font-size:12px;color:var(--text-muted);">Вихідний</span>
+              </div>
+              <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);">
+                <p style="font-size:11px;color:var(--text-muted);">Утримуйте <kbd style="font-size:10px;background:var(--bg-2);border:1px solid var(--border);border-radius:3px;padding:1px 4px;">Alt</kbd> на часі щоб застосувати до всіх робочих днів</p>
+              </div>
             </div>
           </div>
+
+          <!-- Tile 3: Services -->
+          <div class="card settings-tile">
+            <div class="card-header">
+              <span class="card-title"><i class="fa fa-scissors" style="margin-right:6px;opacity:.5;"></i>Послуги ({{ services.length }})</span>
+              <button class="btn btn-primary btn-sm" @click="newSvc"><i class="fa fa-plus"></i> Додати</button>
+            </div>
+            <div style="max-height:320px;overflow-y:auto;">
+              <div v-if="!services.length" class="empty" style="padding:28px 16px;"><i class="fa fa-scissors"></i><p>Послуг ще немає</p></div>
+              <div v-for="s in services" :key="s.id" class="svc-card">
+                <div class="svc-dot" :style="{background: s.color || '#c9a84c'}"></div>
+                <div class="svc-info">
+                  <div class="svc-name" :style="s.is_active ? '' : 'opacity:.5'">{{ s.name }}</div>
+                  <div class="svc-meta">{{ s.duration ? s.duration + ' хв' : '' }}{{ s.duration && priceDisplay(s) !== '—' ? ' · ' : '' }}{{ priceDisplay(s) !== '—' ? priceDisplay(s) : '' }}</div>
+                </div>
+                <button class="btn btn-ghost btn-sm btn-icon" @click="toggleSvc(s)" :title="s.is_active ? 'Деактивувати' : 'Активувати'">
+                  <i :class="'fa fa-' + (s.is_active ? 'eye-slash' : 'eye')"></i>
+                </button>
+                <button class="btn btn-ghost btn-sm btn-icon" @click="editSvc(s)"><i class="fa fa-pen"></i></button>
+                <button class="btn btn-danger btn-sm btn-icon" @click="deleteSvc(s)"><i class="fa fa-trash"></i></button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tile 4: Security + Account info -->
+          <div class="card settings-tile">
+            <div class="card-header"><span class="card-title"><i class="fa fa-shield-halved" style="margin-right:6px;opacity:.5;"></i>Акаунт та безпека</span></div>
+            <div class="card-body" style="display:flex;flex-direction:column;gap:14px;">
+              <div class="account-info-grid">
+                <div class="account-info-item">
+                  <span class="account-info-label">Роль</span>
+                  <m-badge :status="user.role"></m-badge>
+                </div>
+                <div class="account-info-item">
+                  <span class="account-info-label">Тариф</span>
+                  <m-badge :status="user.plan"></m-badge>
+                </div>
+                <div class="account-info-item">
+                  <span class="account-info-label">Підписка</span>
+                  <m-badge :status="user.subscription_status"></m-badge>
+                </div>
+                <div class="account-info-item">
+                  <span class="account-info-label">Реєстрація</span>
+                  <span class="account-info-value">{{ M.fmtFullDate(user.created_at) }}</span>
+                </div>
+              </div>
+              <div style="border-top:1px solid var(--border);padding-top:12px;">
+                <p style="font-size:12px;font-weight:600;margin-bottom:10px;">Зміна пароля</p>
+                <div style="display:flex;flex-direction:column;gap:8px;">
+                  <input type="password" v-model="pwForm.current_password" class="input" placeholder="Поточний пароль">
+                  <input type="password" v-model="pwForm.password" class="input" placeholder="Новий пароль">
+                  <input type="password" v-model="pwForm.password_confirmation" class="input" placeholder="Підтвердження">
+                  <p v-if="pwError" style="color:var(--cancelled);font-size:12px;">{{ pwError }}</p>
+                  <p v-if="pwSaved" style="color:var(--completed);font-size:12px;"><i class="fa fa-check"></i> Пароль змінено</p>
+                  <button class="btn btn-secondary btn-sm" @click="changePassword" :disabled="savingPw" style="align-self:flex-start;">
+                    {{ savingPw ? 'Збереження…' : 'Змінити пароль' }}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
         </div>
       </template>
 
@@ -2081,118 +2171,108 @@ const SettingsPage = {
         </div>
       </template>
 
-      <!-- Working hours -->
-      <template v-if="tab==='hours'">
-        <div class="card">
-          <div class="card-header">
-            <span class="card-title">Робочі години</span>
-            <button class="btn btn-primary btn-sm" @click="saveHours" :disabled="savingHours">
-              <i class="fa fa-save"></i> {{ savedHours ? 'Збережено!' : 'Зберегти' }}
-            </button>
-          </div>
-          <div class="card-body" style="display:flex;flex-direction:column;">
-            <div v-for="h in workingHours" :key="h.day_of_week" class="wh-row">
-              <span class="wh-day">{{ dayNames[h.day_of_week] }}</span>
-              <button :class="'toggle' + (h.is_working ? ' on' : '')" @click="h.is_working = !h.is_working" style="flex-shrink:0;"></button>
-              <template v-if="h.is_working">
-                <m-time-picker v-model="h.start_time"></m-time-picker>
-                <span style="color:var(--text-muted);font-size:13px;">—</span>
-                <m-time-picker v-model="h.end_time"></m-time-picker>
-                <button type="button" class="btn btn-ghost btn-sm" style="margin-left:auto;" @click="applyToAll(h)" title="Застосувати цей час до всіх робочих днів">
-                  <i class="fa fa-arrows-up-down"></i> До всіх днів
-                </button>
-              </template>
-              <span v-else style="font-size:13px;color:var(--text-muted);">Вихідний</span>
+      <!-- Subscription -->
+      <template v-if="tab==='subscription'">
+        <div class="sub-current-plan card">
+          <div class="card-body" style="display:flex;align-items:center;gap:20px;flex-wrap:wrap;">
+            <div class="sub-plan-icon"><i class="fa fa-crown"></i></div>
+            <div style="flex:1;min-width:160px;">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+                <span style="font-size:20px;font-weight:700;">Pro</span>
+                <span class="sub-status-badge sub-active"><i class="fa fa-circle-check"></i> Активна</span>
+              </div>
+              <p style="font-size:13px;color:var(--text-sub);">Наступне списання <strong>14 липня 2026</strong> · 299 ₴/міс</p>
+            </div>
+            <div style="text-align:right;flex-shrink:0;">
+              <button class="btn btn-ghost btn-sm">Скасувати підписку</button>
             </div>
           </div>
         </div>
-      </template>
 
-      <!-- Services -->
-      <template v-if="tab==='services'">
-        <div class="card">
-          <div class="card-header">
-            <span class="card-title">Послуги ({{ services.length }})</span>
-            <button class="btn btn-primary btn-sm" @click="newSvc"><i class="fa fa-plus"></i> Додати послугу</button>
+        <div class="sub-grid">
+          <!-- Features -->
+          <div class="card">
+            <div class="card-header"><span class="card-title">Що включено в Pro</span></div>
+            <div class="card-body" style="display:flex;flex-direction:column;gap:10px;">
+              <div class="sub-feature"><i class="fa fa-check sub-feat-ok"></i><span>Необмежена кількість клієнтів та записів</span></div>
+              <div class="sub-feature"><i class="fa fa-check sub-feat-ok"></i><span>Публічна сторінка майстра</span></div>
+              <div class="sub-feature"><i class="fa fa-check sub-feat-ok"></i><span>Онлайн-записи та управління запитами</span></div>
+              <div class="sub-feature"><i class="fa fa-check sub-feat-ok"></i><span>Повна аналітика та статистика</span></div>
+              <div class="sub-feature"><i class="fa fa-check sub-feat-ok"></i><span>Управління послугами та ціновою сіткою</span></div>
+              <div class="sub-feature"><i class="fa fa-check sub-feat-ok"></i><span>Розклад, робочі години, архів</span></div>
+              <div class="sub-feature sub-feat-soon"><i class="fa fa-clock" style="color:var(--text-muted);"></i><span>SMS-нагадування клієнтам <em>(незабаром)</em></span></div>
+              <div class="sub-feature sub-feat-soon"><i class="fa fa-clock" style="color:var(--text-muted);"></i><span>Інтеграція з Instagram <em>(незабаром)</em></span></div>
+            </div>
           </div>
-          <div>
-            <div v-if="!services.length" class="empty"><i class="fa fa-scissors"></i><p>Послуг ще немає</p></div>
-            <div v-for="s in services" :key="s.id" class="svc-card">
-              <div class="svc-dot" :style="{background: s.color || '#c9a84c'}"></div>
-              <div class="svc-info">
-                <div class="svc-name" :style="s.is_active ? '' : 'opacity:.5'">{{ s.name }}</div>
-                <div class="svc-meta">{{ s.category || '—' }} &nbsp;·&nbsp; {{ s.duration ? s.duration + ' хв' : '' }} &nbsp;·&nbsp; {{ priceDisplay(s) }}</div>
+
+          <!-- Upgrade card -->
+          <div class="card sub-upgrade-card">
+            <div class="card-body" style="display:flex;flex-direction:column;gap:14px;align-items:center;text-align:center;">
+              <div style="width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#c9a84c,#e8c96d);display:flex;align-items:center;justify-content:center;">
+                <i class="fa fa-rocket" style="color:#fff;font-size:20px;"></i>
               </div>
-              <span v-if="!s.is_active" style="font-size:11px;color:var(--text-muted);margin-right:8px;">Неактивна</span>
-              <button class="btn btn-ghost btn-sm btn-icon" @click="toggleSvc(s)" :title="s.is_active ? 'Деактивувати' : 'Активувати'">
-                <i :class="'fa fa-' + (s.is_active ? 'eye-slash' : 'eye')"></i>
+              <div>
+                <p style="font-size:16px;font-weight:700;margin-bottom:4px;">Business</p>
+                <p style="font-size:13px;color:var(--text-sub);">Для студій та команд майстрів</p>
+              </div>
+              <div style="background:var(--bg-2);border-radius:var(--r);padding:14px 20px;width:100%;">
+                <p style="font-size:24px;font-weight:800;">599 ₴<span style="font-size:13px;font-weight:400;color:var(--text-muted);">/міс</span></p>
+              </div>
+              <div style="width:100%;text-align:left;display:flex;flex-direction:column;gap:6px;">
+                <div class="sub-feature"><i class="fa fa-check sub-feat-ok"></i><span>Усе з Pro</span></div>
+                <div class="sub-feature"><i class="fa fa-check sub-feat-ok"></i><span>До 5 майстрів в одному акаунті</span></div>
+                <div class="sub-feature"><i class="fa fa-check sub-feat-ok"></i><span>Пріоритетна підтримка</span></div>
+                <div class="sub-feature"><i class="fa fa-check sub-feat-ok"></i><span>Корпоративний домен</span></div>
+              </div>
+              <button class="btn btn-primary w-full" style="justify-content:center;" disabled>
+                <i class="fa fa-arrow-up"></i> Перейти на Business
               </button>
-              <button class="btn btn-ghost btn-sm btn-icon" @click="editSvc(s)"><i class="fa fa-pen"></i></button>
-              <button class="btn btn-danger btn-sm btn-icon" @click="deleteSvc(s)"><i class="fa fa-trash"></i></button>
-            </div>
-          </div>
-        </div>
-      </template>
-
-      <!-- Security -->
-      <template v-if="tab==='security'">
-        <div class="card">
-          <div class="card-header"><span class="card-title">Інформація про акаунт</span></div>
-          <div class="card-body">
-            <div class="account-info-grid">
-              <div class="account-info-item">
-                <span class="account-info-label">Роль</span>
-                <m-badge :status="user.role"></m-badge>
-              </div>
-              <div class="account-info-item">
-                <span class="account-info-label">Тариф</span>
-                <m-badge :status="user.plan"></m-badge>
-              </div>
-              <div class="account-info-item">
-                <span class="account-info-label">Підписка</span>
-                <m-badge :status="user.subscription_status"></m-badge>
-              </div>
-              <div class="account-info-item" v-if="user.subscription_ends_at">
-                <span class="account-info-label">Діє до</span>
-                <span class="account-info-value">{{ M.fmtFullDate(user.subscription_ends_at) }}</span>
-              </div>
-              <div class="account-info-item">
-                <span class="account-info-label">Реєстрація</span>
-                <span class="account-info-value">{{ M.fmtFullDate(user.created_at) }}</span>
-              </div>
-              <div class="account-info-item">
-                <span class="account-info-label">ID акаунту</span>
-                <span class="account-info-value">#{{ user.id }}</span>
-              </div>
+              <p style="font-size:10px;color:var(--text-muted);">Незабаром · Наразі в розробці</p>
             </div>
           </div>
         </div>
 
+        <!-- Billing history -->
         <div class="card">
-          <div class="card-header"><span class="card-title">Зміна пароля</span></div>
-          <div class="card-body" style="display:flex;flex-direction:column;gap:12px;">
-            <div class="form-group">
-              <label class="label">Поточний пароль</label>
-              <input type="password" v-model="pwForm.current_password" class="input">
+          <div class="card-header"><span class="card-title">Історія платежів</span></div>
+          <div>
+            <div class="sub-bill-row">
+              <div>
+                <p style="font-size:13px;font-weight:500;">Pro · червень 2026</p>
+                <p style="font-size:11px;color:var(--text-muted);">14 червня 2026</p>
+              </div>
+              <span class="sub-bill-amount">299 ₴</span>
+              <span class="sub-status-badge sub-active" style="font-size:11px;">Сплачено</span>
             </div>
-            <div class="form-group">
-              <label class="label">Новий пароль</label>
-              <input type="password" v-model="pwForm.password" class="input">
+            <div class="sub-bill-row">
+              <div>
+                <p style="font-size:13px;font-weight:500;">Pro · травень 2026</p>
+                <p style="font-size:11px;color:var(--text-muted);">14 травня 2026</p>
+              </div>
+              <span class="sub-bill-amount">299 ₴</span>
+              <span class="sub-status-badge sub-active" style="font-size:11px;">Сплачено</span>
             </div>
-            <div class="form-group">
-              <label class="label">Підтвердіть новий пароль</label>
-              <input type="password" v-model="pwForm.password_confirmation" class="input">
+            <div class="sub-bill-row">
+              <div>
+                <p style="font-size:13px;font-weight:500;">Pro · квітень 2026</p>
+                <p style="font-size:11px;color:var(--text-muted);">14 квітня 2026</p>
+              </div>
+              <span class="sub-bill-amount">299 ₴</span>
+              <span class="sub-status-badge sub-active" style="font-size:11px;">Сплачено</span>
             </div>
-            <p v-if="pwError" style="color:var(--cancelled);font-size:12px;">{{ pwError }}</p>
-            <p v-if="pwSaved" style="color:var(--completed);font-size:12px;"><i class="fa fa-check"></i> Пароль змінено</p>
-            <button class="btn btn-primary btn-sm" @click="changePassword" :disabled="savingPw">
-              {{ savingPw ? 'Збереження…' : 'Змінити пароль' }}
-            </button>
           </div>
         </div>
       </template>
 
     </div>
+  </div>
+
+  <!-- Floating save button -->
+  <div v-if="profileDirty || hoursDirty" class="float-save-wrap">
+    <button class="btn btn-primary float-save-btn" @click="saveAll" :disabled="savingProfile || savingHours">
+      <i class="fa fa-floppy-disk"></i>
+      {{ (savingProfile || savingHours) ? 'Збереження…' : 'Зберегти зміни' }}
+    </button>
   </div>
 
   <!-- Service modal -->
