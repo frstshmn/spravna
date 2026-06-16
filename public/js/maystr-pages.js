@@ -1535,12 +1535,114 @@ const ClientsPage = {
    5. PUBLIC PAGE SETTINGS
    ===================================================================== */
 /* =====================================================================
+   MAvatarCropper — drag/pinch/scroll crop modal, outputs 400×400 JPEG
+   ===================================================================== */
+const MAvatarCropper = {
+    props: ['file'],
+    emits: ['save', 'cancel'],
+    setup(props, { emit }) {
+        const VIEW = 280, OUT = 400;
+        const imgRef    = ref(null);
+        const imageUrl  = ref('');
+        const natW      = ref(0), natH = ref(0);
+        const userScale = ref(1);
+        const ox = ref(0), oy = ref(0);
+
+        const baseScale  = computed(() => (natW.value && natH.value) ? Math.max(VIEW / natW.value, VIEW / natH.value) : 1);
+        const totalScale = computed(() => baseScale.value * userScale.value);
+
+        function clamp() {
+            const hw = Math.max(0, (natW.value * totalScale.value - VIEW) / 2);
+            const hh = Math.max(0, (natH.value * totalScale.value - VIEW) / 2);
+            ox.value = Math.max(-hw, Math.min(hw, ox.value));
+            oy.value = Math.max(-hh, Math.min(hh, oy.value));
+        }
+
+        const ptrs = new Map();
+        let lastDist = 0;
+        function onPtrDown(e) {
+            e.currentTarget.setPointerCapture(e.pointerId);
+            ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+        }
+        function onPtrMove(e) {
+            const prev = ptrs.get(e.pointerId);
+            if (!prev) return;
+            if (ptrs.size === 1) {
+                ox.value += e.clientX - prev.x;
+                oy.value += e.clientY - prev.y;
+                clamp();
+            } else if (ptrs.size === 2) {
+                const ids = [...ptrs.keys()];
+                const other = ptrs.get(ids[0] === e.pointerId ? ids[1] : ids[0]);
+                if (other) {
+                    const d = Math.hypot(e.clientX - other.x, e.clientY - other.y);
+                    if (lastDist) { userScale.value = Math.max(1, Math.min(5, userScale.value * (d / lastDist))); clamp(); }
+                    lastDist = d;
+                }
+            }
+            ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+        }
+        function onPtrUp(e) { ptrs.delete(e.pointerId); if (ptrs.size < 2) lastDist = 0; }
+        function onWheel(e) {
+            e.preventDefault();
+            userScale.value = Math.max(1, Math.min(5, userScale.value - e.deltaY / 400));
+            clamp();
+        }
+        function onImgLoad() {
+            natW.value = imgRef.value.naturalWidth;
+            natH.value = imgRef.value.naturalHeight;
+            userScale.value = 1; ox.value = 0; oy.value = 0;
+        }
+        function save() {
+            const canvas = document.createElement('canvas');
+            canvas.width = canvas.height = OUT;
+            const ctx = canvas.getContext('2d');
+            const ts = totalScale.value;
+            ctx.drawImage(imgRef.value,
+                natW.value / 2 - (VIEW / 2 + ox.value) / ts,
+                natH.value / 2 - (VIEW / 2 + oy.value) / ts,
+                VIEW / ts, VIEW / ts,
+                0, 0, OUT, OUT);
+            canvas.toBlob(blob => emit('save', blob), 'image/jpeg', 0.92);
+        }
+        watch(() => props.file, f => { if (f) imageUrl.value = URL.createObjectURL(f); }, { immediate: true });
+        const imgStyle = computed(() => ({
+            position: 'absolute', left: '50%', top: '50%', maxWidth: 'none', pointerEvents: 'none',
+            transform: `translate(calc(-50% + ${ox.value}px), calc(-50% + ${oy.value}px)) scale(${totalScale.value})`,
+            transformOrigin: 'center',
+        }));
+        return { imgRef, imageUrl, imgStyle, onPtrDown, onPtrMove, onPtrUp, onWheel, onImgLoad, save };
+    },
+    template: `
+<div class="modal-overlay">
+  <div class="modal-box" style="max-width:360px;">
+    <div class="modal-header">
+      <span class="modal-title">Обрізати фото</span>
+      <button class="btn-icon" @click="$emit('cancel')"><i class="fa fa-times"></i></button>
+    </div>
+    <div class="modal-body" style="display:flex;flex-direction:column;align-items:center;gap:12px;padding-top:8px;">
+      <p style="font-size:12px;color:var(--text-sub);text-align:center;margin:0;">Перетягніть щоб вирівняти · Прокрутіть або зведіть для масштабу</p>
+      <div style="position:relative;width:280px;height:280px;overflow:hidden;border-radius:50%;background:var(--bg-sub);cursor:grab;touch-action:none;flex-shrink:0;box-shadow:0 0 0 3px var(--accent);"
+           @pointerdown="onPtrDown" @pointermove="onPtrMove" @pointerup="onPtrUp" @pointercancel="onPtrUp" @wheel.prevent="onWheel">
+        <img ref="imgRef" :src="imageUrl" :style="imgStyle" @load="onImgLoad" @dragstart.prevent>
+      </div>
+      <p style="font-size:11px;color:var(--text-muted);text-align:center;margin:0;">Збережеться як квадрат 400×400 px</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" @click="$emit('cancel')">Скасувати</button>
+      <button class="btn btn-primary" @click="save"><i class="fa fa-check"></i> Зберегти</button>
+    </div>
+  </div>
+</div>`
+};
+
+/* =====================================================================
    6. SETTINGS
    ===================================================================== */
 const SettingsPage = {
     props: ['api', 'user'],
     emits: ['user-updated'],
-    components: { MModal, MBadge, MTimePicker, ServiceFormBody },
+    components: { MModal, MBadge, MTimePicker, ServiceFormBody, MAvatarCropper },
     setup(props, { emit }) {
         const tab = ref('profile');
         const workingHours = ref([]);
@@ -1572,6 +1674,8 @@ const SettingsPage = {
         const avatarUrl = ref(M.avatarSrc(props.user?.profile));
         const avatarUploading = ref(false);
         const fileInput = ref(null);
+        const showCropper = ref(false);
+        const cropperFile = ref(null);
         const user = computed(() => props.user || {});
 
         const publicUrl = computed(() => window.location.origin + '/master/' + (profile.value?.slug || ''));
@@ -1590,19 +1694,24 @@ const SettingsPage = {
         }
 
         function pickAvatar() { fileInput.value?.click(); }
-        async function onAvatarChange(e) {
+        function onAvatarChange(e) {
             const file = e.target.files[0];
             if (!file) return;
+            cropperFile.value = file;
+            showCropper.value = true;
+            e.target.value = '';
+        }
+        async function onCropSave(blob) {
+            showCropper.value = false;
             avatarUploading.value = true;
             const fd = new FormData();
-            fd.append('avatar', file);
+            fd.append('avatar', blob, 'avatar.jpg');
             try {
                 const { data } = await props.api.post('/profile/avatar', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
                 avatarUrl.value = M.avatarSrc({ avatar: data.avatar });
                 emit('user-updated');
             } catch (e) {}
             avatarUploading.value = false;
-            e.target.value = '';
         }
 
         function applyToAll(h) {
@@ -1693,11 +1802,13 @@ const SettingsPage = {
             showSvcModal, editingSvc, copied, publicUrl,
             pwForm, pwError, pwSaved, savingPw, dayNames, priceDisplay, saveHours, loadServices, editSvc, newSvc,
             deleteSvc, toggleSvc, onSvcSaved, saveProfile, savePublicSettings, copyLink, changePassword,
-            avatarUrl, avatarUploading, fileInput, pickAvatar, onAvatarChange, applyToAll,
+            avatarUrl, avatarUploading, fileInput, pickAvatar, onAvatarChange, onCropSave, showCropper, cropperFile, applyToAll,
         };
     },
     template: `
 <div>
+  <m-avatar-cropper v-if="showCropper" :file="cropperFile" @save="onCropSave" @cancel="showCropper = false"></m-avatar-cropper>
+
   <h1 class="mb-16">Налаштування</h1>
 
   <div class="settings-layout">
