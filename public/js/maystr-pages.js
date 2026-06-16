@@ -552,44 +552,79 @@ const SchedulePage = {
             });
         }
 
-        /* ── Drag & drop rescheduling ── */
+        /* ── Pointer Events drag (mouse + touch unified) ── */
         const draggingId = ref(null);
         const draggingDuration = ref(60);
         const dropPreview = ref(null);
-        function onApptDragStart(a) { draggingId.value = a.id; draggingDuration.value = a.duration || 60; }
-        function onApptDragEnd() { draggingId.value = null; dropPreview.value = null; }
-        function snapMinutes(e) {
-            const rect = e.currentTarget.getBoundingClientRect();
-            const offsetY = e.clientY - rect.top;
+        let _ptrDrag = null;
+
+        function _getDayColAtPoint(x, y) {
+            const els = document.elementsFromPoint(x, y);
+            for (const el of els) {
+                const col = el.closest('.week-day-col[data-date]');
+                if (col) return col;
+            }
+            return null;
+        }
+
+        function _snapMinutes(colEl, clientY) {
+            const rect = colEl.getBoundingClientRect();
+            const offsetY = clientY - rect.top;
             let minutes = gridStartMin + offsetY / PX_PER_MIN;
-            return Math.max(0, Math.round(minutes / 15) * 15);
+            return Math.max(gridStartMin, Math.round(minutes / 15) * 15);
         }
-        function onDayDragOver(e, date) {
-            if (!draggingId.value) return;
-            const minutes = snapMinutes(e);
-            dropPreview.value = {
-                date,
-                top: (minutes - gridStartMin) * PX_PER_MIN,
-                height: draggingDuration.value * PX_PER_MIN,
-            };
+
+        function onApptPointerDown(e, a) {
+            if (e.pointerType === 'mouse' && e.button !== 0) return;
+            e.stopPropagation();
+            e.currentTarget.setPointerCapture(e.pointerId);
+            _ptrDrag = { id: a.id, appt: a, startX: e.clientX, startY: e.clientY, moved: false, duration: a.duration || 60 };
         }
-        async function onDayDrop(e, date) {
-            const id = draggingId.value;
+
+        function onApptPointerMove(e) {
+            if (!_ptrDrag) return;
+            const dx = e.clientX - _ptrDrag.startX;
+            const dy = e.clientY - _ptrDrag.startY;
+            if (!_ptrDrag.moved && (Math.abs(dx) > 6 || Math.abs(dy) > 6)) {
+                _ptrDrag.moved = true;
+                draggingId.value = _ptrDrag.id;
+                draggingDuration.value = _ptrDrag.duration;
+            }
+            if (!_ptrDrag.moved) return;
+            const col = _getDayColAtPoint(e.clientX, e.clientY);
+            if (col) {
+                const minutes = _snapMinutes(col, e.clientY);
+                dropPreview.value = { date: col.dataset.date, top: (minutes - gridStartMin) * PX_PER_MIN, height: _ptrDrag.duration * PX_PER_MIN };
+            } else {
+                dropPreview.value = null;
+            }
+        }
+
+        async function onApptPointerUp(e, a) {
+            if (!_ptrDrag || _ptrDrag.id !== a.id) { _ptrDrag = null; return; }
+            const drag = _ptrDrag;
+            _ptrDrag = null;
             draggingId.value = null;
             dropPreview.value = null;
-            if (!id) return;
-            const appt = appointments.value.find(a => a.id === id);
-            if (!appt) return;
-            const minutes = snapMinutes(e);
+            if (!drag.moved) { openEdit(drag.appt); return; }
+            const col = _getDayColAtPoint(e.clientX, e.clientY);
+            if (!col) return;
+            const minutes = _snapMinutes(col, e.clientY);
             const hour = Math.floor(minutes / 60), minute = minutes % 60;
-            const scheduled_at = `${date}T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
-            const prev = appt.scheduled_at;
-            appt.scheduled_at = scheduled_at;
+            const scheduled_at = `${col.dataset.date}T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+            const prev = drag.appt.scheduled_at;
+            drag.appt.scheduled_at = scheduled_at;
             try {
-                await props.api.put(`/appointments/${id}`, { scheduled_at });
+                await props.api.put(`/appointments/${drag.appt.id}`, { scheduled_at });
             } catch (err) {
-                appt.scheduled_at = prev;
+                drag.appt.scheduled_at = prev;
             }
+        }
+
+        function onApptPointerCancel() {
+            _ptrDrag = null;
+            draggingId.value = null;
+            dropPreview.value = null;
         }
 
         /* ── Current time marker ── */
@@ -771,7 +806,7 @@ const SchedulePage = {
             showModal, modalTitle, editingAppt, newApptDate, newApptHour, newApptMinute,
             prevWeek, nextWeek, prevMonth, nextMonth, dayAppts, monthAppts, apptStyle, apptTimeRange, apptTypeLabel, apptOverlaps,
             openNew, openEdit, onSaved, isOffHours, showRequests, dayRequests, requestStyle, localDateStr,
-            onApptDragStart, onApptDragEnd, onDayDrop, onDayDragOver, dropPreview, nowLineVisible, nowLineStyle, nowTimeLabel, slotEdgeClass, draggingId,
+            onApptPointerDown, onApptPointerMove, onApptPointerUp, onApptPointerCancel, dropPreview, nowLineVisible, nowLineStyle, nowTimeLabel, slotEdgeClass, draggingId,
             showRespondModal, selectedRequest, openRequest, onResponded,
             prepDuration, prepAutoEnabled, prepApplying, sessionsWithoutPrep, applyPrepToWeek, removeAutoPrep,
         };
@@ -812,8 +847,7 @@ const SchedulePage = {
         </div>
       </div>
       <!-- Day columns -->
-      <div v-for="(day, di) in weekDays" :key="day.date" :class="'week-day-col' + (day.isToday ? ' today' : '')" :style="{height: gridHeight+'px'}"
-        @dragover.prevent="onDayDragOver($event, day.date)" @drop="onDayDrop($event, day.date)">
+      <div v-for="(day, di) in weekDays" :key="day.date" :class="'week-day-col' + (day.isToday ? ' today' : '')" :style="{height: gridHeight+'px'}" :data-date="day.date">
         <div v-for="(slot, si) in halfSlots" :key="slot.hour+'-'+slot.minute"
           :class="'week-half-cell' + (isOffHours(di, slot.hour) ? ' off-hours' : '') + (slot.minute===30 ? ' half' : '') + slotEdgeClass(di, si)"
           @click="openNew(day.date, slot.hour, slot.minute)">
@@ -830,8 +864,10 @@ const SchedulePage = {
         <div v-for="a in dayAppts(day.date)" :key="a.id"
           :class="'appt-block' + (a.type==='block' ? ' is-block' : '') + (apptOverlaps(a, day.date) ? ' overlap' : '') + (draggingId===a.id ? ' dragging' : '')"
           :style="[apptStyle(a), a.type!=='block' ? {background: a.service?.color || a.color || '#7c5cfc', color:'#fff'} : {}]"
-          draggable="true" @dragstart="onApptDragStart(a)" @dragend="onApptDragEnd"
-          @click.stop="openEdit(a)">
+          @pointerdown="onApptPointerDown($event, a)"
+          @pointermove="onApptPointerMove($event)"
+          @pointerup="onApptPointerUp($event, a)"
+          @pointercancel="onApptPointerCancel">
           <div class="appt-block-name">{{ a.type==='block' ? (a.title || a.title_display || 'Перерва') : (a.client?.name || a.title_display) }}</div>
           <div class="appt-block-meta">{{ apptTimeRange(a) }}<span v-if="apptTypeLabel(a)"> · {{ apptTypeLabel(a) }}</span></div>
         </div>
@@ -1498,192 +1534,6 @@ const ClientsPage = {
 /* =====================================================================
    5. PUBLIC PAGE SETTINGS
    ===================================================================== */
-const PublicPageSettings = {
-    props: ['api', 'user'],
-    components: { MModal },
-    setup(props) {
-        const profile = ref(null);
-        const saving = ref(false);
-        const saved = ref(false);
-        const copied = ref(false);
-        const uploading = ref(false);
-        const form = reactive({
-            name: '',
-            bio: '', specialty: '', phone: '', city: '', country: '',
-            instagram: '', website: '', booking_notice: '',
-            cancellation_policy: '', is_public: true, is_accepting_bookings: true, currency: 'UAH',
-        });
-
-        const publicUrl = computed(() => {
-            const slug = profile.value?.slug || '';
-            return window.location.origin + '/master/' + slug;
-        });
-
-        async function load() {
-            const { data } = await props.api.get('/profile');
-            profile.value = data.profile;
-            form.name = data.name || '';
-            Object.keys(form).forEach(k => { if (data.profile?.[k] !== undefined) form[k] = data.profile[k]; });
-        }
-
-        async function save() {
-            saving.value = true; saved.value = false;
-            await props.api.put('/profile', form);
-            saved.value = true; saving.value = false;
-            setTimeout(() => saved.value = false, 2500);
-        }
-
-        function copyLink() {
-            navigator.clipboard?.writeText(publicUrl.value);
-            copied.value = true; setTimeout(() => copied.value = false, 2000);
-        }
-
-        onMounted(load);
-        return { profile, form, saving, saved, copied, publicUrl, save, copyLink };
-    },
-    template: `
-<div>
-  <div class="flex items-center justify-between mb-16">
-    <h1>Публічна сторінка</h1>
-    <div class="flex gap-8">
-      <button class="btn btn-secondary btn-sm" @click="copyLink">
-        <i :class="copied ? 'fa fa-check' : 'fa fa-link'"></i> {{ copied ? 'Скопійовано!' : 'Копіювати посилання' }}
-      </button>
-      <a :href="publicUrl" target="_blank" class="btn btn-ghost btn-sm"><i class="fa fa-arrow-up-right-from-square"></i> Переглянути</a>
-    </div>
-  </div>
-
-  <div class="pub-layout">
-    <!-- Form -->
-    <div style="display:flex;flex-direction:column;gap:16px;">
-      <!-- Visibility -->
-      <div class="card card-body" style="display:flex;flex-direction:column;gap:12px;">
-        <h2>Видимість</h2>
-        <div class="toggle-wrap">
-          <button :class="'toggle' + (form.is_public ? ' on' : '')" @click="form.is_public = !form.is_public"></button>
-          <span style="font-size:13px;">Сторінка <strong>{{ form.is_public ? 'відкрита' : 'прихована' }}</strong></span>
-        </div>
-        <div class="toggle-wrap">
-          <button :class="'toggle' + (form.is_accepting_bookings ? ' on' : '')" @click="form.is_accepting_bookings = !form.is_accepting_bookings"></button>
-          <span style="font-size:13px;">{{ form.is_accepting_bookings ? 'Приймає' : 'Не приймає' }} запити на запис</span>
-        </div>
-      </div>
-
-      <!-- Profile info -->
-      <div class="card">
-        <div class="card-header"><span class="card-title">Інформація профілю</span></div>
-        <div class="card-body" style="display:flex;flex-direction:column;gap:12px;">
-          <div class="form-row">
-            <div class="form-group">
-              <label class="label">Ім'я</label>
-              <input v-model="form.name" class="input">
-            </div>
-            <div class="form-group">
-              <label class="label">Спеціалізація</label>
-              <select v-model="form.specialty" class="select">
-                <option value="">Оберіть…</option>
-                <option value="tattoo">Тату-майстер</option>
-                <option value="nails">Нейл-майстер</option>
-                <option value="brows">Бровіст</option>
-                <option value="lashes">Майстер вій</option>
-                <option value="piercing">П'єрсер</option>
-                <option value="pmu">Перманентний макіяж</option>
-                <option value="hair">Перукар</option>
-                <option value="massage">Масажист</option>
-                <option value="other">Інше</option>
-              </select>
-            </div>
-          </div>
-          <div class="form-group">
-            <label class="label">Про себе</label>
-            <textarea v-model="form.bio" class="textarea" placeholder="Розкажіть клієнтам про себе…"></textarea>
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label class="label">Місто</label>
-              <input v-model="form.city" class="input">
-            </div>
-            <div class="form-group">
-              <label class="label">Країна</label>
-              <input v-model="form.country" class="input">
-            </div>
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label class="label">Телефон</label>
-              <input v-model="form.phone" class="input" type="tel">
-            </div>
-            <div class="form-group">
-              <label class="label">Instagram</label>
-              <input v-model="form.instagram" class="input" placeholder="@handle">
-            </div>
-          </div>
-          <div class="form-group">
-            <label class="label">Сайт</label>
-            <input v-model="form.website" class="input" type="url" placeholder="https://…">
-          </div>
-        </div>
-      </div>
-
-      <!-- Booking info -->
-      <div class="card">
-        <div class="card-header"><span class="card-title">Умови запису</span></div>
-        <div class="card-body" style="display:flex;flex-direction:column;gap:12px;">
-          <div class="form-group">
-            <label class="label">Умови бронювання</label>
-            <input v-model="form.booking_notice" class="input" placeholder="напр. Записуйтесь мінімум за 2 тижні">
-          </div>
-          <div class="form-group">
-            <label class="label">Правила скасування</label>
-            <textarea v-model="form.cancellation_policy" class="textarea" placeholder="Опишіть умови скасування запису…"></textarea>
-          </div>
-          <div class="form-group">
-            <label class="label">Валюта</label>
-            <select v-model="form.currency" class="select" style="width:120px;">
-              <option value="USD">USD $</option>
-              <option value="EUR">EUR €</option>
-              <option value="GBP">GBP £</option>
-              <option value="UAH">UAH ₴</option>
-            </select>
-          </div>
-        </div>
-      </div>
-
-      <div class="flex justify-end gap-8">
-        <p v-if="saved" style="color:var(--completed);font-size:13px;align-self:center;"><i class="fa fa-check"></i> Збережено</p>
-        <button class="btn btn-primary" @click="save" :disabled="saving">
-          <i class="fa fa-save"></i> {{ saving ? 'Збереження…' : 'Зберегти зміни' }}
-        </button>
-      </div>
-    </div>
-
-    <!-- Preview -->
-    <div class="pub-preview">
-      <div class="pub-preview-header">
-        <div class="avatar av-lg" style="margin:0 auto 10px;">{{ form.name?.charAt(0) }}</div>
-        <p style="font-weight:700;font-size:16px;">{{ form.name || "Ваше ім'я" }}</p>
-        <p style="font-size:12px;color:var(--text-sub);margin-top:2px;">{{ form.specialty || 'Майстер' }}</p>
-        <p v-if="form.city" style="font-size:11px;color:var(--text-muted);margin-top:4px;"><i class="fa fa-location-dot"></i> {{ form.city }}{{ form.country ? ', ' + form.country : '' }}</p>
-      </div>
-      <div style="padding:14px 16px;border-bottom:1px solid var(--border);">
-        <p v-if="form.bio" style="font-size:12px;color:var(--text-sub);line-height:1.6;">{{ form.bio }}</p>
-        <p v-else style="font-size:12px;color:var(--text-muted);font-style:italic;">Опис ще не заповнено</p>
-      </div>
-      <div style="padding:12px 16px;">
-        <p style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;letter-spacing:.5px;">Ваше посилання</p>
-        <code style="font-size:11px;color:var(--accent);word-break:break-all;">{{ publicUrl }}</code>
-      </div>
-      <div style="padding:0 16px 14px;">
-        <button :class="'btn w-full ' + (form.is_accepting_bookings ? 'btn-primary' : 'btn-secondary')" style="justify-content:center;" disabled>
-          <i class="fa fa-calendar-plus"></i>
-          {{ form.is_accepting_bookings ? 'Записатися' : 'Запис закритий' }}
-        </button>
-      </div>
-    </div>
-  </div>
-</div>`
-};
-
 /* =====================================================================
    6. SETTINGS
    ===================================================================== */
@@ -1695,23 +1545,48 @@ const SettingsPage = {
         const tab = ref('profile');
         const workingHours = ref([]);
         const services = ref([]);
+        const profile = ref(null);
+
         const savingProfile = ref(false);
         const savedProfile = ref(false);
+        const savingPublic = ref(false);
+        const savedPublic = ref(false);
         const savingHours = ref(false);
         const savedHours = ref(false);
         const showSvcModal = ref(false);
         const editingSvc = ref(null);
+        const copied = ref(false);
+
         const pwForm = reactive({ current_password: '', password: '', password_confirmation: '' });
         const pwError = ref(''); const pwSaved = ref(false); const savingPw = ref(false);
 
-        const profileForm = reactive({
+        const form = reactive({
             name: props.user?.name || '',
             email: props.user?.email || '',
+            bio: '', specialty: '', phone: '', city: '', country: '',
+            instagram: '', website: '', booking_notice: '', cancellation_policy: '',
+            is_public: true, is_accepting_bookings: true, show_availability: true, currency: 'UAH',
+            social_links: { facebook: '', tiktok: '', telegram: '', whatsapp: '' },
         });
 
         const avatarUrl = ref(M.avatarSrc(props.user?.profile));
         const avatarUploading = ref(false);
         const fileInput = ref(null);
+        const user = computed(() => props.user || {});
+
+        const publicUrl = computed(() => window.location.origin + '/master/' + (profile.value?.slug || ''));
+
+        async function load() {
+            const { data } = await props.api.get('/profile');
+            profile.value = data.profile;
+            form.name = data.name || '';
+            form.email = data.email || '';
+            const p = data.profile || {};
+            ['bio','specialty','phone','city','country','instagram','website','booking_notice','cancellation_policy','is_public','is_accepting_bookings','show_availability','currency'].forEach(k => {
+                if (p[k] !== undefined && p[k] !== null) form[k] = p[k];
+            });
+            form.social_links = { facebook: '', tiktok: '', telegram: '', whatsapp: '', ...(p.social_links || {}) };
+        }
 
         function pickAvatar() { fileInput.value?.click(); }
         async function onAvatarChange(e) {
@@ -1763,10 +1638,29 @@ const SettingsPage = {
 
         async function saveProfile() {
             savingProfile.value = true;
-            await props.api.put('/profile', { name: profileForm.name });
+            await props.api.put('/profile', {
+                name: form.name, bio: form.bio, specialty: form.specialty, phone: form.phone,
+                city: form.city, country: form.country, instagram: form.instagram, website: form.website,
+            });
             savedProfile.value = true; savingProfile.value = false;
             emit('user-updated');
             setTimeout(() => savedProfile.value = false, 2000);
+        }
+
+        async function savePublicSettings() {
+            savingPublic.value = true;
+            await props.api.put('/profile', {
+                is_public: form.is_public, is_accepting_bookings: form.is_accepting_bookings, show_availability: form.show_availability,
+                booking_notice: form.booking_notice, cancellation_policy: form.cancellation_policy,
+                currency: form.currency, social_links: form.social_links,
+            });
+            savedPublic.value = true; savingPublic.value = false;
+            setTimeout(() => savedPublic.value = false, 2500);
+        }
+
+        function copyLink() {
+            navigator.clipboard?.writeText(publicUrl.value);
+            copied.value = true; setTimeout(() => copied.value = false, 2000);
         }
 
         async function changePassword() {
@@ -1790,12 +1684,14 @@ const SettingsPage = {
             return '—';
         }
 
-        onMounted(() => { loadHours(); loadServices(); });
+        onMounted(() => { load(); loadHours(); loadServices(); });
 
         return {
-            tab, workingHours, services, savingProfile, savedProfile, savingHours, savedHours, showSvcModal, editingSvc,
-            profileForm, pwForm, pwError, pwSaved, savingPw, dayNames, priceDisplay, saveHours, loadServices, editSvc, newSvc,
-            deleteSvc, toggleSvc, onSvcSaved, saveProfile, changePassword,
+            M, tab, workingHours, services, form, profile, user,
+            savingProfile, savedProfile, savingPublic, savedPublic, savingHours, savedHours,
+            showSvcModal, editingSvc, copied, publicUrl,
+            pwForm, pwError, pwSaved, savingPw, dayNames, priceDisplay, saveHours, loadServices, editSvc, newSvc,
+            deleteSvc, toggleSvc, onSvcSaved, saveProfile, savePublicSettings, copyLink, changePassword,
             avatarUrl, avatarUploading, fileInput, pickAvatar, onAvatarChange, applyToAll,
         };
     },
@@ -1808,6 +1704,9 @@ const SettingsPage = {
     <div class="settings-nav">
       <button :class="'settings-nav-item' + (tab==='profile' ? ' active' : '')" @click="tab='profile'">
         <i class="fa fa-user"></i> Профіль
+      </button>
+      <button :class="'settings-nav-item' + (tab==='public' ? ' active' : '')" @click="tab='public'">
+        <i class="fa fa-globe"></i> Публічна сторінка
       </button>
       <button :class="'settings-nav-item' + (tab==='hours' ? ' active' : '')" @click="tab='hours'">
         <i class="fa fa-clock"></i> Робочі години
@@ -1830,8 +1729,8 @@ const SettingsPage = {
           <div class="card-body">
             <div class="avatar-upload-row">
               <div class="avatar av-xl">
-                <img v-if="avatarUrl" :src="avatarUrl" :alt="profileForm.name">
-                <span v-else>{{ profileForm.name?.charAt(0)?.toUpperCase() || '?' }}</span>
+                <img v-if="avatarUrl" :src="avatarUrl" :alt="form.name">
+                <span v-else>{{ form.name?.charAt(0)?.toUpperCase() || '?' }}</span>
               </div>
               <div>
                 <button type="button" class="btn btn-secondary btn-sm" @click="pickAvatar" :disabled="avatarUploading">
@@ -1845,22 +1744,202 @@ const SettingsPage = {
         </div>
 
         <div class="card">
-          <div class="card-header"><span class="card-title">Дані акаунту</span></div>
+          <div class="card-header"><span class="card-title">Особиста інформація</span></div>
           <div class="card-body" style="display:flex;flex-direction:column;gap:12px;">
             <div class="form-row">
               <div class="form-group">
                 <label class="label">Повне ім'я</label>
-                <input v-model="profileForm.name" class="input">
+                <input v-model="form.name" class="input">
               </div>
               <div class="form-group">
                 <label class="label">Електронна пошта</label>
-                <input v-model="profileForm.email" class="input" disabled style="opacity:.6;">
+                <input v-model="form.email" class="input" disabled style="opacity:.6;">
               </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="label">Спеціалізація</label>
+                <select v-model="form.specialty" class="select">
+                  <option value="">Оберіть…</option>
+                  <option value="tattoo">Тату-майстер</option>
+                  <option value="nails">Нейл-майстер</option>
+                  <option value="brows">Бровіст</option>
+                  <option value="lashes">Майстер вій</option>
+                  <option value="piercing">П'єрсер</option>
+                  <option value="pmu">Перманентний макіяж</option>
+                  <option value="hair">Перукар</option>
+                  <option value="massage">Масажист</option>
+                  <option value="other">Інше</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="label">Телефон</label>
+                <input v-model="form.phone" class="input" type="tel">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="label">Місто</label>
+                <input v-model="form.city" class="input">
+              </div>
+              <div class="form-group">
+                <label class="label">Країна</label>
+                <input v-model="form.country" class="input">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="label">Instagram</label>
+                <input v-model="form.instagram" class="input" placeholder="@handle">
+              </div>
+              <div class="form-group">
+                <label class="label">Сайт</label>
+                <input v-model="form.website" class="input" type="url" placeholder="https://…">
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="label">Про себе</label>
+              <textarea v-model="form.bio" class="textarea" placeholder="Розкажіть клієнтам про себе…"></textarea>
             </div>
             <div class="flex justify-end gap-8">
               <p v-if="savedProfile" style="color:var(--completed);font-size:13px;align-self:center;"><i class="fa fa-check"></i> Збережено</p>
               <button class="btn btn-primary btn-sm" @click="saveProfile" :disabled="savingProfile">
                 {{ savingProfile ? 'Збереження…' : 'Зберегти зміни' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </template>
+
+      <!-- Public page -->
+      <template v-if="tab==='public'">
+        <div class="card card-body pub-link-bar">
+          <div>
+            <p style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text-muted);letter-spacing:.5px;margin-bottom:4px;">Ваше посилання</p>
+            <code style="font-size:12px;color:var(--accent);word-break:break-all;">{{ publicUrl }}</code>
+          </div>
+          <div class="flex gap-8" style="flex-shrink:0;">
+            <button class="btn btn-secondary btn-sm" @click="copyLink">
+              <i :class="copied ? 'fa fa-check' : 'fa fa-link'"></i> {{ copied ? 'Скопійовано!' : 'Копіювати' }}
+            </button>
+            <a :href="publicUrl" target="_blank" class="btn btn-ghost btn-sm"><i class="fa fa-arrow-up-right-from-square"></i> Переглянути</a>
+          </div>
+        </div>
+
+        <div class="pub-layout">
+          <!-- Form -->
+          <div style="display:flex;flex-direction:column;gap:16px;">
+            <!-- Visibility -->
+            <div class="card card-body" style="display:flex;flex-direction:column;gap:12px;">
+              <h2>Видимість</h2>
+              <div class="toggle-wrap">
+                <button :class="'toggle' + (form.is_public ? ' on' : '')" @click="form.is_public = !form.is_public"></button>
+                <span style="font-size:13px;">Сторінка <strong>{{ form.is_public ? 'відкрита' : 'прихована' }}</strong></span>
+              </div>
+              <div class="toggle-wrap">
+                <button :class="'toggle' + (form.is_accepting_bookings ? ' on' : '')" @click="form.is_accepting_bookings = !form.is_accepting_bookings"></button>
+                <span style="font-size:13px;">{{ form.is_accepting_bookings ? 'Приймає' : 'Не приймає' }} запити на запис</span>
+              </div>
+              <div class="toggle-wrap">
+                <button :class="'toggle' + (form.show_availability ? ' on' : '')" @click="form.show_availability = !form.show_availability"></button>
+                <span style="font-size:13px;">Календар доступності <strong>{{ form.show_availability ? 'увімкнений' : 'вимкнений' }}</strong></span>
+              </div>
+            </div>
+
+            <!-- Booking info -->
+            <div class="card">
+              <div class="card-header"><span class="card-title">Умови запису</span></div>
+              <div class="card-body" style="display:flex;flex-direction:column;gap:12px;">
+                <div class="form-group">
+                  <label class="label">Умови бронювання</label>
+                  <input v-model="form.booking_notice" class="input" placeholder="напр. Записуйтесь мінімум за 2 тижні">
+                </div>
+                <div class="form-group">
+                  <label class="label">Правила скасування</label>
+                  <textarea v-model="form.cancellation_policy" class="textarea" placeholder="Опишіть умови скасування запису…"></textarea>
+                </div>
+                <div class="form-group">
+                  <label class="label">Валюта</label>
+                  <select v-model="form.currency" class="select" style="width:120px;">
+                    <option value="USD">USD $</option>
+                    <option value="EUR">EUR €</option>
+                    <option value="GBP">GBP £</option>
+                    <option value="UAH">UAH ₴</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <!-- Social links -->
+            <div class="card">
+              <div class="card-header"><span class="card-title">Соціальні мережі</span></div>
+              <div class="card-body" style="display:flex;flex-direction:column;gap:12px;">
+                <div class="form-row">
+                  <div class="form-group">
+                    <label class="label">Facebook</label>
+                    <div class="input-icon-group">
+                      <i class="fa-brands fa-facebook"></i>
+                      <input v-model="form.social_links.facebook" class="input" placeholder="https://facebook.com/…">
+                    </div>
+                  </div>
+                  <div class="form-group">
+                    <label class="label">TikTok</label>
+                    <div class="input-icon-group">
+                      <i class="fa-brands fa-tiktok"></i>
+                      <input v-model="form.social_links.tiktok" class="input" placeholder="https://tiktok.com/@…">
+                    </div>
+                  </div>
+                </div>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label class="label">Telegram</label>
+                    <div class="input-icon-group">
+                      <i class="fa-brands fa-telegram"></i>
+                      <input v-model="form.social_links.telegram" class="input" placeholder="https://t.me/…">
+                    </div>
+                  </div>
+                  <div class="form-group">
+                    <label class="label">WhatsApp</label>
+                    <div class="input-icon-group">
+                      <i class="fa-brands fa-whatsapp"></i>
+                      <input v-model="form.social_links.whatsapp" class="input" placeholder="https://wa.me/…">
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="flex justify-end gap-8">
+              <p v-if="savedPublic" style="color:var(--completed);font-size:13px;align-self:center;"><i class="fa fa-check"></i> Збережено</p>
+              <button class="btn btn-primary" @click="savePublicSettings" :disabled="savingPublic">
+                <i class="fa fa-save"></i> {{ savingPublic ? 'Збереження…' : 'Зберегти зміни' }}
+              </button>
+            </div>
+          </div>
+
+          <!-- Preview -->
+          <div class="pub-preview">
+            <div class="pub-preview-header">
+              <div class="avatar av-lg" style="margin:0 auto 10px;">
+                <img v-if="avatarUrl" :src="avatarUrl" :alt="form.name">
+                <template v-else>{{ form.name?.charAt(0) }}</template>
+              </div>
+              <p style="font-weight:700;font-size:16px;">{{ form.name || "Ваше ім'я" }}</p>
+              <p style="font-size:12px;color:var(--text-sub);margin-top:2px;">{{ form.specialty || 'Майстер' }}</p>
+              <p v-if="form.city" style="font-size:11px;color:var(--text-muted);margin-top:4px;"><i class="fa fa-location-dot"></i> {{ form.city }}{{ form.country ? ', ' + form.country : '' }}</p>
+            </div>
+            <div style="padding:14px 16px;border-bottom:1px solid var(--border);">
+              <p v-if="form.bio" style="font-size:12px;color:var(--text-sub);line-height:1.6;">{{ form.bio }}</p>
+              <p v-else style="font-size:12px;color:var(--text-muted);font-style:italic;">Опис ще не заповнено</p>
+            </div>
+            <div style="padding:12px 16px;">
+              <p style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;letter-spacing:.5px;">Ваше посилання</p>
+              <code style="font-size:11px;color:var(--accent);word-break:break-all;">{{ publicUrl }}</code>
+            </div>
+            <div style="padding:0 16px 14px;">
+              <button :class="'btn w-full ' + (form.is_accepting_bookings ? 'btn-primary' : 'btn-secondary')" style="justify-content:center;" disabled>
+                <i class="fa fa-calendar-plus"></i>
+                {{ form.is_accepting_bookings ? 'Записатися' : 'Запис закритий' }}
               </button>
             </div>
           </div>
@@ -1923,6 +2002,38 @@ const SettingsPage = {
       <!-- Security -->
       <template v-if="tab==='security'">
         <div class="card">
+          <div class="card-header"><span class="card-title">Інформація про акаунт</span></div>
+          <div class="card-body">
+            <div class="account-info-grid">
+              <div class="account-info-item">
+                <span class="account-info-label">Роль</span>
+                <m-badge :status="user.role"></m-badge>
+              </div>
+              <div class="account-info-item">
+                <span class="account-info-label">Тариф</span>
+                <m-badge :status="user.plan"></m-badge>
+              </div>
+              <div class="account-info-item">
+                <span class="account-info-label">Підписка</span>
+                <m-badge :status="user.subscription_status"></m-badge>
+              </div>
+              <div class="account-info-item" v-if="user.subscription_ends_at">
+                <span class="account-info-label">Діє до</span>
+                <span class="account-info-value">{{ M.fmtFullDate(user.subscription_ends_at) }}</span>
+              </div>
+              <div class="account-info-item">
+                <span class="account-info-label">Реєстрація</span>
+                <span class="account-info-value">{{ M.fmtFullDate(user.created_at) }}</span>
+              </div>
+              <div class="account-info-item">
+                <span class="account-info-label">ID акаунту</span>
+                <span class="account-info-value">#{{ user.id }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
           <div class="card-header"><span class="card-title">Зміна пароля</span></div>
           <div class="card-body" style="display:flex;flex-direction:column;gap:12px;">
             <div class="form-group">
@@ -1957,4 +2068,4 @@ const SettingsPage = {
 };
 
 /* Export all pages */
-window.SpravnaPages = { DashboardPage, SchedulePage, RequestsPage, ArchivePage, ClientsPage, PublicPageSettings, SettingsPage };
+window.SpravnaPages = { DashboardPage, SchedulePage, RequestsPage, ArchivePage, ClientsPage, SettingsPage };

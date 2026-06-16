@@ -7,7 +7,7 @@
 (function () {
     const { createApp, ref, computed } = Vue;
     const { MModal, MBadge, MAvatar, AppointmentFormBody, OnboardingWizard } = SpravnaComponents;
-    const { DashboardPage, SchedulePage, RequestsPage, ArchivePage, ClientsPage, PublicPageSettings, SettingsPage } = SpravnaPages;
+    const { DashboardPage, SchedulePage, RequestsPage, ArchivePage, ClientsPage, SettingsPage } = SpravnaPages;
 
     /* ── Guard: redirect to login if no token ── */
     const token = getToken();
@@ -19,7 +19,7 @@
     const api = makeAPI(token);
 
     /* ── History API routing ── */
-    const VALID_PAGES = ['dashboard', 'schedule', 'requests', 'clients', 'archive', 'public', 'settings'];
+    const VALID_PAGES = ['dashboard', 'schedule', 'requests', 'clients', 'archive', 'settings'];
 
     function getPageFromPath() {
         const segment = window.location.pathname.replace(/^\/app\/?/, '').split('/')[0];
@@ -31,14 +31,13 @@
         name: 'PageView',
         props: ['page', 'api', 'user'],
         emits: ['navigate', 'count', 'user-updated'],
-        components: { DashboardPage, SchedulePage, RequestsPage, ArchivePage, ClientsPage, PublicPageSettings, SettingsPage },
+        components: { DashboardPage, SchedulePage, RequestsPage, ArchivePage, ClientsPage, SettingsPage },
         template: [
             '<dashboard-page       v-if="page===\'dashboard\'"  :api="api" :user="user" @navigate="$emit(\'navigate\',$event)"></dashboard-page>',
             '<schedule-page        v-else-if="page===\'schedule\'" :api="api"></schedule-page>',
             '<requests-page        v-else-if="page===\'requests\'" :api="api" @count="$emit(\'count\',$event)"></requests-page>',
             '<clients-page         v-else-if="page===\'clients\'"  :api="api"></clients-page>',
             '<archive-page         v-else-if="page===\'archive\'"  :api="api"></archive-page>',
-            '<public-page-settings v-else-if="page===\'public\'"   :api="api" :user="user"></public-page-settings>',
             '<settings-page        v-else-if="page===\'settings\'" :api="api" :user="user" @user-updated="$emit(\'user-updated\')"></settings-page>',
         ].join('')
     };
@@ -47,7 +46,7 @@
     const app = createApp({
         components: {
             MModal, MBadge, MAvatar, AppointmentFormBody, OnboardingWizard, PageView,
-            DashboardPage, SchedulePage, RequestsPage, ArchivePage, ClientsPage, PublicPageSettings, SettingsPage
+            DashboardPage, SchedulePage, RequestsPage, ArchivePage, ClientsPage, SettingsPage
         },
         setup() {
             const page         = ref(getPageFromPath());
@@ -61,7 +60,6 @@
                 { id: 'requests',  label: 'Запити',            icon: 'fa-inbox' },
                 { id: 'clients',   label: 'Клієнти',           icon: 'fa-users' },
                 { id: 'archive',   label: 'Архів',             icon: 'fa-box-archive' },
-                { id: 'public',    label: 'Публічна сторінка', icon: 'fa-globe' },
                 { id: 'settings',  label: 'Налаштування',      icon: 'fa-gear' },
             ];
 
@@ -71,7 +69,6 @@
                 requests:  { title: 'Запити',            sub: () => pendingCount.value > 0 ? pendingCount.value + ' нових' : 'Нових запитів немає' },
                 clients:   { title: 'Клієнти',           sub: () => 'База клієнтів та історія' },
                 archive:   { title: 'Архів',             sub: () => 'Минулі сесії' },
-                public:    { title: 'Публічна сторінка', sub: () => 'Налаштування вашого профілю' },
                 settings:  { title: 'Налаштування',      sub: () => 'Акаунт та параметри' },
             };
 
@@ -193,7 +190,7 @@
         <i :class="'fa ' + p.icon"></i>
         <span v-if="p.id === 'requests' && pendingCount > 0" class="mob-nav-dot"></span>
       </span>
-      <span>{{ p.label === 'Публічна сторінка' ? 'Публічна' : p.label }}</span>
+      <span>{{ p.label }}</span>
     </button>
   </nav>
 

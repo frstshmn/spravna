@@ -11,7 +11,7 @@ class MasterProfile extends Model
         'user_id', 'slug', 'bio', 'specialty', 'avatar', 'phone',
         'city', 'country', 'instagram', 'website', 'booking_notice',
         'cancellation_policy', 'is_public', 'is_accepting_bookings',
-        'currency', 'social_links',
+        'show_availability', 'currency', 'social_links',
     ];
 
     protected function casts(): array
@@ -19,6 +19,7 @@ class MasterProfile extends Model
         return [
             'is_public' => 'boolean',
             'is_accepting_bookings' => 'boolean',
+            'show_availability' => 'boolean',
             'social_links' => 'array',
         ];
     }

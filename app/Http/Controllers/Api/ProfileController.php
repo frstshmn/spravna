@@ -35,6 +35,7 @@ class ProfileController extends Controller
             'cancellation_policy'  => 'nullable|string',
             'is_public'            => 'boolean',
             'is_accepting_bookings' => 'boolean',
+            'show_availability'    => 'boolean',
             'currency'             => 'string|size:3',
             'social_links'         => 'nullable|array',
         ]);

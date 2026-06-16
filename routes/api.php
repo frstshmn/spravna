@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Route;
 // ─── Public routes (no auth) ─────────────────────────────────────────────────
 
 Route::get('/masters/{slug}', [PublicController::class, 'masterProfile']);
+Route::get('/masters/{slug}/availability', [PublicController::class, 'availability']);
 Route::post('/masters/{slug}/book', [PublicController::class, 'submitRequest']);
 
 // ─── Auth ────────────────────────────────────────────────────────────────────
