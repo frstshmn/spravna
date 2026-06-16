@@ -18,19 +18,25 @@ class DeployController extends Controller
             abort(Response::HTTP_NOT_FOUND);
         }
 
-        $pull = Process::path(base_path())->run(['git', 'pull']);
-        $migrate = Process::path(base_path())->run([PHP_BINARY, 'artisan', 'migrate', '--force']);
+        $pull         = Process::path(base_path())->run(['git', 'pull']);
+        $storageLink  = Process::path(base_path())->run([PHP_BINARY, 'artisan', 'storage:link', '--force']);
+        $migrate      = Process::path(base_path())->run([PHP_BINARY, 'artisan', 'migrate', '--force']);
 
         return response()->json([
             'git_pull' => [
-                'ok' => $pull->successful(),
+                'ok'     => $pull->successful(),
                 'output' => $pull->output(),
-                'error' => $pull->errorOutput(),
+                'error'  => $pull->errorOutput(),
+            ],
+            'storage_link' => [
+                'ok'     => $storageLink->successful(),
+                'output' => $storageLink->output(),
+                'error'  => $storageLink->errorOutput(),
             ],
             'migrate' => [
-                'ok' => $migrate->successful(),
+                'ok'     => $migrate->successful(),
                 'output' => $migrate->output(),
-                'error' => $migrate->errorOutput(),
+                'error'  => $migrate->errorOutput(),
             ],
         ]);
     }
