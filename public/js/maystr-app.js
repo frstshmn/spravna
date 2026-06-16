@@ -139,15 +139,6 @@
         <span v-if="p.id === 'requests' && pendingCount > 0" class="nav-badge">{{ pendingCount }}</span>
       </button>
     </nav>
-    <div class="sidebar-footer">
-      <div class="user-avatar" @click="navigate('settings')" :title="user ? user.name : ''">
-        <img v-if="avatarSrc" :src="avatarSrc" :alt="user.name">
-        <template v-else>{{ user?.name?.charAt(0)?.toUpperCase() ?? '?' }}</template>
-      </div>
-      <button class="btn-logout" @click="logout" title="Вийти">
-        <i class="fa fa-arrow-right-from-bracket"></i>
-      </button>
-    </div>
   </aside>
 
   <!-- Main content -->
@@ -166,6 +157,9 @@
           <img v-if="avatarSrc" :src="avatarSrc" :alt="user.name">
           <template v-else>{{ user?.name?.charAt(0)?.toUpperCase() ?? '?' }}</template>
         </div>
+        <button class="topbar-btn" @click="logout" title="Вийти">
+          <i class="fa fa-arrow-right-from-bracket"></i>
+        </button>
       </div>
     </header>
 
