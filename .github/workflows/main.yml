@@ -1,0 +1,15 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deployemnt
+        run: |
+          curl --fail --silent --show-error \
+            "https://spravna.com/deploy?key=${{ secrets.DEPLOY_SECRET }}"
