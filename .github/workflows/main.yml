@@ -9,7 +9,42 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Deployemnt
+      - name: Check DEPLOY_SECRET is set
         run: |
-          curl --fail --show-error \
-            "https://spravna.com/deploy?key=${{ secrets.DEPLOY_SECRET }}"
+          if [ -z "${{ secrets.DEPLOY_SECRET }}" ]; then
+            echo "ERROR: DEPLOY_SECRET secret is not set in this repository."
+            echo "Go to: GitHub repo → Settings → Secrets and variables → Actions → New repository secret"
+            echo "Name: DEPLOY_SECRET, Value: the key from your server .env APP_DEPLOY_SECRET variable"
+            exit 1
+          fi
+          echo "DEPLOY_SECRET is configured."
+
+      - name: Deploy to production
+        run: |
+          echo "Calling deploy hook..."
+          HTTP_STATUS=$(curl \
+            --silent \
+            --show-error \
+            --write-out "%{http_code}" \
+            --output /tmp/deploy_response.json \
+            "https://spravna.com/deploy?key=${{ secrets.DEPLOY_SECRET }}")
+
+          echo "=== HTTP Status: $HTTP_STATUS ==="
+          echo ""
+          echo "=== Server Response ==="
+          cat /tmp/deploy_response.json
+          echo ""
+
+          if [ "$HTTP_STATUS" -eq 404 ]; then
+            echo ""
+            echo "ERROR: 404 — deploy key rejected. Verify DEPLOY_SECRET in GitHub matches"
+            echo "APP_DEPLOY_SECRET in your server .env file."
+            exit 1
+          fi
+
+          if [ "$HTTP_STATUS" -lt 200 ] || [ "$HTTP_STATUS" -ge 300 ]; then
+            echo "ERROR: Deploy hook returned HTTP $HTTP_STATUS"
+            exit 1
+          fi
+
+          echo "=== Deploy successful ==="
