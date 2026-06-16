@@ -1398,8 +1398,9 @@ tbody td { padding: 11px 14px; font-size: 13px; vertical-align: middle; }
 .settings-panel { display: flex; flex-direction: column; gap: 20px; }
 
 /* Profile 2×2 tile grid */
-.settings-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
-.settings-tile { transition: border-color .2s, box-shadow .2s; }
+.settings-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.settings-tile { transition: border-color .2s, box-shadow .2s; display: flex; flex-direction: column; }
+.settings-tile .card-body { flex: 1; }
 .tile-dirty { border-color: var(--accent) !important; box-shadow: 0 0 0 3px rgba(59,94,71,.1); }
 .tile-dirty .card-header { background: rgba(59,94,71,.05); }
 .dirty-badge {
@@ -1416,8 +1417,22 @@ tbody td { padding: 11px 14px; font-size: 13px; vertical-align: middle; }
   0%, 100% { box-shadow: 0 4px 20px rgba(59,94,71,.35); }
   50% { box-shadow: 0 6px 32px rgba(59,94,71,.6), 0 0 0 6px rgba(59,94,71,.1); }
 }
+@keyframes toast-in {
+  from { transform: translateY(8px); opacity: 0; }
+  to   { transform: translateY(0);   opacity: 1; }
+}
 .float-save-wrap { position: fixed; bottom: 28px; right: 28px; z-index: 500; }
 .float-save-btn { animation: pulse-save 2s ease-in-out infinite; padding: 12px 22px; font-size: 14px; font-weight: 600; }
+.float-saved-toast {
+  position: fixed; bottom: 28px; right: 28px; z-index: 501;
+  background: var(--accent); color: #fff;
+  padding: 12px 20px; border-radius: var(--r-md);
+  font-size: 14px; font-weight: 600;
+  display: flex; align-items: center; gap: 8px;
+  box-shadow: 0 4px 20px rgba(59,94,71,.4);
+  animation: toast-in .2s ease;
+  pointer-events: none;
+}
 
 /* Subscription tab */
 .sub-current-plan { margin-bottom: 0; }
@@ -1924,6 +1939,7 @@ tbody td { padding: 11px 14px; font-size: 13px; vertical-align: middle; }
   .main-area  { padding-bottom: var(--mobile-nav-h); }
   .page-content { padding: 16px; }
   .float-save-wrap { bottom: calc(var(--mobile-nav-h) + 12px); right: 12px; }
+  .float-saved-toast { bottom: calc(var(--mobile-nav-h) + 12px); right: 12px; }
   .topbar { padding: 0 16px; }
   .topbar-search { display: none; }
   .form-row { grid-template-columns: 1fr; }

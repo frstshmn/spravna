@@ -1689,6 +1689,7 @@ const SettingsPage = {
         const hoursLoaded = ref(false);
         const profileDirty = ref(false);
         const hoursDirty = ref(false);
+        const savedAll = ref(false);
 
         const form = reactive({
             name: props.user?.name || '',
@@ -1810,6 +1811,8 @@ const SettingsPage = {
         async function saveAll() {
             if (profileDirty.value) await saveProfile();
             if (hoursDirty.value) await saveHours();
+            savedAll.value = true;
+            setTimeout(() => savedAll.value = false, 2500);
         }
 
         function copyLink() {
@@ -1843,7 +1846,7 @@ const SettingsPage = {
         return {
             M, tab, workingHours, services, form, profile, user,
             savingProfile, savedProfile, savingPublic, savedPublic, savingHours, savedHours,
-            profileDirty, hoursDirty, saveAll,
+            profileDirty, hoursDirty, savedAll, saveAll,
             showSvcModal, editingSvc, copied, publicUrl,
             pwForm, pwError, pwSaved, savingPw, dayNames, priceDisplay, saveHours, loadServices, editSvc, newSvc,
             deleteSvc, toggleSvc, onSvcSaved, saveProfile, savePublicSettings, copyLink, changePassword,
@@ -2267,8 +2270,11 @@ const SettingsPage = {
     </div>
   </div>
 
-  <!-- Floating save button -->
-  <div v-if="profileDirty || hoursDirty" class="float-save-wrap">
+  <!-- Floating save button / saved toast -->
+  <div v-if="savedAll" class="float-saved-toast">
+    <i class="fa fa-circle-check"></i> Зміни збережено
+  </div>
+  <div v-else-if="profileDirty || hoursDirty" class="float-save-wrap">
     <button class="btn btn-primary float-save-btn" @click="saveAll" :disabled="savingProfile || savingHours">
       <i class="fa fa-floppy-disk"></i>
       {{ (savingProfile || savingHours) ? 'Збереження…' : 'Зберегти зміни' }}
