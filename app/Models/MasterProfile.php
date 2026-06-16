@@ -32,6 +32,6 @@ class MasterProfile extends Model
     public function getAvatarUrlAttribute(): ?string
     {
         if (!$this->avatar) return null;
-        return asset('storage/' . $this->avatar);
+        return '/storage/' . $this->avatar;
     }
 }

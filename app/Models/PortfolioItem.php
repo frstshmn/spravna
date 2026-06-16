@@ -29,6 +29,6 @@ class PortfolioItem extends Model
 
     public function getImageUrlAttribute(): string
     {
-        return asset('storage/' . $this->image_path);
+        return '/storage/' . $this->image_path;
     }
 }

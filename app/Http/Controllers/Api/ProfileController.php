@@ -69,7 +69,7 @@ class ProfileController extends Controller
         $path = $request->file('avatar')->store('avatars', 'public');
         $profile->update(['avatar' => $path]);
 
-        return response()->json(['avatar' => $path, 'avatar_url' => asset('storage/' . $path)]);
+        return response()->json(['avatar' => $path]);
     }
 
     public function completeOnboarding(Request $request): JsonResponse
