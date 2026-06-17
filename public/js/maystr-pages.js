@@ -199,65 +199,113 @@ const DashboardPage = {
         });
         onUnmounted(() => { if (nowTimer) clearInterval(nowTimer); });
 
+        const dashView = ref('today');
+
         return {
             stats, todayAppts, upcoming, upcomingList, topServices, chart,
             showApptModal, editingAppt, openAppt, newAppt, onApptSaved,
             showClientModal, newClient, onClientSaved,
             timelineRange, timelineHours, timeline, tickPos, trackHeight, nowPos, nowLabel, apptTimeLabel,
             pubSettings, pubLinkCopied, copyPublicLink, togglePubSetting,
-            load,
+            dashView, load,
         };
     },
     template: `
 <div>
-  <!-- Top row: today timeline + key counters -->
+  <!-- Top row: combined today/upcoming card + key counters -->
   <div class="dash-top-row">
-    <!-- Today timeline -->
+    <!-- Combined today timeline / upcoming sessions card -->
     <div class="card">
       <div class="card-header">
-        <span class="card-title"><i class="fa fa-clock" style="color:var(--accent);margin-right:6px;"></i>Сьогодні</span>
+        <div class="dash-view-toggle">
+          <button :class="'dvt-btn' + (dashView==='today' ? ' active' : '')" @click="dashView='today'">
+            <i class="fa fa-clock"></i> Сьогодні
+          </button>
+          <button :class="'dvt-btn' + (dashView==='upcoming' ? ' active' : '')" @click="dashView='upcoming'">
+            <i class="fa fa-calendar-week"></i> Найближчі
+          </button>
+        </div>
         <button class="btn btn-secondary btn-icon" @click="newAppt" title="Новий запис"><i class="fa fa-plus"></i></button>
       </div>
       <div class="card-body">
-        <div v-if="!todayAppts.length" class="empty" style="padding:20px 0;">
-          <i class="fa fa-calendar-xmark"></i>
-          <p>Сьогодні немає записів</p>
-        </div>
-        <div v-else class="day-timeline-v">
-          <div class="day-timeline-ruler-v" :style="{height: timeline.height + 'px'}">
-            <span v-for="h in timelineHours" :key="h" class="day-timeline-tick-v" :style="{top: tickPos(h) + 'px'}">{{ h }}:00</span>
-            <span v-for="it in timeline.items" :key="'s'+it.a.id" class="day-timeline-start-label-v" :style="{top: it.top + 'px'}">
-              {{ new Date(it.a.scheduled_at).toLocaleTimeString('uk',{hour:'2-digit',minute:'2-digit'}) }}
-            </span>
+
+        <!-- Today view -->
+        <template v-if="dashView==='today'">
+          <div v-if="!todayAppts.length" class="empty" style="padding:20px 0;">
+            <i class="fa fa-calendar-xmark"></i>
+            <p>Сьогодні немає записів</p>
           </div>
-          <div class="day-timeline-track-v" :style="{height: timeline.height + 'px'}">
-            <div v-for="h in timelineHours" :key="'g'+h" class="day-timeline-gridline-v" :style="{top: tickPos(h) + 'px'}"></div>
-            <div v-if="nowPos !== null" class="day-timeline-now-v" :style="{top: nowPos + 'px'}">
-              <span class="day-timeline-now-label-v">{{ nowLabel }}</span>
+          <div v-else class="day-timeline-v">
+            <div class="day-timeline-ruler-v" :style="{height: timeline.height + 'px'}">
+              <span v-for="h in timelineHours" :key="h" class="day-timeline-tick-v" :style="{top: tickPos(h) + 'px'}">{{ h }}:00</span>
+              <span v-for="it in timeline.items" :key="'s'+it.a.id" class="day-timeline-start-label-v" :style="{top: it.top + 'px'}">
+                {{ new Date(it.a.scheduled_at).toLocaleTimeString('uk',{hour:'2-digit',minute:'2-digit'}) }}
+              </span>
             </div>
-            <div v-for="it in timeline.items" :key="it.a.id" class="day-timeline-block-v"
-              :style="{top: it.top + 'px', height: it.height + 'px', left: 0, width: 'calc(100% - 6px)', background: it.a.service?.color || 'var(--accent)'}"
-              :title="(it.a.client?.name || '') + ' — ' + (it.a.service?.name || 'Запис')"
-              @click="openAppt(it.a)">
-              <span class="dtb-time">{{ new Date(it.a.scheduled_at).toLocaleTimeString('uk',{hour:'2-digit',minute:'2-digit'}) }}</span>
-              <span class="dtb-name truncate">{{ it.a.client?.name }}</span>
+            <div class="day-timeline-track-v" :style="{height: timeline.height + 'px'}">
+              <div v-for="h in timelineHours" :key="'g'+h" class="day-timeline-gridline-v" :style="{top: tickPos(h) + 'px'}"></div>
+              <div v-if="nowPos !== null" class="day-timeline-now-v" :style="{top: nowPos + 'px'}">
+                <span class="day-timeline-now-label-v">{{ nowLabel }}</span>
+              </div>
+              <div v-for="it in timeline.items" :key="it.a.id" class="day-timeline-block-v"
+                :style="{top: it.top + 'px', height: it.height + 'px', left: 0, width: 'calc(100% - 6px)', background: it.a.service?.color || 'var(--accent)'}"
+                :title="(it.a.client?.name || '') + ' — ' + (it.a.service?.name || 'Запис')"
+                @click="openAppt(it.a)">
+                <span class="dtb-time">{{ new Date(it.a.scheduled_at).toLocaleTimeString('uk',{hour:'2-digit',minute:'2-digit'}) }}</span>
+                <span class="dtb-name truncate">{{ it.a.client?.name }}</span>
+              </div>
             </div>
           </div>
-        </div>
-        <div v-if="todayAppts.length" class="day-timeline-compact-v">
-          <div v-for="it in timeline.items" :key="'c'+it.a.id" class="day-timeline-compact-row" @click="openAppt(it.a)">
-            <div class="dtc-time">
-              <span class="dtc-time-start">{{ apptTimeLabel(it.a).start }}</span>
-              <span class="dtc-time-end">{{ apptTimeLabel(it.a).end }}</span>
+          <div v-if="todayAppts.length" class="day-timeline-compact-v">
+            <div v-for="it in timeline.items" :key="'c'+it.a.id" class="day-timeline-compact-row" @click="openAppt(it.a)">
+              <div class="dtc-time">
+                <span class="dtc-time-start">{{ apptTimeLabel(it.a).start }}</span>
+                <span class="dtc-time-end">{{ apptTimeLabel(it.a).end }}</span>
+              </div>
+              <span class="dtc-bar" :style="{background: it.a.service?.color || 'var(--accent)'}"></span>
+              <div class="dtc-info">
+                <div class="dtc-name truncate">{{ it.a.client?.name }}</div>
+                <div class="dtc-sub truncate">{{ it.a.service?.name || 'Запис' }}</div>
+              </div>
+              <m-badge :status="it.a.status"></m-badge>
             </div>
-            <span class="dtc-bar" :style="{background: it.a.service?.color || 'var(--accent)'}"></span>
-            <div class="dtc-info">
-              <div class="dtc-name truncate">{{ it.a.client?.name }}</div>
-              <div class="dtc-sub truncate">{{ it.a.service?.name || 'Запис' }}</div>
-            </div>
-            <m-badge :status="it.a.status"></m-badge>
           </div>
-        </div>
+        </template>
+
+        <!-- Upcoming view -->
+        <template v-else>
+          <div v-if="!upcomingList.length" class="empty" style="padding:20px 0;">
+            <i class="fa fa-calendar"></i><p>Немає майбутніх записів</p>
+          </div>
+          <template v-else>
+            <div class="upcoming-header">
+              <span class="uh-time">Час</span>
+              <span class="uh-dot"></span>
+              <span class="uh-client">Клієнт</span>
+              <span class="uh-extra">Контакти</span>
+              <span class="uh-price">Сума</span>
+              <span class="uh-status">Статус</span>
+            </div>
+            <div v-for="a in upcomingList" :key="a.id" class="upcoming-row" style="cursor:pointer;" @click="openAppt(a)">
+              <span class="tl-time">{{ new Date(a.scheduled_at).toLocaleDateString('uk',{month:'short',day:'numeric'}) }}<br>{{ new Date(a.scheduled_at).toLocaleTimeString('uk',{hour:'2-digit',minute:'2-digit'}) }}</span>
+              <span class="tl-dot" :style="{background: a.service?.color || 'var(--accent)'}"></span>
+              <div class="tl-body">
+                <div class="tl-name truncate">{{ a.client?.name }}</div>
+                <div class="tl-svc truncate">{{ a.service?.name || 'Запис' }}</div>
+              </div>
+              <div class="upcoming-extra">
+                <div class="upcoming-phone" v-if="a.client?.phone"><i class="fa fa-phone"></i> {{ a.client.phone }}</div>
+                <div class="upcoming-duration" v-if="a.duration"><i class="fa fa-hourglass-half"></i> {{ a.duration }} хв</div>
+              </div>
+              <div class="upcoming-price" v-if="a.price">₴{{ Number(a.price).toLocaleString() }}</div>
+              <div class="upcoming-status"><m-badge :status="a.status"></m-badge></div>
+            </div>
+            <div style="padding:10px 0 2px;text-align:right;">
+              <button class="btn btn-ghost btn-sm" @click="$emit('navigate','schedule')">Всі записи <i class="fa fa-arrow-right"></i></button>
+            </div>
+          </template>
+        </template>
+
       </div>
     </div>
 
@@ -333,40 +381,6 @@ const DashboardPage = {
       </div>
     </div>
 
-    <!-- Upcoming sessions -->
-    <div class="card dash-upcoming-card">
-      <div class="card-header">
-        <span class="card-title"><i class="fa fa-calendar-week" style="color:var(--accent);margin-right:6px;"></i>Найближчі записи</span>
-        <button class="btn btn-ghost btn-sm" @click="$emit('navigate','schedule')">Всі <i class="fa fa-arrow-right"></i></button>
-      </div>
-      <div class="card-body" style="padding-top:6px;padding-bottom:6px;">
-        <div v-if="!upcomingList.length" class="empty" style="padding:20px 0;">
-          <i class="fa fa-calendar"></i><p>Немає майбутніх записів</p>
-        </div>
-        <div v-else class="upcoming-header">
-          <span class="uh-time">Час</span>
-          <span class="uh-dot"></span>
-          <span class="uh-client">Клієнт</span>
-          <span class="uh-extra">Контакти</span>
-          <span class="uh-price">Сума</span>
-          <span class="uh-status">Статус</span>
-        </div>
-        <div v-for="a in upcomingList" :key="a.id" class="upcoming-row" style="cursor:pointer;" @click="openAppt(a)">
-          <span class="tl-time">{{ new Date(a.scheduled_at).toLocaleDateString('uk',{month:'short',day:'numeric'}) }}<br>{{ new Date(a.scheduled_at).toLocaleTimeString('uk',{hour:'2-digit',minute:'2-digit'}) }}</span>
-          <span class="tl-dot" :style="{background: a.service?.color || 'var(--accent)'}"></span>
-          <div class="tl-body">
-            <div class="tl-name truncate">{{ a.client?.name }}</div>
-            <div class="tl-svc truncate">{{ a.service?.name || 'Запис' }}</div>
-          </div>
-          <div class="upcoming-extra">
-            <div class="upcoming-phone" v-if="a.client?.phone"><i class="fa fa-phone"></i> {{ a.client.phone }}</div>
-            <div class="upcoming-duration" v-if="a.duration"><i class="fa fa-hourglass-half"></i> {{ a.duration }} хв</div>
-          </div>
-          <div class="upcoming-price" v-if="a.price">₴{{ Number(a.price).toLocaleString() }}</div>
-          <div class="upcoming-status"><m-badge :status="a.status"></m-badge></div>
-        </div>
-      </div>
-    </div>
   </div>
 
   <!-- Financial widgets -->
