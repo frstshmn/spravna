@@ -1490,15 +1490,59 @@ tbody td { padding: 11px 14px; font-size: 13px; vertical-align: middle; }
 .svc-meta { font-size: 11px; color: var(--text-sub); }
 
 /* =====================================================================
-   ONBOARDING WIZARD
+   ONBOARDING — full-page flow
    ===================================================================== */
-.onboarding-dots { display: flex; justify-content: center; gap: 6px; padding: 14px 0 0; }
-.onboarding-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border-2); transition: var(--t); }
-.onboarding-dot.active { width: 20px; border-radius: 4px; background: var(--accent); }
-.onboarding-dot.done { background: var(--accent-soft); }
+.ob-page { min-height: 100vh; display: flex; flex-direction: column; background: var(--bg); }
+.ob-topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 28px; background: rgba(255,255,255,0.55);
+  border-bottom: 1px solid var(--border); backdrop-filter: blur(10px);
+  position: sticky; top: 0; z-index: 10;
+}
+.ob-logo { display: flex; align-items: center; gap: 10px; }
+.ob-logo-icon {
+  width: 30px; height: 30px; border-radius: 8px;
+  background: var(--accent); display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 13px;
+}
+.ob-logo-name { font-size: 15px; font-weight: 800; letter-spacing: -.5px; color: var(--text); }
+.ob-topbar-right { display: flex; align-items: center; gap: 12px; }
+.ob-step-counter { font-size: 12px; color: var(--text-muted); font-weight: 600; }
+.ob-progress-bar { height: 3px; background: var(--border); }
+.ob-progress-fill { height: 100%; background: var(--accent); transition: width .4s cubic-bezier(.4,0,.2,1); }
+.ob-body { flex: 1; display: flex; align-items: center; justify-content: center; padding: 40px 16px; }
+.ob-card {
+  width: 100%; max-width: 580px;
+  background: rgba(255,255,255,0.65); border: 1px solid var(--border-2);
+  border-radius: var(--r-xl); padding: 40px 44px;
+  backdrop-filter: blur(12px); box-shadow: 0 8px 40px rgba(0,0,0,.06);
+}
+.ob-step-head { display: flex; align-items: flex-start; gap: 16px; margin-bottom: 6px; }
+.ob-step-icon {
+  width: 44px; height: 44px; border-radius: 12px; flex-shrink: 0;
+  background: var(--accent-soft); color: var(--accent);
+  display: flex; align-items: center; justify-content: center; font-size: 18px;
+}
+.ob-step-badge {
+  font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px;
+  color: var(--accent-text); background: var(--accent-soft);
+  padding: 2px 10px; border-radius: 99px; display: inline-block; margin-bottom: 6px;
+}
+.ob-title { font-size: 22px; font-weight: 800; margin: 0 0 4px; }
+.ob-subtitle { font-size: 13px; color: var(--text-sub); margin: 0; }
+.ob-divider { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
+.ob-actions { display: flex; align-items: center; justify-content: space-between; }
+.ob-dots { display: flex; gap: 6px; align-items: center; }
+.ob-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border-2); transition: var(--t); }
+.ob-dot.active { width: 24px; border-radius: 4px; background: var(--accent); }
+.ob-dot.done { background: var(--accent); opacity: .35; }
 .avatar-upload-row { display: flex; align-items: center; gap: 14px; }
-.onboarding-hint { font-size: 13px; color: var(--text-sub); }
 .onboarding-svc-list { border: 1px solid var(--border); border-radius: var(--r-md); overflow: hidden; }
+@media (max-width: 600px) {
+  .ob-card { padding: 24px 18px; }
+  .ob-title { font-size: 18px; }
+  .ob-topbar { padding: 12px 16px; }
+}
 
 /* =====================================================================
    SETTINGS: PUBLIC PAGE TAB

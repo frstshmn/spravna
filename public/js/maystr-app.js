@@ -123,6 +123,9 @@
   </div>
 </div>
 
+<!-- Full-page onboarding (replaces app-shell) -->
+<onboarding-wizard v-else-if="!user?.onboarding_completed_at" :api="api" @done="onOnboardingDone"></onboarding-wizard>
+
 <div v-else class="app-shell">
 
   <!-- Sidebar -->
@@ -187,8 +190,6 @@
       <span>{{ p.label }}</span>
     </button>
   </nav>
-
-  <onboarding-wizard v-if="!user?.onboarding_completed_at" :api="api" @done="onOnboardingDone"></onboarding-wizard>
 
 </div>
 `

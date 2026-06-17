@@ -944,34 +944,57 @@ const OnboardingWizard = {
             else finish();
         }
 
+        const stepMeta = [
+            { icon: 'fa-user-pen',  title: 'Розкажіть про себе',    sub: 'Клієнти побачать цю інформацію на вашій публічній сторінці.' },
+            { icon: 'fa-clock',     title: 'Ваш графік роботи',     sub: 'Вкажіть, коли приймаєте клієнтів. Можна змінити пізніше.' },
+            { icon: 'fa-scissors',  title: 'Ваші послуги',          sub: 'Додайте послуги, які пропонуєте. Можна доповнити пізніше.' },
+        ];
+
         onMounted(() => { loadProfile(); loadHours(); });
 
         return {
             step, saving, error, form, avatarUrl, avatarUploading, fileInput,
-            dayNames, workingHours, services, svcForm, addingSvc,
+            dayNames, workingHours, services, svcForm, addingSvc, stepMeta,
             pickAvatar, onAvatarChange, saveStep1, saveStep2, addService, removeService, finish, skipStep,
         };
     },
     template: `
-<teleport to="body">
-  <div class="modal-overlay">
-    <div class="modal-box modal-lg">
-      <div class="modal-head">
-        <div class="modal-head-text">
-          <span class="modal-icon-badge"><i class="fa fa-wand-magic-sparkles"></i></span>
-          <div class="modal-title-col">
-            <span class="modal-title">Налаштування профілю</span>
-            <span class="modal-subtitle">Крок {{ step }} з 3 — усе можна змінити пізніше</span>
-          </div>
+<div class="ob-page">
+  <!-- Top bar -->
+  <div class="ob-topbar">
+    <div class="ob-logo">
+      <div class="ob-logo-icon"><i class="fa fa-asterisk"></i></div>
+      <span class="ob-logo-name">Spravna</span>
+    </div>
+    <div class="ob-topbar-right">
+      <span class="ob-step-counter">Крок {{ step }} з 3</span>
+      <button type="button" class="btn btn-ghost btn-sm" @click="finish" style="color:var(--text-muted);">Пропустити</button>
+    </div>
+  </div>
+
+  <!-- Progress bar -->
+  <div class="ob-progress-bar">
+    <div class="ob-progress-fill" :style="{width: (step/3*100) + '%'}"></div>
+  </div>
+
+  <!-- Content -->
+  <div class="ob-body">
+    <div class="ob-card">
+
+      <!-- Step badge + title -->
+      <div class="ob-step-head">
+        <div class="ob-step-icon"><i :class="'fa ' + stepMeta[step-1].icon"></i></div>
+        <div>
+          <div class="ob-step-badge">Крок {{ step }} з 3</div>
+          <h2 class="ob-title">{{ stepMeta[step-1].title }}</h2>
+          <p class="ob-subtitle">{{ stepMeta[step-1].sub }}</p>
         </div>
       </div>
 
-      <div class="onboarding-dots">
-        <span v-for="n in 3" :key="n" :class="'onboarding-dot' + (n===step ? ' active' : '') + (n<step ? ' done' : '')"></span>
-      </div>
+      <div class="ob-divider"></div>
 
-      <!-- Step 1: General info, social media, avatar -->
-      <div v-if="step===1" class="modal-body">
+      <!-- Step 1: Profile info + avatar -->
+      <div v-if="step===1" style="display:flex;flex-direction:column;gap:14px;">
         <div class="avatar-upload-row">
           <div class="avatar av-xl">
             <img v-if="avatarUrl" :src="avatarUrl" :alt="form.name">
@@ -982,6 +1005,7 @@ const OnboardingWizard = {
               <i class="fa fa-camera"></i> {{ avatarUploading ? 'Завантаження…' : 'Завантажити фото' }}
             </button>
             <input ref="fileInput" type="file" accept="image/*" style="display:none;" @change="onAvatarChange">
+            <p style="font-size:11px;color:var(--text-muted);margin-top:4px;">JPG або PNG, до 2 МБ</p>
           </div>
         </div>
         <div class="form-row">
@@ -1007,7 +1031,7 @@ const OnboardingWizard = {
         </div>
         <div class="form-group">
           <label class="label">Про себе</label>
-          <textarea v-model="form.bio" class="textarea" placeholder="Розкажіть клієнтам про себе…"></textarea>
+          <textarea v-model="form.bio" class="textarea" rows="3" placeholder="Розкажіть клієнтам про себе…"></textarea>
         </div>
         <div class="form-row">
           <div class="form-group"><label class="label">Місто</label><input v-model="form.city" class="input"></div>
@@ -1017,15 +1041,10 @@ const OnboardingWizard = {
           <div class="form-group"><label class="label">Телефон</label><input v-model="form.phone" class="input" type="tel"></div>
           <div class="form-group"><label class="label">Instagram</label><input v-model="form.instagram" class="input" placeholder="@handle"></div>
         </div>
-        <div class="form-group">
-          <label class="label">Сайт</label>
-          <input v-model="form.website" class="input" type="url" placeholder="https://…">
-        </div>
       </div>
 
       <!-- Step 2: Working hours -->
-      <div v-if="step===2" class="modal-body">
-        <p class="onboarding-hint">Вкажіть, коли ви приймаєте клієнтів. Це можна змінити пізніше у налаштуваннях.</p>
+      <div v-if="step===2" style="display:flex;flex-direction:column;gap:2px;">
         <div v-for="h in workingHours" :key="h.day_of_week" class="wh-row">
           <span class="wh-day">{{ dayNames[h.day_of_week] }}</span>
           <button type="button" :class="'toggle' + (h.is_working ? ' on' : '')" @click="h.is_working = !h.is_working" style="flex-shrink:0;"></button>
@@ -1039,14 +1058,13 @@ const OnboardingWizard = {
       </div>
 
       <!-- Step 3: Services -->
-      <div v-if="step===3" class="modal-body">
-        <p class="onboarding-hint">Додайте послуги, які ви пропонуєте. Можна додати кілька або зробити це пізніше.</p>
+      <div v-if="step===3" style="display:flex;flex-direction:column;gap:14px;">
         <div v-if="services.length" class="onboarding-svc-list">
           <div v-for="s in services" :key="s.id" class="svc-card">
             <div class="svc-dot" :style="{background: s.color || '#c9a84c'}"></div>
             <div class="svc-info">
               <div class="svc-name">{{ s.name }}</div>
-              <div class="svc-meta">{{ s.category || '—' }} &nbsp;·&nbsp; {{ s.duration ? s.duration + ' хв' : '' }}</div>
+              <div class="svc-meta">{{ s.category || '—' }} · {{ s.duration ? s.duration + ' хв' : '' }}</div>
             </div>
             <button type="button" class="btn btn-ghost btn-sm btn-icon" @click="removeService(s)"><i class="fa fa-trash"></i></button>
           </div>
@@ -1077,31 +1095,38 @@ const OnboardingWizard = {
             <input type="number" v-model.number="svcForm.price" class="input" min="0" placeholder="0.00">
           </div>
         </div>
-        <button type="button" class="btn btn-secondary btn-sm" @click="addService" :disabled="addingSvc || !svcForm.name.trim()">
-          <i class="fa fa-plus"></i> Додати послугу
-        </button>
-      </div>
-
-      <p v-if="error" style="color:var(--cancelled);font-size:12px;padding:0 20px;">{{ error }}</p>
-
-      <div class="modal-footer" style="justify-content:space-between;">
-        <button type="button" class="btn btn-ghost btn-sm" @click="finish">Пропустити все</button>
-        <div style="display:flex;gap:8px;">
-          <button type="button" class="btn btn-ghost btn-sm" @click="skipStep">Пропустити крок</button>
-          <button v-if="step===1" type="button" class="btn btn-primary btn-sm" @click="saveStep1(true)" :disabled="saving">
-            {{ saving ? 'Збереження…' : 'Далі' }}
-          </button>
-          <button v-if="step===2" type="button" class="btn btn-primary btn-sm" @click="saveStep2(true)" :disabled="saving">
-            {{ saving ? 'Збереження…' : 'Далі' }}
-          </button>
-          <button v-if="step===3" type="button" class="btn btn-primary btn-sm" @click="finish" :disabled="saving">
-            {{ saving ? 'Завершення…' : 'Завершити' }}
+        <div>
+          <button type="button" class="btn btn-secondary btn-sm" @click="addService" :disabled="addingSvc || !svcForm.name.trim()">
+            <i class="fa fa-plus"></i> Додати послугу
           </button>
         </div>
       </div>
+
+      <p v-if="error" style="color:var(--cancelled);font-size:12px;margin-top:12px;">{{ error }}</p>
+
+      <!-- Footer -->
+      <div class="ob-divider" style="margin-top:28px;"></div>
+      <div class="ob-actions">
+        <div class="ob-dots">
+          <span v-for="n in 3" :key="n" :class="'ob-dot' + (n===step ? ' active' : '') + (n<step ? ' done' : '')"></span>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button type="button" class="btn btn-ghost btn-sm" @click="skipStep">Пропустити крок</button>
+          <button v-if="step===1" type="button" class="btn btn-primary" @click="saveStep1(true)" :disabled="saving">
+            {{ saving ? 'Збереження…' : 'Далі' }} <i class="fa fa-arrow-right" style="font-size:12px;"></i>
+          </button>
+          <button v-if="step===2" type="button" class="btn btn-primary" @click="saveStep2(true)" :disabled="saving">
+            {{ saving ? 'Збереження…' : 'Далі' }} <i class="fa fa-arrow-right" style="font-size:12px;"></i>
+          </button>
+          <button v-if="step===3" type="button" class="btn btn-primary" @click="finish" :disabled="saving">
+            <i class="fa fa-check"></i> {{ saving ? 'Завершення…' : 'Завершити' }}
+          </button>
+        </div>
+      </div>
+
     </div>
   </div>
-</teleport>`
+</div>`
 };
 
 /* Export all shared components */
