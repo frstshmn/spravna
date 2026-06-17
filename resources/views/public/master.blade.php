@@ -452,7 +452,7 @@ const BookingForm = {
     <p style="color:var(--text-sub);font-size:13px;">Ми зв'яжемося з вами найближчим часом.</p>
   </div>
   <form v-else @submit.prevent="submit" style="display:flex;flex-direction:column;gap:12px;">
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+    <div class="pub-book-row">
       <div class="form-group">
         <label class="label">Ім'я *</label>
         <input v-model="form.client_name" class="input" required placeholder="Ваше ім'я">
@@ -462,7 +462,7 @@ const BookingForm = {
         <input v-model="form.client_phone" class="input" type="tel" placeholder="+38 050…">
       </div>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+    <div class="pub-book-row">
       <div class="form-group">
         <label class="label">Електронна пошта</label>
         <input v-model="form.client_email" class="input" type="email">

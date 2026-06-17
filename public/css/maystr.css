@@ -1838,6 +1838,8 @@ tbody td { padding: 11px 14px; font-size: 13px; vertical-align: middle; }
   border: 1px solid var(--border-2); border-radius: var(--r-2xl); padding: 28px; max-width: 480px; margin: 0 auto 40px; box-shadow: var(--shadow);
 }
 
+.pub-book-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
 /* ── Booking section layout (calendar + form side-by-side) ── */
 .booking-section {
   display: grid;
@@ -1987,6 +1989,7 @@ tbody td { padding: 11px 14px; font-size: 13px; vertical-align: middle; }
   .topbar { padding: 0 16px; }
   .topbar-search { display: none; }
   .form-row { grid-template-columns: 1fr; }
+  .pub-book-row { grid-template-columns: 1fr; }
   .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
   .modal-overlay { align-items: flex-end; padding: 0; }
   .modal-box { border-radius: var(--r-xl) var(--r-xl) 0 0; max-height: 85dvh; }

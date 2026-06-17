@@ -30,7 +30,7 @@
     const PageView = {
         name: 'PageView',
         props: ['page', 'api', 'user'],
-        emits: ['navigate', 'count', 'user-updated'],
+        emits: ['navigate', 'count', 'user-updated', 'restart-onboarding'],
         components: { DashboardPage, SchedulePage, RequestsPage, ArchivePage, ClientsPage, SettingsPage },
         template: [
             '<dashboard-page       v-if="page===\'dashboard\'"  :api="api" :user="user" @navigate="$emit(\'navigate\',$event)"></dashboard-page>',
@@ -38,7 +38,7 @@
             '<requests-page        v-else-if="page===\'requests\'" :api="api" @count="$emit(\'count\',$event)"></requests-page>',
             '<clients-page         v-else-if="page===\'clients\'"  :api="api"></clients-page>',
             '<archive-page         v-else-if="page===\'archive\'"  :api="api"></archive-page>',
-            '<settings-page        v-else-if="page===\'settings\'" :api="api" :user="user" @user-updated="$emit(\'user-updated\')"></settings-page>',
+            '<settings-page        v-else-if="page===\'settings\'" :api="api" :user="user" @user-updated="$emit(\'user-updated\')" @restart-onboarding="$emit(\'restart-onboarding\')"></settings-page>',
         ].join('')
     };
 
@@ -104,13 +104,17 @@
                 if (user.value) user.value.onboarding_completed_at = new Date().toISOString();
             }
 
+            function restartOnboarding() {
+                if (user.value) user.value.onboarding_completed_at = null;
+            }
+
             const avatarSrc = computed(() => M.avatarSrc(user.value?.profile));
 
             window.addEventListener('popstate', () => { page.value = getPageFromPath(); });
 
             init();
 
-            return { page, user, pendingCount, loading, pages, pageMeta, navigate, logout, onUserUpdated, onOnboardingDone, avatarSrc, api };
+            return { page, user, pendingCount, loading, pages, pageMeta, navigate, logout, onUserUpdated, onOnboardingDone, restartOnboarding, avatarSrc, api };
         },
 
         /* ── Full app shell — Vue string template (single root) ── */
@@ -173,7 +177,8 @@
         :user="user"
         @navigate="navigate"
         @count="pendingCount=$event"
-        @user-updated="onUserUpdated">
+        @user-updated="onUserUpdated"
+        @restart-onboarding="restartOnboarding">
       </page-view>
     </div>
   </div>

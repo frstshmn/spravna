@@ -1664,7 +1664,7 @@ const MAvatarCropper = {
    ===================================================================== */
 const SettingsPage = {
     props: ['api', 'user'],
-    emits: ['user-updated'],
+    emits: ['user-updated', 'restart-onboarding'],
     components: { MModal, MBadge, MTimePicker, ServiceFormBody, MAvatarCropper },
     setup(props, { emit }) {
         const tab = ref('profile');
@@ -2037,6 +2037,13 @@ const SettingsPage = {
           </div>
 
         </div>
+
+        <div style="display:flex;justify-content:center;padding-top:8px;">
+          <button type="button" class="btn btn-ghost btn-sm" style="color:var(--text-muted);font-size:12px;" @click="$emit('restart-onboarding')">
+            <i class="fa fa-wand-magic-sparkles" style="font-size:11px;"></i> Пройти майстра налаштувань знову
+          </button>
+        </div>
+
       </template>
 
       <!-- Public page -->
