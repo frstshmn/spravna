@@ -1833,7 +1833,7 @@ tbody td { padding: 11px 14px; font-size: 13px; vertical-align: middle; }
 .pub-page { min-height: 100vh; }
 .pub-header-band { padding: 40px 0 30px; }
 .pub-container   { max-width: 860px; margin: 0 auto; padding: 0 20px; }
-.pub-master-head { display: flex; align-items: flex-start; gap: 20px; margin-bottom: 32px; }
+.pub-master-head { display: flex; align-items: flex-start; gap: 20px; margin-bottom: 32px; padding-top: 20px; }
 .pub-avatar-lg   { width: 80px; height: 80px; border-radius: var(--r-xl); background: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 700; color: #fff; flex-shrink: 0; }
 .pub-services-grid  { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; margin-bottom: 32px; }
 .pub-svc-card       {
@@ -2201,7 +2201,6 @@ tbody td { padding: 11px 14px; font-size: 13px; vertical-align: middle; }
   backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
   border: 1px solid rgba(255,255,255,0.65);
 }
-.pub-theme-default .pub-master-head { padding: 32px 0 0; }
 .pub-theme-default .input, .pub-theme-default .select, .pub-theme-default .textarea {
   background: rgba(255,255,255,0.55);
   border: 1px solid rgba(255,255,255,0.7);
@@ -2231,7 +2230,6 @@ tbody td { padding: 11px 14px; font-size: 13px; vertical-align: middle; }
   border-bottom-color: #2a2a2a;
 }
 .pub-theme-dark .pub-brand-name { color: #f0f0f0; }
-.pub-theme-dark .pub-master-head { padding: 32px 0 0; }
 .pub-theme-dark .pub-svc-card {
   background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 4px;
   box-shadow: 0 0 0 1px #2a2a2a;
@@ -2283,7 +2281,6 @@ tbody td { padding: 11px 14px; font-size: 13px; vertical-align: middle; }
   background: rgba(253,246,238,0.85);
   border-bottom-color: rgba(196,99,42,0.12);
 }
-.pub-theme-warm .pub-master-head { padding: 32px 0 0; }
 .pub-theme-warm .pub-avatar-lg { border-radius: 50%; border: 3px solid rgba(196,99,42,.3); }
 .pub-theme-warm .pub-svc-card {
   background: rgba(255,248,237,0.9); border: 1px solid rgba(196,99,42,.18);
@@ -2386,7 +2383,6 @@ tbody td { padding: 11px 14px; font-size: 13px; vertical-align: middle; }
   border-bottom-color: rgba(255,255,255,0.1);
 }
 .pub-theme-glass .pub-brand-icon { background: #a855f7; }
-.pub-theme-glass .pub-master-head { padding: 32px 0 0; }
 .pub-theme-glass .pub-svc-card {
   background: rgba(255,255,255,0.07);
   backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
@@ -2458,7 +2454,6 @@ tbody td { padding: 11px 14px; font-size: 13px; vertical-align: middle; }
   backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
   border-bottom-color: rgba(8,145,178,0.14);
 }
-.pub-theme-ocean .pub-master-head { padding: 32px 0 0; }
 .pub-theme-ocean .pub-svc-card {
   background: rgba(255,255,255,0.72); border: 1px solid rgba(8,145,178,.18);
   backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
@@ -2493,7 +2488,6 @@ tbody td { padding: 11px 14px; font-size: 13px; vertical-align: middle; }
   --pub-accent-text: #be185d;
 }
 .pub-theme-sakura .pub-topbar { background: rgba(253,242,248,0.88); border-bottom-color: rgba(219,39,119,.12); }
-.pub-theme-sakura .pub-master-head { padding: 32px 0 0; }
 .pub-theme-sakura .pub-avatar-lg { border-radius: 50%; border: 3px solid rgba(219,39,119,.25); }
 .pub-theme-sakura .pub-svc-card { background: rgba(255,255,255,.78); border-color: rgba(219,39,119,.16); border-radius: 20px; }
 .pub-theme-sakura .booking-form-card { background: rgba(255,255,255,.78); border-color: rgba(219,39,119,.15); border-radius: 24px; }
@@ -2528,7 +2522,6 @@ tbody td { padding: 11px 14px; font-size: 13px; vertical-align: middle; }
 }
 .pub-theme-midnight .pub-topbar { background: rgba(10,14,26,0.9); border-bottom-color: rgba(129,140,248,.18); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
 .pub-theme-midnight .pub-brand-name { color: #e8e8ff; }
-.pub-theme-midnight .pub-master-head { padding: 32px 0 0; }
 .pub-theme-midnight .pub-svc-card { background: #131830; border: 1px solid rgba(129,140,248,.2); }
 .pub-theme-midnight .pub-svc-card:hover { border-color: #818cf8; box-shadow: 0 0 16px rgba(129,140,248,.15); }
 .pub-theme-midnight .booking-form-card { background: #131830; border-color: rgba(129,140,248,.2); }
@@ -2572,7 +2565,6 @@ tbody td { padding: 11px 14px; font-size: 13px; vertical-align: middle; }
 .pub-theme-copper .pub-topbar { background: rgba(20,18,16,0.92); border-bottom-color: rgba(217,119,6,.22); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
 .pub-theme-copper .pub-brand-name { color: #f0dcc8; }
 .pub-theme-copper .pub-brand-icon { background: #d97706; }
-.pub-theme-copper .pub-master-head { padding: 32px 0 0; }
 .pub-theme-copper .pub-svc-card { background: #1e1a16; border: 1px solid rgba(217,119,6,.22); }
 .pub-theme-copper .pub-svc-card:hover { border-color: #d97706; box-shadow: 0 0 14px rgba(217,119,6,.12); }
 .pub-theme-copper .booking-form-card { background: #1a1612; border-color: rgba(217,119,6,.22); }
@@ -2613,7 +2605,6 @@ tbody td { padding: 11px 14px; font-size: 13px; vertical-align: middle; }
   --pub-accent-text: #047857;
 }
 .pub-theme-mint .pub-topbar { background: rgba(240,250,245,0.88); border-bottom-color: rgba(5,150,105,.13); }
-.pub-theme-mint .pub-master-head { padding: 32px 0 0; }
 .pub-theme-mint .pub-svc-card { background: rgba(255,255,255,.75); border-color: rgba(5,150,105,.16); }
 .pub-theme-mint .booking-form-card { background: rgba(255,255,255,.75); border-color: rgba(5,150,105,.15); }
 .pub-theme-mint .availability-card { background: rgba(255,255,255,.72); border-color: rgba(5,150,105,.14); }
@@ -2684,6 +2675,18 @@ tbody td { padding: 11px 14px; font-size: 13px; vertical-align: middle; }
 .pub-corners-sharp .select,
 .pub-corners-sharp .textarea,
 .pub-corners-sharp .dt-trigger { border-radius: 0 !important; }
+
+/* Date picker popup is teleported to <body>, so target via data-corners on <body> */
+body[data-corners="sharp"] .dt-pop { border-radius: 0 !important; }
+body[data-corners="sharp"] .dt-day { border-radius: 0 !important; }
+body[data-corners="sharp"] .dt-nav { border-radius: 0 !important; }
+body[data-corners="sharp"] .dt-pop-done { border-radius: 0 !important; }
+body[data-corners="sharp"] .dt-time-select { border-radius: 0 !important; }
+
+/* Suppress app-shell body gradient and decorative blobs on the public page */
+body:has(.pub-page) { background: transparent !important; }
+body:has(.pub-page)::before,
+body:has(.pub-page)::after { display: none !important; }
 
 /* Smooth corners: generous radii (overrides theme-specific radii where needed) */
 .pub-corners-smooth .pub-svc-card { border-radius: var(--r-lg); }

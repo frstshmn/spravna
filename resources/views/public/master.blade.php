@@ -10,7 +10,7 @@
 <script src="/js/vendor/vue.global.prod.js"></script>
 <script src="/js/vendor/axios.min.js"></script>
 </head>
-<body>
+<body data-corners="{{ $corners }}">
 <div class="pub-page pub-theme-{{ $theme }} pub-corners-{{ $corners }}">
 
     @if($theme === 'glass')
