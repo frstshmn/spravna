@@ -860,7 +860,7 @@ tbody td { padding: 11px 14px; font-size: 13px; vertical-align: middle; }
    DASHBOARD PAGE — bento grid
    ===================================================================== */
 .dash-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 20px; }
-.dash-top-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; align-items: stretch; }
+.dash-top-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 20px; align-items: stretch; }
 .dash-top-row > * { min-width: 0; }
 .dash-top-row .stat-card { height: 100%; }
 .dash-view-toggle { display: flex; gap: 2px; background: var(--surface-2); border-radius: var(--r-md); padding: 3px; }
@@ -887,6 +887,16 @@ tbody td { padding: 11px 14px; font-size: 13px; vertical-align: middle; }
 .dash-pubpage-toggles .toggle { width: 30px; height: 17px; }
 .dash-pubpage-toggles .toggle::after { width: 12px; height: 12px; }
 .dash-pubpage-toggles .toggle.on::after { transform: translateX(13px); }
+.dash-expense-row { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--border); }
+.dash-expense-row:last-child { border-bottom: none; }
+.dash-exp-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.dash-exp-info { flex: 1; min-width: 0; }
+.dash-exp-name { font-size: 13px; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dash-exp-date { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+.dash-exp-late { color: var(--cancelled) !important; font-weight: 600; }
+.dash-exp-amount { font-size: 13px; font-weight: 700; color: var(--text); flex-shrink: 0; }
+.dash-exp-overdue .dash-exp-name { color: var(--cancelled); }
+.dash-exp-overdue .dash-exp-amount { color: var(--cancelled); }
 
 .dash-create-row { display: flex; gap: 10px; }
 .dash-create-btn {
@@ -1936,6 +1946,7 @@ tbody td { padding: 11px 14px; font-size: 13px; vertical-align: middle; }
    ===================================================================== */
 @media (max-width: 1100px) {
   .dash-stats { grid-template-columns: 1fr 1fr; }
+  .dash-top-row { grid-template-columns: 1fr 1fr; }
   .dash-mid   { grid-template-columns: 1fr; }
   .settings-layout { grid-template-columns: 1fr; }
   .settings-nav { position: static; flex-direction: row; overflow-x: auto; gap: 4px; scrollbar-width: none; padding-bottom: 2px; }

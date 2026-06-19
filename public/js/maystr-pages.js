@@ -381,6 +381,61 @@ const DashboardPage = {
       </div>
     </div>
 
+    <!-- Upcoming expenses -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title"><i class="fa fa-receipt" style="color:var(--accent);margin-right:6px;"></i>Витрати</span>
+        <span style="font-size:11px;font-weight:700;background:var(--cancelled-soft);color:var(--cancelled);padding:3px 10px;border-radius:99px;">₴5 490 цього місяця</span>
+      </div>
+      <div class="card-body" style="padding-top:4px;padding-bottom:4px;">
+        <div class="dash-expense-row">
+          <span class="dash-exp-dot" style="background:#e45c5c;"></span>
+          <div class="dash-exp-info">
+            <div class="dash-exp-name">Оренда студії</div>
+            <div class="dash-exp-date"><i class="fa fa-calendar" style="font-size:9px;"></i> 1 липня 2026</div>
+          </div>
+          <span class="dash-exp-amount">₴3 500</span>
+        </div>
+        <div class="dash-expense-row">
+          <span class="dash-exp-dot" style="background:#f59e0b;"></span>
+          <div class="dash-exp-info">
+            <div class="dash-exp-name">Витратні матеріали</div>
+            <div class="dash-exp-date"><i class="fa fa-calendar" style="font-size:9px;"></i> 25 червня 2026</div>
+          </div>
+          <span class="dash-exp-amount">₴890</span>
+        </div>
+        <div class="dash-expense-row dash-exp-overdue">
+          <span class="dash-exp-dot" style="background:#e45c5c;"></span>
+          <div class="dash-exp-info">
+            <div class="dash-exp-name">Стерилізація обладнання</div>
+            <div class="dash-exp-date dash-exp-late"><i class="fa fa-triangle-exclamation" style="font-size:9px;"></i> Прострочено · 15 червня</div>
+          </div>
+          <span class="dash-exp-amount">₴400</span>
+        </div>
+        <div class="dash-expense-row">
+          <span class="dash-exp-dot" style="background:#3b5e47;"></span>
+          <div class="dash-exp-info">
+            <div class="dash-exp-name">Підписка Spravna</div>
+            <div class="dash-exp-date"><i class="fa fa-calendar" style="font-size:9px;"></i> 14 липня 2026</div>
+          </div>
+          <span class="dash-exp-amount">₴299</span>
+        </div>
+        <div class="dash-expense-row">
+          <span class="dash-exp-dot" style="background:#8b5cf6;"></span>
+          <div class="dash-exp-info">
+            <div class="dash-exp-name">Реклама Instagram</div>
+            <div class="dash-exp-date"><i class="fa fa-calendar" style="font-size:9px;"></i> 30 червня 2026</div>
+          </div>
+          <span class="dash-exp-amount">₴401</span>
+        </div>
+      </div>
+      <div style="padding:10px 16px 14px;border-top:1px solid var(--border);">
+        <button class="btn btn-ghost btn-sm" style="width:100%;justify-content:center;font-size:12px;color:var(--text-muted);">
+          <i class="fa fa-plus"></i> Додати витрату
+        </button>
+      </div>
+    </div>
+
   </div>
 
   <!-- Financial widgets -->
