@@ -5,41 +5,12 @@ namespace App\Http\Controllers\Web;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Process;
 use Symfony\Component\HttpFoundation\Response;
 
 class DeployController extends Controller
 {
-    private function resolvePhpBinary(): string
-    {
-        // Explicit override wins
-        if ($env = env('PHP_CLI')) {
-            return $env;
-        }
-
-        // On cPanel/EasyApache shared hosting PHP_BINARY may be old CLI; try common 8.x paths
-        $candidates = [
-            PHP_BINARY,
-            '/opt/cpanel/ea-php83/root/usr/bin/php',
-            '/opt/cpanel/ea-php82/root/usr/bin/php',
-            '/usr/local/php83/bin/php',
-            '/usr/local/php82/bin/php',
-            '/usr/bin/php8.3',
-            '/usr/bin/php8.2',
-        ];
-
-        foreach ($candidates as $bin) {
-            if (is_executable($bin)) {
-                $result = Process::run([$bin, '-r', 'echo PHP_MAJOR_VERSION;']);
-                if ($result->successful() && (int) trim($result->output()) >= 8) {
-                    return $bin;
-                }
-            }
-        }
-
-        return PHP_BINARY;
-    }
-
     public function deploy(Request $request): JsonResponse
     {
         $secret = config('app.deploy_secret');
@@ -50,17 +21,30 @@ class DeployController extends Controller
 
         $pull = Process::path(base_path())->run(['git', 'pull']);
 
-        // PHP_BINARY may point to the system default CLI (e.g. PHP 5.6) on shared hosting
-        // where the web server runs PHP 8.x via FastCGI. Allow override via PHP_CLI in .env.
-        $phpBin = $this->resolvePhpBinary();
+        // Reset OPcache so modified PHP files are recompiled fresh
+        $opcacheCleared = function_exists('opcache_reset') && opcache_reset();
 
-        // Clear all Laravel caches so new migration files are picked up
-        // (OPcache on shared hosting can serve stale bytecode after a git pull)
-        $clearCache = Process::path(base_path())->run([$phpBin, 'artisan', 'optimize:clear']);
+        // Run Laravel cache-clear and migrations in this same PHP 8.x process.
+        // Avoids the PHP_BINARY version mismatch on shared hosting (system CLI may be PHP 5.6).
+        $clearCacheOk     = false;
+        $clearCacheOutput = '';
+        try {
+            Artisan::call('optimize:clear');
+            $clearCacheOutput = Artisan::output();
+            $clearCacheOk     = true;
+        } catch (\Throwable $e) {
+            $clearCacheOutput = $e->getMessage();
+        }
 
-        $migrate = Process::path(base_path())->run(
-            [$phpBin, 'artisan', 'migrate', '--force', '--no-interaction']
-        );
+        $migrateOk     = false;
+        $migrateOutput = '';
+        try {
+            Artisan::call('migrate', ['--force' => true]);
+            $migrateOutput = Artisan::output();
+            $migrateOk     = true;
+        } catch (\Throwable $e) {
+            $migrateOutput = $e->getMessage();
+        }
 
         // Ensure public/storage is a real directory (not a symlink).
         // Shared hosting blocks symlinks to paths outside the web root.
@@ -69,7 +53,7 @@ class DeployController extends Controller
         $mkdirError = '';
         try {
             if (is_link($storageDir)) {
-                unlink($storageDir); // remove old symlink created by storage:link
+                unlink($storageDir);
             }
             if (!is_dir($storageDir)) {
                 mkdir($storageDir, 0755, true);
@@ -80,7 +64,6 @@ class DeployController extends Controller
                     mkdir($path, 0755, true);
                 }
             }
-            // Fix permissions on all existing files
             $iterator = new \RecursiveIteratorIterator(
                 new \RecursiveDirectoryIterator($storageDir, \RecursiveDirectoryIterator::SKIP_DOTS),
                 \RecursiveIteratorIterator::SELF_FIRST
@@ -95,21 +78,20 @@ class DeployController extends Controller
         }
 
         $payload = [
-            'php_binary' => ['constant' => PHP_BINARY, 'used' => $phpBin],
-            'git_pull' => [
+            'php_version'  => PHP_VERSION,
+            'opcache_reset' => $opcacheCleared,
+            'git_pull'     => [
                 'ok'     => $pull->successful(),
                 'output' => $pull->output(),
                 'error'  => $pull->errorOutput(),
             ],
-            'cache_clear' => [
-                'ok'     => $clearCache->successful(),
-                'output' => $clearCache->output(),
-                'error'  => $clearCache->errorOutput(),
+            'cache_clear'  => [
+                'ok'     => $clearCacheOk,
+                'output' => $clearCacheOutput,
             ],
-            'migrate' => [
-                'ok'     => $migrate->successful(),
-                'output' => $migrate->output(),
-                'error'  => $migrate->errorOutput(),
+            'migrate'      => [
+                'ok'     => $migrateOk,
+                'output' => $migrateOutput,
             ],
             'storage_dirs' => [
                 'ok'    => $mkdirOk,
@@ -117,8 +99,7 @@ class DeployController extends Controller
             ],
         ];
 
-        // Return 500 if migrate failed so CI can detect and surface the error
-        $httpStatus = $migrate->successful() ? 200 : 500;
+        $httpStatus = $migrateOk ? 200 : 500;
 
         return response()->json($payload, $httpStatus);
     }
