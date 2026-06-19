@@ -2251,7 +2251,7 @@ tbody td { padding: 11px 14px; font-size: 13px; vertical-align: middle; }
 
 /* ── DARK theme — accent color via --pub-accent / --pub-accent-rgb inline vars ── */
 .pub-theme-dark {
-  background: radial-gradient(ellipse at 20% 0%, rgba(var(--pub-accent-rgb,34 197 94),0.08) 0%, #0c0c0c 55%);
+  background: #0c0c0c;
   color: #f0f0f0;
 }
 .pub-theme-dark .pub-topbar {
@@ -2827,13 +2827,25 @@ body:has(.pub-page) { background: transparent !important; }
 body:has(.pub-page)::before,
 body:has(.pub-page)::after { display: none !important; }
 
-/* Smooth corners: generous radii (overrides theme-specific radii where needed) */
-.pub-corners-smooth .pub-svc-card { border-radius: var(--r-lg); }
+/* Smooth corners: restore generous radii on all elements that any theme may have zeroed */
+.pub-corners-smooth .pub-svc-card    { border-radius: var(--r-lg); }
 .pub-corners-smooth .booking-form-card { border-radius: var(--r-2xl); }
 .pub-corners-smooth .availability-card { border-radius: var(--r-2xl); }
 .pub-corners-smooth .pub-specialty-badge { border-radius: 20px; }
 .pub-corners-smooth .pub-social-link { border-radius: 20px; }
-.pub-corners-smooth .pub-avatar-lg { border-radius: var(--r-xl); }
+.pub-corners-smooth .pub-avatar-lg   { border-radius: var(--r-xl); }
+.pub-corners-smooth .pub-brand-icon  { border-radius: var(--r-md); }
+.pub-corners-smooth .pub-book-cta    { border-radius: 50px; }
+.pub-corners-smooth .pub-notice,
+.pub-corners-smooth .pub-closed,
+.pub-corners-smooth .pub-book-success { border-radius: var(--r-lg); }
+.pub-corners-smooth .avail-nav-btn   { border-radius: 50%; }
+.pub-corners-smooth .avail-slot      { border-radius: var(--r-sm); }
+.pub-corners-smooth .btn             { border-radius: var(--r-md); }
+.pub-corners-smooth .input,
+.pub-corners-smooth .select,
+.pub-corners-smooth .textarea,
+.pub-corners-smooth .dt-trigger      { border-radius: var(--r-md); }
 
 /* =====================================================================
    CORNER TOGGLE UI (settings)

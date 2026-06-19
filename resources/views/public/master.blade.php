@@ -7,6 +7,7 @@
 <meta name="description" content="{{ $profile->bio ?? $master->name . ' — ' . ucfirst($profile->specialty ?? 'Майстер') }}">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <link rel="stylesheet" href="/css/maystr.css">
+<style>body{background:transparent!important}body::before,body::after{display:none!important}</style>
 <script src="/js/vendor/vue.global.prod.js"></script>
 <script src="/js/vendor/axios.min.js"></script>
 </head>
