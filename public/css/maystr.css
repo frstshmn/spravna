@@ -2622,6 +2622,112 @@ tbody td { padding: 11px 14px; font-size: 13px; vertical-align: middle; }
 .pub-theme-mint .pub-closed { background: rgba(255,255,255,.72); border-color: rgba(5,150,105,.14); }
 .pub-theme-mint .pub-notice { background: rgba(255,255,255,.72); border-color: rgba(5,150,105,.13); }
 
+/* =====================================================================
+   CALENDAR COLOR FIXES
+   Base calendar styles use global CSS vars (--text, --text-muted, --border)
+   tuned for light backgrounds. Dark themes need explicit overrides so month
+   labels, weekday headers, nav buttons and day numbers are visible.
+   ===================================================================== */
+
+/* ── Dark / Noir ── */
+.pub-theme-dark .avail-cal-title,
+.pub-theme-dark .avail-month-label,
+.pub-theme-dark .avail-slots-hdr { color: #e0e0e0; }
+.pub-theme-dark .avail-weekdays span { color: rgba(255,255,255,.35); }
+.pub-theme-dark .avail-nav-btn { color: rgba(255,255,255,.45); }
+.pub-theme-dark .avail-nav-btn:hover:not(:disabled) { background: rgba(34,197,94,.12); color: #22c55e; }
+.pub-theme-dark .avail-day { color: #b0b0b0; }
+.pub-theme-dark .avail-day.avail-available { color: #4ade80; }
+.pub-theme-dark .avail-day.avail-full { background: rgba(239,68,68,.1); color: #f87171; }
+.pub-theme-dark .avail-day.avail-closed,
+.pub-theme-dark .avail-day.avail-past { color: rgba(255,255,255,.18); opacity: 1; }
+.pub-theme-dark .avail-day.today { color: #22c55e; }
+.pub-theme-dark .avail-slots { border-top-color: #2a2a2a; }
+.pub-theme-dark .avail-slots-empty,
+.pub-theme-dark .avail-hint { color: rgba(255,255,255,.35); }
+.pub-theme-dark .avail-hint i { color: #22c55e; }
+.pub-theme-dark .avail-legend { color: rgba(255,255,255,.45); }
+.pub-theme-dark .avail-dot-closed { background: #444; }
+
+/* ── Glass / Aurora ── */
+.pub-theme-glass .avail-cal-title,
+.pub-theme-glass .avail-month-label,
+.pub-theme-glass .avail-slots-hdr { color: #e8e8ff; }
+.pub-theme-glass .avail-weekdays span { color: rgba(200,200,255,.38); }
+.pub-theme-glass .avail-nav-btn { color: rgba(200,200,255,.45); }
+.pub-theme-glass .avail-nav-btn:hover:not(:disabled) { background: rgba(168,85,247,.15); color: #d8b4fe; }
+.pub-theme-glass .avail-day { color: rgba(220,220,255,.65); }
+.pub-theme-glass .avail-day.avail-available { color: #c4b5fd; }
+.pub-theme-glass .avail-day.avail-full { background: rgba(239,68,68,.12); color: #fca5a5; }
+.pub-theme-glass .avail-day.avail-closed,
+.pub-theme-glass .avail-day.avail-past { color: rgba(200,200,255,.18); opacity: 1; }
+.pub-theme-glass .avail-day.today { color: #a855f7; }
+.pub-theme-glass .avail-slots { border-top-color: rgba(255,255,255,.1); }
+.pub-theme-glass .avail-slots-empty,
+.pub-theme-glass .avail-hint { color: rgba(200,200,255,.4); }
+.pub-theme-glass .avail-hint i { color: #a855f7; }
+.pub-theme-glass .avail-legend { color: rgba(200,200,255,.5); }
+.pub-theme-glass .avail-dot-closed { background: rgba(255,255,255,.2); }
+
+/* ── Midnight ── */
+.pub-theme-midnight .avail-cal-title,
+.pub-theme-midnight .avail-month-label,
+.pub-theme-midnight .avail-slots-hdr { color: #c8ccf0; }
+.pub-theme-midnight .avail-weekdays span { color: rgba(180,184,240,.38); }
+.pub-theme-midnight .avail-nav-btn { color: rgba(180,184,240,.48); }
+.pub-theme-midnight .avail-nav-btn:hover:not(:disabled) { background: rgba(129,140,248,.15); color: #818cf8; }
+.pub-theme-midnight .avail-day { color: #7880b8; }
+.pub-theme-midnight .avail-day.avail-available { color: #a5b4fc; }
+.pub-theme-midnight .avail-day.avail-full { background: rgba(239,68,68,.1); color: #fca5a5; }
+.pub-theme-midnight .avail-day.avail-closed,
+.pub-theme-midnight .avail-day.avail-past { color: rgba(180,184,240,.18); opacity: 1; }
+.pub-theme-midnight .avail-day.today { color: #818cf8; }
+.pub-theme-midnight .avail-slots { border-top-color: rgba(129,140,248,.15); }
+.pub-theme-midnight .avail-slots-empty,
+.pub-theme-midnight .avail-hint { color: rgba(180,184,240,.4); }
+.pub-theme-midnight .avail-hint i { color: #818cf8; }
+.pub-theme-midnight .avail-legend { color: rgba(180,184,240,.5); }
+.pub-theme-midnight .avail-dot-closed { background: rgba(255,255,255,.2); }
+
+/* ── Copper / Industrial ── */
+.pub-theme-copper .avail-cal-title,
+.pub-theme-copper .avail-month-label,
+.pub-theme-copper .avail-slots-hdr { color: #e8d4b8; }
+.pub-theme-copper .avail-weekdays span { color: rgba(200,155,90,.38); }
+.pub-theme-copper .avail-nav-btn { color: rgba(200,155,90,.5); }
+.pub-theme-copper .avail-nav-btn:hover:not(:disabled) { background: rgba(217,119,6,.15); color: #d97706; }
+.pub-theme-copper .avail-day { color: #9a7040; }
+.pub-theme-copper .avail-day.avail-available { color: #fbbf24; }
+.pub-theme-copper .avail-day.avail-full { background: rgba(239,68,68,.1); color: #fca5a5; }
+.pub-theme-copper .avail-day.avail-closed,
+.pub-theme-copper .avail-day.avail-past { color: rgba(200,155,90,.18); opacity: 1; }
+.pub-theme-copper .avail-day.today { color: #d97706; }
+.pub-theme-copper .avail-slots { border-top-color: rgba(217,119,6,.15); }
+.pub-theme-copper .avail-slots-empty,
+.pub-theme-copper .avail-hint { color: rgba(200,155,90,.4); }
+.pub-theme-copper .avail-hint i { color: #d97706; }
+.pub-theme-copper .avail-legend { color: rgba(200,155,90,.5); }
+.pub-theme-copper .avail-dot-closed { background: rgba(255,255,255,.2); }
+
+/* ── Light themes: match available-day tint + today accent to theme palette ── */
+.pub-theme-warm .avail-day.avail-available { background: rgba(196,99,42,.12); color: #7c3510; }
+.pub-theme-warm .avail-day.today { color: #c4632a; }
+.pub-theme-warm .avail-dot-available { background: #c4632a; }
+
+.pub-theme-ocean .avail-day.avail-available { background: rgba(8,145,178,.13); }
+.pub-theme-ocean .avail-day.today { color: #0891b2; }
+.pub-theme-ocean .avail-dot-available { background: #0891b2; }
+
+.pub-theme-sakura .avail-day.avail-available { background: rgba(219,39,119,.11); }
+.pub-theme-sakura .avail-day.today { color: #db2777; }
+.pub-theme-sakura .avail-dot-available { background: #db2777; }
+
+.pub-theme-mint .avail-day.avail-available { background: rgba(5,150,105,.12); }
+.pub-theme-mint .avail-day.today { color: #059669; }
+.pub-theme-mint .avail-dot-available { background: #059669; }
+
+.pub-theme-bold .avail-day.today { color: #111; font-weight: 900; }
+
 /* ── Geometric swatches for new themes ── */
 .theme-swatch-ocean    { background: linear-gradient(135deg, #e8f6f8 0%, #0891b2 100%); }
 .theme-swatch-sakura   { background: linear-gradient(135deg, #fdf2f8 0%, #f9a8d4 100%); }
