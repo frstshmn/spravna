@@ -1766,6 +1766,7 @@ const SettingsPage = {
             bio: '', specialty: '', phone: '', city: '', country: '',
             instagram: '', website: '', booking_notice: '', cancellation_policy: '',
             is_public: true, is_accepting_bookings: true, show_availability: true, currency: 'UAH',
+            theme: 'default',
             social_links: { facebook: '', tiktok: '', telegram: '', whatsapp: '' },
         });
 
@@ -1790,7 +1791,7 @@ const SettingsPage = {
             form.email = data.email || '';
             const p = data.profile || {};
             avatarUrl.value = M.avatarSrc(p);
-            ['bio','specialty','phone','city','country','instagram','website','booking_notice','cancellation_policy','is_public','is_accepting_bookings','show_availability','currency'].forEach(k => {
+            ['bio','specialty','phone','city','country','instagram','website','booking_notice','cancellation_policy','is_public','is_accepting_bookings','show_availability','currency','theme'].forEach(k => {
                 if (p[k] !== undefined && p[k] !== null) form[k] = p[k];
             });
             form.social_links = { facebook: '', tiktok: '', telegram: '', whatsapp: '', ...(p.social_links || {}) };
@@ -1871,7 +1872,7 @@ const SettingsPage = {
             await props.api.put('/profile', {
                 is_public: form.is_public, is_accepting_bookings: form.is_accepting_bookings, show_availability: form.show_availability,
                 booking_notice: form.booking_notice, cancellation_policy: form.cancellation_policy,
-                currency: form.currency, social_links: form.social_links,
+                currency: form.currency, social_links: form.social_links, theme: form.theme,
             });
             savedPublic.value = true; savingPublic.value = false;
             setTimeout(() => savedPublic.value = false, 2500);
@@ -2209,6 +2210,33 @@ const SettingsPage = {
                       <input v-model="form.social_links.whatsapp" class="input" placeholder="https://wa.me/…">
                     </div>
                   </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Theme picker -->
+            <div class="card">
+              <div class="card-header"><span class="card-title"><i class="fa fa-palette" style="color:var(--accent);margin-right:6px;"></i>Тема публічної сторінки</span></div>
+              <div class="card-body">
+                <div class="theme-picker-grid">
+                  <button v-for="t in [
+                    { id:'default', label:'Default', sub:'Мінімалізм' },
+                    { id:'dark',    label:'Noir',    sub:'Studio Dark' },
+                    { id:'warm',    label:'Artisan', sub:'Золота теплота' },
+                    { id:'bold',    label:'Editorial',sub:'Контраст' },
+                    { id:'glass',   label:'Aurora',  sub:'Скло & Градієнт' },
+                  ]" :key="t.id" type="button"
+                    :class="['theme-swatch-btn', form.theme === t.id ? 'active' : '']"
+                    @click="form.theme = t.id">
+                    <div :class="'theme-swatch theme-swatch-' + t.id">
+                      <div class="ts-geo ts-geo-1"></div>
+                      <div class="ts-geo ts-geo-2"></div>
+                      <div class="ts-geo ts-geo-3"></div>
+                    </div>
+                    <div class="theme-swatch-label">{{ t.label }}</div>
+                    <div class="theme-swatch-sub">{{ t.sub }}</div>
+                    <i v-if="form.theme === t.id" class="fa fa-circle-check theme-swatch-check"></i>
+                  </button>
                 </div>
               </div>
             </div>

@@ -38,6 +38,7 @@ class ProfileController extends Controller
             'show_availability'    => 'boolean',
             'currency'             => 'string|size:3',
             'social_links'         => 'nullable|array',
+            'theme'                => 'nullable|string|in:default,dark,warm,bold,glass',
         ]);
 
         if (!empty($userData)) {

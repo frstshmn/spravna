@@ -9,100 +9,151 @@
 <link rel="stylesheet" href="/css/maystr.css">
 <script src="/js/vendor/vue.global.prod.js"></script>
 <script src="/js/vendor/axios.min.js"></script>
+@php $theme = $profile->theme ?: 'default'; @endphp
 </head>
 <body>
-<div class="pub-page">
+<div class="pub-page pub-theme-{{ $theme }}">
+
+    @if($theme === 'glass')
+    <div class="pub-glass-orb pub-glass-orb-1"></div>
+    <div class="pub-glass-orb pub-glass-orb-2"></div>
+    <div class="pub-glass-orb pub-glass-orb-3"></div>
+    @endif
+
     <!-- Sticky header -->
-    <header style="position:sticky;top:0;z-index:50;background:rgba(255,255,255,0.35);backdrop-filter:blur(var(--blur-lg));-webkit-backdrop-filter:blur(var(--blur-lg));border-bottom:1px solid var(--border);">
-        <div class="pub-container" style="height:56px;display:flex;align-items:center;justify-content:space-between;">
-            <div style="display:flex;align-items:center;gap:8px;">
-                <div class="brand-logo" style="width:24px;height:24px;font-size:11px;"><i class="fa fa-asterisk"></i></div>
-                <span class="brand-name" style="font-size:15px;">Spravna</span>
+    <header class="pub-topbar">
+        <div class="pub-container pub-topbar-inner">
+            <div class="pub-brand">
+                <div class="pub-brand-icon"><i class="fa fa-asterisk"></i></div>
+                <span class="pub-brand-name">Spravna</span>
             </div>
             @if($profile->is_accepting_bookings)
-            <a href="#book" class="btn btn-primary btn-sm">
+            <a href="#book" class="btn btn-primary btn-sm pub-book-cta">
                 <i class="fa fa-calendar-plus"></i> Записатися
             </a>
             @endif
         </div>
     </header>
 
+    @if($theme === 'bold')
+    <!-- Bold theme: full-width hero banner -->
+    <div class="pub-bold-hero">
+        <div class="pub-container">
+            <div class="pub-bold-hero-inner">
+                @if($profile->avatar)
+                <img src="{{ $profile->avatar_url }}" alt="{{ $master->name }}" class="pub-bold-avatar">
+                @else
+                <div class="pub-bold-avatar pub-bold-avatar-init">{{ strtoupper(substr($master->name, 0, 1)) }}</div>
+                @endif
+                <div>
+                    <h1 class="pub-bold-name">{{ $master->name }}</h1>
+                    @if($profile->specialty)
+                    <p class="pub-bold-specialty">{{ ucfirst($profile->specialty) }}</p>
+                    @endif
+                </div>
+            </div>
+        </div>
+    </div>
+    @endif
+
     <!-- Master info -->
     <div class="pub-container">
-        <div class="pub-master-head" style="padding-top:36px;">
+        @if($theme !== 'bold')
+        <div class="pub-master-head">
             @if($profile->avatar)
                 <img src="{{ $profile->avatar_url }}" alt="{{ $master->name }}" class="pub-avatar-lg" style="object-fit:cover;">
             @else
                 <div class="pub-avatar-lg">{{ strtoupper(substr($master->name, 0, 1)) }}</div>
             @endif
-            <div>
-                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:4px;">
-                    <h1 style="font-size:26px;">{{ $master->name }}</h1>
+            <div class="pub-master-info">
+                <div class="pub-master-name-row">
+                    <h1 class="pub-master-name">{{ $master->name }}</h1>
                     @if($profile->specialty)
-                    <span style="background:var(--accent-soft);color:var(--accent-text);padding:3px 10px;border-radius:var(--r-full);font-size:12px;font-weight:600;">{{ ucfirst($profile->specialty) }}</span>
+                    <span class="pub-specialty-badge">{{ ucfirst($profile->specialty) }}</span>
                     @endif
                 </div>
                 @if($profile->city || $profile->country)
-                <p style="color:var(--text-sub);font-size:13px;margin-bottom:8px;">
-                    <i class="fa fa-location-dot" style="color:var(--accent);margin-right:4px;"></i>
+                <p class="pub-location">
+                    <i class="fa fa-location-dot"></i>
                     {{ collect([$profile->city, $profile->country])->filter()->join(', ') }}
                 </p>
                 @endif
                 @if($profile->bio)
-                <p style="color:var(--text-sub);line-height:1.7;max-width:600px;font-size:13.5px;">{{ $profile->bio }}</p>
+                <p class="pub-bio">{{ $profile->bio }}</p>
                 @endif
-                <div style="display:flex;gap:14px;margin-top:12px;flex-wrap:wrap;">
+                <div class="pub-socials">
                     @if($profile->instagram)
-                    <a href="https://instagram.com/{{ ltrim($profile->instagram,'@') }}" target="_blank" style="display:flex;align-items:center;gap:5px;color:var(--text-sub);font-size:13px;transition:color .15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-sub)'">
-                        <i class="fa-brands fa-instagram" style="color:var(--accent);"></i> {{ $profile->instagram }}
+                    <a href="https://instagram.com/{{ ltrim($profile->instagram,'@') }}" target="_blank" class="pub-social-link">
+                        <i class="fa-brands fa-instagram"></i> {{ $profile->instagram }}
                     </a>
                     @endif
                     @if($profile->website)
-                    <a href="{{ $profile->website }}" target="_blank" style="display:flex;align-items:center;gap:5px;color:var(--text-sub);font-size:13px;">
-                        <i class="fa fa-globe" style="color:var(--accent);"></i> Сайт
+                    <a href="{{ $profile->website }}" target="_blank" class="pub-social-link">
+                        <i class="fa fa-globe"></i> Сайт
                     </a>
                     @endif
                     @if($profile->social_links['facebook'] ?? null)
-                    <a href="{{ $profile->social_links['facebook'] }}" target="_blank" style="display:flex;align-items:center;gap:5px;color:var(--text-sub);font-size:13px;transition:color .15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-sub)'">
-                        <i class="fa-brands fa-facebook" style="color:var(--accent);"></i> Facebook
+                    <a href="{{ $profile->social_links['facebook'] }}" target="_blank" class="pub-social-link">
+                        <i class="fa-brands fa-facebook"></i> Facebook
                     </a>
                     @endif
                     @if($profile->social_links['tiktok'] ?? null)
-                    <a href="{{ $profile->social_links['tiktok'] }}" target="_blank" style="display:flex;align-items:center;gap:5px;color:var(--text-sub);font-size:13px;transition:color .15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-sub)'">
-                        <i class="fa-brands fa-tiktok" style="color:var(--accent);"></i> TikTok
+                    <a href="{{ $profile->social_links['tiktok'] }}" target="_blank" class="pub-social-link">
+                        <i class="fa-brands fa-tiktok"></i> TikTok
                     </a>
                     @endif
                     @if($profile->social_links['telegram'] ?? null)
-                    <a href="{{ $profile->social_links['telegram'] }}" target="_blank" style="display:flex;align-items:center;gap:5px;color:var(--text-sub);font-size:13px;transition:color .15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-sub)'">
-                        <i class="fa-brands fa-telegram" style="color:var(--accent);"></i> Telegram
+                    <a href="{{ $profile->social_links['telegram'] }}" target="_blank" class="pub-social-link">
+                        <i class="fa-brands fa-telegram"></i> Telegram
                     </a>
                     @endif
                     @if($profile->social_links['whatsapp'] ?? null)
-                    <a href="{{ $profile->social_links['whatsapp'] }}" target="_blank" style="display:flex;align-items:center;gap:5px;color:var(--text-sub);font-size:13px;transition:color .15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-sub)'">
-                        <i class="fa-brands fa-whatsapp" style="color:var(--accent);"></i> WhatsApp
+                    <a href="{{ $profile->social_links['whatsapp'] }}" target="_blank" class="pub-social-link">
+                        <i class="fa-brands fa-whatsapp"></i> WhatsApp
                     </a>
                     @endif
                 </div>
             </div>
         </div>
+        @else
+        <!-- Bold: bio + location + socials below hero banner -->
+        <div class="pub-bold-meta">
+            @if($profile->city || $profile->country)
+            <p class="pub-location"><i class="fa fa-location-dot"></i> {{ collect([$profile->city, $profile->country])->filter()->join(', ') }}</p>
+            @endif
+            @if($profile->bio)
+            <p class="pub-bio">{{ $profile->bio }}</p>
+            @endif
+            <div class="pub-socials">
+                @if($profile->instagram)<a href="https://instagram.com/{{ ltrim($profile->instagram,'@') }}" target="_blank" class="pub-social-link"><i class="fa-brands fa-instagram"></i> {{ $profile->instagram }}</a>@endif
+                @if($profile->website)<a href="{{ $profile->website }}" target="_blank" class="pub-social-link"><i class="fa fa-globe"></i> Сайт</a>@endif
+                @if($profile->social_links['facebook'] ?? null)<a href="{{ $profile->social_links['facebook'] }}" target="_blank" class="pub-social-link"><i class="fa-brands fa-facebook"></i> Facebook</a>@endif
+                @if($profile->social_links['telegram'] ?? null)<a href="{{ $profile->social_links['telegram'] }}" target="_blank" class="pub-social-link"><i class="fa-brands fa-telegram"></i> Telegram</a>@endif
+            </div>
+        </div>
+        @endif
+
+        @if($theme === 'warm')
+        <div class="pub-warm-divider"><span>✦</span></div>
+        @endif
 
         <!-- Services -->
         @if($services->isNotEmpty())
-        <div style="margin-bottom:32px;">
-            <h2 style="font-size:16px;font-weight:700;margin-bottom:14px;"><i class="fa fa-scissors" style="color:var(--accent);margin-right:6px;"></i>Послуги</h2>
+        <div class="pub-section">
+            <h2 class="pub-section-title"><i class="fa fa-scissors"></i> Послуги</h2>
             <div class="pub-services-grid">
                 @foreach($services as $service)
                 <div class="pub-svc-card">
-                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
-                        <div style="width:8px;height:8px;border-radius:50%;flex-shrink:0;background:{{ $service->color }};"></div>
-                        <span style="font-weight:600;font-size:13.5px;">{{ $service->name }}</span>
+                    <div class="pub-svc-top">
+                        <span class="pub-svc-dot" style="background:{{ $service->color }};"></span>
+                        <span class="pub-svc-name">{{ $service->name }}</span>
                     </div>
                     @if($service->description)
-                    <p style="font-size:12px;color:var(--text-sub);margin-bottom:6px;line-height:1.5;">{{ $service->description }}</p>
+                    <p class="pub-svc-desc">{{ $service->description }}</p>
                     @endif
-                    <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;">
-                        <span style="font-weight:700;color:var(--accent);">{{ $service->price_display }}</span>
-                        <span style="color:var(--text-sub);"><i class="fa fa-clock" style="margin-right:3px;font-size:10px;"></i>{{ $service->duration_display }}</span>
+                    <div class="pub-svc-meta">
+                        <span class="pub-svc-price">{{ $service->price_display }}</span>
+                        <span class="pub-svc-dur"><i class="fa fa-clock"></i> {{ $service->duration_display }}</span>
                     </div>
                 </div>
                 @endforeach
@@ -112,8 +163,8 @@
 
         <!-- Booking notice -->
         @if($profile->booking_notice)
-        <div style="background:var(--pending-soft);border:1px solid rgba(245,158,11,.2);border-radius:var(--r-lg);padding:14px 16px;margin-bottom:24px;">
-            <p style="font-size:13px;color:var(--pending);"><i class="fa fa-circle-info" style="margin-right:6px;"></i>{{ $profile->booking_notice }}</p>
+        <div class="pub-notice">
+            <i class="fa fa-circle-info"></i> {{ $profile->booking_notice }}
         </div>
         @endif
 
@@ -129,8 +180,8 @@
                     </div>
                     @endif
                     <div class="booking-form-card">
-                        <h2 style="font-size:18px;font-weight:700;text-align:center;margin-bottom:4px;">Записатися</h2>
-                        <p style="text-align:center;color:var(--text-sub);font-size:13px;margin-bottom:20px;">Надіслати заявку до {{ $master->name }}</p>
+                        <h2 class="pub-book-title">Записатися</h2>
+                        <p class="pub-book-sub">Надіслати заявку до {{ $master->name }}</p>
                         <booking-form
                             slug="{{ $profile->slug }}"
                             services-json="{{ $servicesJson }}"
@@ -139,16 +190,18 @@
                 </div>
             </div>
             @else
-            <div style="text-align:center;padding:48px 20px;color:var(--text-muted);">
-                <i class="fa fa-calendar-xmark" style="font-size:32px;display:block;margin-bottom:12px;"></i>
-                <p style="font-size:15px;">{{ $master->name }} наразі не приймає нові записи.</p>
+            <div class="pub-closed">
+                <i class="fa fa-calendar-xmark"></i>
+                <p>{{ $master->name }} наразі не приймає нові записи.</p>
             </div>
             @endif
         </div>
     </div>
 
-    <footer style="border-top:1px solid var(--border);padding:20px;text-align:center;color:var(--text-muted);font-size:12px;">
-        Працює на <a href="/" style="color:var(--accent);">Spravna</a>
+    <footer class="pub-footer">
+        <div class="pub-container pub-footer-inner">
+            <span>Працює на <a href="/" class="pub-footer-link">Spravna</a></span>
+        </div>
     </footer>
 </div>
 
@@ -395,7 +448,7 @@ const BookingForm = {
         const submitted      = ref(false);
         const submitting     = ref(false);
         const error          = ref('');
-        const preferredDatetime = ref(''); // 'YYYY-MM-DDTHH:MM' or ''
+        const preferredDatetime = ref('');
         const services = computed(() => {
             try { return JSON.parse(props.servicesJson || '[]'); } catch(e) { return []; }
         });
@@ -405,7 +458,6 @@ const BookingForm = {
         });
 
         function initDatetime() {
-            // Default to tomorrow at noon when user opens the picker
             const d = new Date();
             d.setDate(d.getDate() + 1);
             preferredDatetime.value = `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}T12:00`;
@@ -446,10 +498,10 @@ const BookingForm = {
     },
     template: `
 <div>
-  <div v-if="submitted" style="text-align:center;padding:32px 0;">
-    <i class="fa fa-circle-check" style="font-size:40px;color:var(--completed);display:block;margin-bottom:12px;"></i>
-    <p style="font-size:16px;font-weight:600;margin-bottom:4px;">Заявку відправлено!</p>
-    <p style="color:var(--text-sub);font-size:13px;">Ми зв'яжемося з вами найближчим часом.</p>
+  <div v-if="submitted" class="pub-book-success">
+    <i class="fa fa-circle-check"></i>
+    <p class="pub-book-success-title">Заявку відправлено!</p>
+    <p class="pub-book-success-sub">Ми зв'яжемося з вами найближчим часом.</p>
   </div>
   <form v-else @submit.prevent="submit" style="display:flex;flex-direction:column;gap:12px;">
     <div class="pub-book-row">
@@ -487,9 +539,7 @@ const BookingForm = {
         </button>
       </div>
       <div v-else style="display:flex;align-items:center;gap:8px;">
-        <div style="flex:1;">
-          <m-date-time-picker v-model="preferredDatetime"></m-date-time-picker>
-        </div>
+        <div style="flex:1;"><m-date-time-picker v-model="preferredDatetime"></m-date-time-picker></div>
         <button type="button" class="btn btn-ghost btn-sm btn-icon" @click="clearDatetime" title="Скасувати">
           <i class="fa fa-xmark"></i>
         </button>
@@ -500,10 +550,10 @@ const BookingForm = {
       <textarea v-model="form.message" class="textarea" rows="3" placeholder="Опишіть свою ідею, задайте питання…"></textarea>
     </div>
     <p v-if="error" style="color:var(--cancelled);font-size:12px;">{{ error }}</p>
-    <button type="submit" :disabled="submitting" class="btn btn-primary" style="width:100%;justify-content:center;padding:11px;">
+    <button type="submit" :disabled="submitting" class="btn btn-primary pub-submit-btn">
       <i class="fa fa-paper-plane"></i> {{ submitting ? 'Відправлення…' : 'Надіслати заявку' }}
     </button>
-    <p style="font-size:11px;color:var(--text-muted);text-align:center;">Оплата не потрібна. Ми підтвердимо ваш запис.</p>
+    <p class="pub-book-note">Оплата не потрібна. Ми підтвердимо ваш запис.</p>
   </form>
 </div>`
 };
