@@ -1779,6 +1779,17 @@ const SettingsPage = {
 
         const publicUrl = computed(() => window.location.origin + '/master/' + (profile.value?.slug || ''));
 
+        const previewAccent = computed(() => {
+            if (form.theme === 'light') return form.pub_accent || '#0891b2';
+            if (form.theme === 'dark') return form.pub_accent || '#22c55e';
+            if (form.theme === 'bold') return '#111111';
+            return '#3b5e47';
+        });
+        const previewBg = computed(() => ({ default:'#edeae4', light:'#f4f3f0', dark:'#0c0c0c', bold:'#ffffff' }[form.theme] || '#edeae4'));
+        const previewIsDark = computed(() => form.theme === 'dark');
+        const previewText = computed(() => previewIsDark.value ? '#f0f0f0' : '#1a1917');
+        const previewSub = computed(() => previewIsDark.value ? 'rgba(255,255,255,0.55)' : 'rgba(0,0,0,0.48)');
+
         watch(() => [form.name, form.bio, form.specialty, form.phone, form.city, form.country, form.instagram, form.website],
             () => { if (formLoaded.value) profileDirty.value = true; });
 
@@ -1918,6 +1929,7 @@ const SettingsPage = {
             savingProfile, savedProfile, savingPublic, savedPublic, savingHours, savedHours,
             profileDirty, hoursDirty, savedAll, saveAll,
             showSvcModal, editingSvc, copied, publicUrl,
+            previewAccent, previewBg, previewIsDark, previewText, previewSub,
             pwForm, pwError, pwSaved, savingPw, dayNames, priceDisplay, saveHours, loadServices, editSvc, newSvc,
             deleteSvc, toggleSvc, onSvcSaved, saveProfile, savePublicSettings, copyLink, changePassword,
             avatarUrl, avatarUploading, fileInput, pickAvatar, onAvatarChange, onCropSave, showCropper, cropperFile, applyToAll,
@@ -2228,9 +2240,9 @@ const SettingsPage = {
                     :class="['theme-swatch-btn', form.theme === t.id ? 'active' : '']"
                     @click="form.theme = t.id; if(t.id==='light' && !['#0891b2','#db2777','#c4632a','#059669'].includes(form.pub_accent)) form.pub_accent='#0891b2'; if(t.id==='dark' && !['#22c55e','#d97706','#a855f7'].includes(form.pub_accent)) form.pub_accent='#22c55e';">
                     <div :class="'theme-swatch theme-swatch-' + t.id">
-                      <div class="ts-geo ts-geo-1"></div>
-                      <div class="ts-geo ts-geo-2"></div>
-                      <div class="ts-geo ts-geo-3"></div>
+                      <div class="ts-geo ts-geo-1" :style="form.pub_corners==='sharp'?{borderRadius:'0'}:{}"></div>
+                      <div class="ts-geo ts-geo-2" :style="form.pub_corners==='sharp'?{borderRadius:'0'}:{}"></div>
+                      <div class="ts-geo ts-geo-3" :style="form.pub_corners==='sharp'?{borderRadius:'0'}:{}"></div>
                     </div>
                     <div class="theme-swatch-label">{{ t.label }}</div>
                     <div class="theme-swatch-sub">{{ t.sub }}</div>
@@ -2288,14 +2300,15 @@ const SettingsPage = {
 
           <!-- Preview -->
           <div class="pub-preview">
-            <div class="pub-preview-header">
-              <div class="avatar av-lg" style="margin:0 auto 10px;">
-                <img v-if="avatarUrl" :src="avatarUrl" :alt="form.name">
+            <div class="pub-preview-header" :style="{background:previewBg,borderBottom:form.theme==='bold'?'2px solid #111':'1px solid rgba(0,0,0,0.08)'}">
+              <div class="avatar av-lg" :style="{margin:'0 auto 10px',borderRadius:form.pub_corners==='sharp'?'6px':'50%',background:previewAccent+'22',color:previewAccent}">
+                <img v-if="avatarUrl" :src="avatarUrl" :alt="form.name" style="border-radius:inherit;">
                 <template v-else>{{ form.name?.charAt(0) }}</template>
               </div>
-              <p style="font-weight:700;font-size:16px;">{{ form.name || "Ваше ім'я" }}</p>
-              <p style="font-size:12px;color:var(--text-sub);margin-top:2px;">{{ form.specialty || 'Майстер' }}</p>
-              <p v-if="form.city" style="font-size:11px;color:var(--text-muted);margin-top:4px;"><i class="fa fa-location-dot"></i> {{ form.city }}{{ form.country ? ', ' + form.country : '' }}</p>
+              <p :style="{fontWeight:'700',fontSize:'16px',color:previewText}">{{ form.name || "Ваше ім'я" }}</p>
+              <p :style="{fontSize:'12px',marginTop:'2px',color:previewSub}">{{ form.specialty || 'Майстер' }}</p>
+              <span v-if="form.specialty" :style="{display:'inline-block',marginTop:'6px',padding:'3px 10px',fontSize:'10px',fontWeight:'700',borderRadius:form.pub_corners==='sharp'?'0':'20px',background:previewAccent+'1a',color:previewAccent,textTransform:'uppercase',letterSpacing:'.6px'}">{{ form.specialty }}</span>
+              <p v-if="form.city" :style="{fontSize:'11px',color:previewSub,marginTop:'6px'}"><i class="fa fa-location-dot"></i> {{ form.city }}{{ form.country ? ', ' + form.country : '' }}</p>
             </div>
             <div style="padding:14px 16px;border-bottom:1px solid var(--border);">
               <p v-if="form.bio" style="font-size:12px;color:var(--text-sub);line-height:1.6;">{{ form.bio }}</p>
@@ -2306,7 +2319,9 @@ const SettingsPage = {
               <code style="font-size:11px;color:var(--accent);word-break:break-all;">{{ publicUrl }}</code>
             </div>
             <div style="padding:0 16px 14px;">
-              <button :class="'btn w-full ' + (form.is_accepting_bookings ? 'btn-primary' : 'btn-secondary')" style="justify-content:center;" disabled>
+              <button :class="'btn w-full ' + (form.is_accepting_bookings ? 'btn-primary' : 'btn-secondary')"
+                      :style="form.is_accepting_bookings ? {background:previewAccent,borderColor:previewAccent,borderRadius:form.pub_corners==='sharp'?'0':'50px',color:'#fff'} : {}"
+                      style="justify-content:center;" disabled>
                 <i class="fa fa-calendar-plus"></i>
                 {{ form.is_accepting_bookings ? 'Записатися' : 'Запис закритий' }}
               </button>

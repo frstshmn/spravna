@@ -2391,10 +2391,11 @@ tbody td { padding: 11px 14px; font-size: 13px; vertical-align: middle; }
   display: grid; grid-template-columns: 1fr auto; gap: 4px 16px; align-items: center;
 }
 .pub-theme-bold .pub-svc-card .pub-svc-desc { grid-column: span 2; margin-bottom: 0; }
-.pub-theme-bold .pub-svc-card .pub-svc-meta { grid-column: 2; row-start: 1; justify-self: end; }
+.pub-theme-bold .pub-svc-card .pub-svc-meta { grid-column: 2; grid-row: 1; justify-self: end; }
 .pub-theme-bold .pub-svc-card:last-child { border-bottom: none; }
 .pub-theme-bold .pub-svc-name { font-size: 15px; font-weight: 800; }
 .pub-theme-bold .pub-svc-price { font-size: 16px; font-weight: 900; color: #111; }
+.pub-theme-bold .pub-svc-dot { border-radius: 0; background: #111; }
 .pub-theme-bold .pub-section-title { font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: 2px; color: #888; }
 .pub-theme-bold .pub-section-title i { display: none; }
 .pub-theme-bold .pub-specialty-badge { background: #111; color: #fff; border-radius: 0; font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; }
@@ -2846,6 +2847,11 @@ body:has(.pub-page)::after { display: none !important; }
 .pub-corners-smooth .select,
 .pub-corners-smooth .textarea,
 .pub-corners-smooth .dt-trigger      { border-radius: var(--r-md); }
+
+/* Bold + smooth: radius on the grid container, not per card */
+.pub-theme-bold.pub-corners-smooth .pub-services-grid { border-radius: var(--r-xl); overflow: hidden; }
+.pub-theme-bold.pub-corners-smooth .pub-svc-card { border-radius: 0; }
+.pub-theme-bold.pub-corners-smooth .pub-svc-dot { border-radius: 50%; }
 
 /* =====================================================================
    CORNER TOGGLE UI (settings)
