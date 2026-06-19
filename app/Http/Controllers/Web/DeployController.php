@@ -18,8 +18,15 @@ class DeployController extends Controller
             abort(Response::HTTP_NOT_FOUND);
         }
 
-        $pull    = Process::path(base_path())->run(['git', 'pull']);
-        $migrate = Process::path(base_path())->run([PHP_BINARY, 'artisan', 'migrate', '--force']);
+        $pull = Process::path(base_path())->run(['git', 'pull']);
+
+        // Clear all Laravel caches so new migration files are picked up
+        // (OPcache on shared hosting can serve stale bytecode after a git pull)
+        $clearCache = Process::path(base_path())->run([PHP_BINARY, 'artisan', 'optimize:clear']);
+
+        $migrate = Process::path(base_path())->run(
+            [PHP_BINARY, 'artisan', 'migrate', '--force', '--no-interaction']
+        );
 
         // Ensure public/storage is a real directory (not a symlink).
         // Shared hosting blocks symlinks to paths outside the web root.
@@ -53,11 +60,16 @@ class DeployController extends Controller
             $mkdirError = $e->getMessage();
         }
 
-        return response()->json([
+        $payload = [
             'git_pull' => [
                 'ok'     => $pull->successful(),
                 'output' => $pull->output(),
                 'error'  => $pull->errorOutput(),
+            ],
+            'cache_clear' => [
+                'ok'     => $clearCache->successful(),
+                'output' => $clearCache->output(),
+                'error'  => $clearCache->errorOutput(),
             ],
             'migrate' => [
                 'ok'     => $migrate->successful(),
@@ -68,6 +80,11 @@ class DeployController extends Controller
                 'ok'    => $mkdirOk,
                 'error' => $mkdirError,
             ],
-        ]);
+        ];
+
+        // Return 500 if migrate failed so CI can detect and surface the error
+        $httpStatus = $migrate->successful() ? 200 : 500;
+
+        return response()->json($payload, $httpStatus);
     }
 }
