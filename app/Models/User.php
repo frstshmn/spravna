@@ -73,6 +73,11 @@ class User extends Authenticatable
         return $this->hasMany(PortfolioItem::class);
     }
 
+    public function expenses(): HasMany
+    {
+        return $this->hasMany(\App\Models\Expense::class);
+    }
+
     public function isMaster(): bool
     {
         return $this->role === 'master';

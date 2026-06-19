@@ -7,7 +7,7 @@
 (function () {
     const { createApp, ref, computed } = Vue;
     const { MModal, MBadge, MAvatar, AppointmentFormBody, OnboardingWizard } = SpravnaComponents;
-    const { DashboardPage, SchedulePage, RequestsPage, ArchivePage, ClientsPage, SettingsPage } = SpravnaPages;
+    const { DashboardPage, SchedulePage, RequestsPage, ArchivePage, ClientsPage, SettingsPage, FinancesPage, AnalyticsPage } = SpravnaPages;
 
     /* ── Guard: redirect to login if no token ── */
     const token = getToken();
@@ -19,7 +19,7 @@
     const api = makeAPI(token);
 
     /* ── History API routing ── */
-    const VALID_PAGES = ['dashboard', 'schedule', 'requests', 'clients', 'archive', 'settings'];
+    const VALID_PAGES = ['dashboard', 'schedule', 'requests', 'clients', 'finances', 'analytics', 'settings'];
 
     function getPageFromPath() {
         const segment = window.location.pathname.replace(/^\/app\/?/, '').split('/')[0];
@@ -31,13 +31,14 @@
         name: 'PageView',
         props: ['page', 'api', 'user'],
         emits: ['navigate', 'count', 'user-updated', 'restart-onboarding'],
-        components: { DashboardPage, SchedulePage, RequestsPage, ArchivePage, ClientsPage, SettingsPage },
+        components: { DashboardPage, SchedulePage, RequestsPage, ArchivePage, ClientsPage, SettingsPage, FinancesPage, AnalyticsPage },
         template: [
             '<dashboard-page       v-if="page===\'dashboard\'"  :api="api" :user="user" @navigate="$emit(\'navigate\',$event)"></dashboard-page>',
             '<schedule-page        v-else-if="page===\'schedule\'" :api="api"></schedule-page>',
             '<requests-page        v-else-if="page===\'requests\'" :api="api" @count="$emit(\'count\',$event)"></requests-page>',
             '<clients-page         v-else-if="page===\'clients\'"  :api="api"></clients-page>',
-            '<archive-page         v-else-if="page===\'archive\'"  :api="api"></archive-page>',
+            '<finances-page        v-else-if="page===\'finances\'"  :api="api"></finances-page>',
+            '<analytics-page       v-else-if="page===\'analytics\'" :api="api"></analytics-page>',
             '<settings-page        v-else-if="page===\'settings\'" :api="api" :user="user" @user-updated="$emit(\'user-updated\')" @restart-onboarding="$emit(\'restart-onboarding\')"></settings-page>',
         ].join('')
     };
@@ -46,7 +47,7 @@
     const app = createApp({
         components: {
             MModal, MBadge, MAvatar, AppointmentFormBody, OnboardingWizard, PageView,
-            DashboardPage, SchedulePage, RequestsPage, ArchivePage, ClientsPage, SettingsPage
+            DashboardPage, SchedulePage, RequestsPage, ArchivePage, ClientsPage, SettingsPage, FinancesPage, AnalyticsPage
         },
         setup() {
             const page         = ref(getPageFromPath());
@@ -59,7 +60,8 @@
                 { id: 'schedule',  label: 'Розклад',           icon: 'fa-calendar-days' },
                 { id: 'requests',  label: 'Запити',            icon: 'fa-inbox' },
                 { id: 'clients',   label: 'Клієнти',           icon: 'fa-users' },
-                { id: 'archive',   label: 'Архів',             icon: 'fa-box-archive' },
+                { id: 'finances',  label: 'Фінанси',           icon: 'fa-wallet' },
+                { id: 'analytics', label: 'Аналітика',         icon: 'fa-chart-line' },
                 { id: 'settings',  label: 'Налаштування',      icon: 'fa-gear' },
             ];
 
@@ -68,7 +70,8 @@
                 schedule:  { title: 'Розклад',           sub: () => 'Керуйте своїми записами' },
                 requests:  { title: 'Запити',            sub: () => pendingCount.value > 0 ? pendingCount.value + ' нових' : 'Нових запитів немає' },
                 clients:   { title: 'Клієнти',           sub: () => 'База клієнтів та історія' },
-                archive:   { title: 'Архів',             sub: () => 'Минулі сесії' },
+                finances:  { title: 'Фінанси',           sub: () => 'Доходи та витрати' },
+                analytics: { title: 'Аналітика',         sub: () => 'Аналіз роботи та фінансів' },
                 settings:  { title: 'Налаштування',      sub: () => 'Акаунт та параметри' },
             };
 

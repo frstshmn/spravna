@@ -381,124 +381,6 @@ const DashboardPage = {
       </div>
     </div>
 
-    <!-- Upcoming expenses -->
-    <div class="card">
-      <div class="card-header">
-        <span class="card-title"><i class="fa fa-receipt" style="color:var(--accent);margin-right:6px;"></i>Витрати</span>
-        <span style="font-size:11px;font-weight:700;background:var(--cancelled-soft);color:var(--cancelled);padding:3px 10px;border-radius:99px;">₴5 490 цього місяця</span>
-      </div>
-      <div class="card-body" style="padding-top:4px;padding-bottom:4px;">
-        <div class="dash-expense-row">
-          <span class="dash-exp-dot" style="background:#e45c5c;"></span>
-          <div class="dash-exp-info">
-            <div class="dash-exp-name">Оренда студії</div>
-            <div class="dash-exp-date"><i class="fa fa-calendar" style="font-size:9px;"></i> 1 липня 2026</div>
-          </div>
-          <span class="dash-exp-amount">₴3 500</span>
-        </div>
-        <div class="dash-expense-row">
-          <span class="dash-exp-dot" style="background:#f59e0b;"></span>
-          <div class="dash-exp-info">
-            <div class="dash-exp-name">Витратні матеріали</div>
-            <div class="dash-exp-date"><i class="fa fa-calendar" style="font-size:9px;"></i> 25 червня 2026</div>
-          </div>
-          <span class="dash-exp-amount">₴890</span>
-        </div>
-        <div class="dash-expense-row dash-exp-overdue">
-          <span class="dash-exp-dot" style="background:#e45c5c;"></span>
-          <div class="dash-exp-info">
-            <div class="dash-exp-name">Стерилізація обладнання</div>
-            <div class="dash-exp-date dash-exp-late"><i class="fa fa-triangle-exclamation" style="font-size:9px;"></i> Прострочено · 15 червня</div>
-          </div>
-          <span class="dash-exp-amount">₴400</span>
-        </div>
-        <div class="dash-expense-row">
-          <span class="dash-exp-dot" style="background:#3b5e47;"></span>
-          <div class="dash-exp-info">
-            <div class="dash-exp-name">Підписка Spravna</div>
-            <div class="dash-exp-date"><i class="fa fa-calendar" style="font-size:9px;"></i> 14 липня 2026</div>
-          </div>
-          <span class="dash-exp-amount">₴299</span>
-        </div>
-        <div class="dash-expense-row">
-          <span class="dash-exp-dot" style="background:#8b5cf6;"></span>
-          <div class="dash-exp-info">
-            <div class="dash-exp-name">Реклама Instagram</div>
-            <div class="dash-exp-date"><i class="fa fa-calendar" style="font-size:9px;"></i> 30 червня 2026</div>
-          </div>
-          <span class="dash-exp-amount">₴401</span>
-        </div>
-      </div>
-      <div style="padding:10px 16px 14px;border-top:1px solid var(--border);">
-        <button class="btn btn-ghost btn-sm" style="width:100%;justify-content:center;font-size:12px;color:var(--text-muted);">
-          <i class="fa fa-plus"></i> Додати витрату
-        </button>
-      </div>
-    </div>
-
-  </div>
-
-  <!-- Financial widgets -->
-  <div class="dash-section-title">Фінанси</div>
-  <div class="dash-mid">
-    <div class="card">
-      <div class="card-header">
-        <span class="card-title">Дохід за 6 місяців</span>
-      </div>
-      <div class="balance-card-body">
-        <div class="balance-card-row">
-          <div class="balance-stat-item">
-            <span class="balance-stat-label">Цей місяць</span>
-            <span class="balance-stat-value">{{ stats.month_revenue != null ? '₴' + Number(stats.month_revenue).toLocaleString() : '₴0' }}</span>
-          </div>
-          <div class="balance-stat-item">
-            <span class="balance-stat-label">Минулий місяць</span>
-            <span class="balance-stat-value">{{ stats.last_month_revenue != null ? '₴' + Number(stats.last_month_revenue).toLocaleString() : '₴0' }}</span>
-          </div>
-          <div class="balance-stat-item" v-if="stats.revenue_change != null">
-            <span class="balance-stat-label">Зміна</span>
-            <span :class="'balance-stat-change ' + (stats.revenue_change >= 0 ? 'change-up' : 'change-down')">
-              <i :class="'fa fa-arrow-' + (stats.revenue_change >= 0 ? 'up' : 'down')" style="font-size:9px;"></i>
-              {{ Math.abs(stats.revenue_change) }}%
-            </span>
-          </div>
-        </div>
-        <div style="height:180px;margin-top:12px;">
-          <canvas id="revenue-chart"></canvas>
-        </div>
-      </div>
-    </div>
-
-    <div class="flex flex-col gap-16">
-      <div class="stat-card flex-1">
-        <div class="stat-left">
-          <div class="stat-label">Дохід цього місяця</div>
-          <div class="stat-value">{{ stats.month_revenue != null ? '₴' + Number(stats.month_revenue).toLocaleString() : '₴0' }}</div>
-          <div class="stat-trend" :class="stats.revenue_change >= 0 ? 'trend-up' : 'trend-down'" v-if="stats.revenue_change != null">
-            <i :class="'fa fa-arrow-' + (stats.revenue_change >= 0 ? 'up' : 'down')"></i>
-            {{ Math.abs(stats.revenue_change) }}% порівняно з мин. місяцем
-          </div>
-          <div v-else class="stat-trend">порівняно з мин. місяцем</div>
-        </div>
-        <div class="stat-right">
-          <div class="stat-icon-wrap" style="background:var(--pending-soft);color:var(--pending);">
-            <i class="fa fa-coins"></i>
-          </div>
-        </div>
-      </div>
-      <div class="stat-card flex-1" style="cursor:pointer;" @click="$emit('navigate','clients')">
-        <div class="stat-left">
-          <div class="stat-label">Клієнти</div>
-          <div class="stat-value">{{ stats.total_clients ?? '—' }}</div>
-          <div class="stat-trend">У вашій базі</div>
-        </div>
-        <div class="stat-right">
-          <div class="stat-icon-wrap" style="background:var(--confirmed-soft);color:var(--confirmed);">
-            <i class="fa fa-users"></i>
-          </div>
-        </div>
-      </div>
-    </div>
   </div>
 
   <!-- Top services -->
@@ -797,6 +679,54 @@ const SchedulePage = {
             prepApplying.value = false;
         }
 
+        /* ── Auto-populate recurring slots ── */
+        const showAutoPopulate = ref(false);
+        const autoPopClients = ref([]);
+        const autoPopulating = ref(false);
+        const autoPopProgress = reactive({ current: 0, total: 0 });
+        const autoPopForm = reactive({
+            client_id: '', weekday: 1, time: '10:00',
+            duration: 60, service_id: '', price: '', weeks: 4,
+        });
+
+        async function openAutoPopulate() {
+            try {
+                const { data } = await props.api.get('/clients', { params: { per_page: 200 } });
+                autoPopClients.value = data.data ?? data;
+            } catch(e) {}
+            showAutoPopulate.value = true;
+        }
+
+        async function submitAutoPopulate() {
+            if (!autoPopForm.client_id || !autoPopForm.weeks) return;
+            autoPopulating.value = true;
+            const [h, m] = autoPopForm.time.split(':').map(Number);
+            const jsDay = autoPopForm.weekday === 7 ? 0 : autoPopForm.weekday;
+            const base = new Date();
+            base.setHours(h, m, 0, 0);
+            while (base.getDay() !== jsDay) { base.setDate(base.getDate() + 1); }
+            autoPopProgress.current = 0; autoPopProgress.total = autoPopForm.weeks;
+            for (let w = 0; w < autoPopForm.weeks; w++) {
+                const d = new Date(base);
+                d.setDate(base.getDate() + w * 7);
+                d.setHours(h, m, 0, 0);
+                try {
+                    await props.api.post('/appointments', {
+                        client_id: autoPopForm.client_id,
+                        service_id: autoPopForm.service_id || undefined,
+                        scheduled_at: M.toLocalInput(d),
+                        duration: autoPopForm.duration,
+                        price: autoPopForm.price || undefined,
+                        status: 'confirmed',
+                    });
+                } catch(e) {}
+                autoPopProgress.current = w + 1;
+            }
+            autoPopulating.value = false;
+            showAutoPopulate.value = false;
+            loadAppointments();
+        }
+
         function isOffHours(dayIdx, hour) {
             if (!workingHours.value.length) return false;
             const wh = workingHours.value.find(w => w.day_of_week === (dayIdx + 1) % 7);
@@ -878,6 +808,7 @@ const SchedulePage = {
             onApptPointerDown, onApptPointerMove, onApptPointerUp, onApptPointerCancel, dropPreview, nowLineVisible, nowLineStyle, nowTimeLabel, slotEdgeClass, draggingId,
             showRespondModal, selectedRequest, openRequest, onResponded,
             prepDuration, prepAutoEnabled, prepApplying, sessionsWithoutPrep, applyPrepToWeek, removeAutoPrep,
+            showAutoPopulate, autoPopClients, autoPopulating, autoPopProgress, autoPopForm, openAutoPopulate, submitAutoPopulate,
         };
     },
     template: `
@@ -895,6 +826,9 @@ const SchedulePage = {
     <label class="req-filter-toggle">
       <input type="checkbox" v-model="showRequests"> <i class="fa fa-clock-rotate-left"></i> Запити
     </label>
+    <button class="btn btn-ghost btn-sm" @click="openAutoPopulate" title="Авто-наповнення">
+      <i class="fa fa-rotate"></i> Авто-наповнення
+    </button>
     <button class="btn btn-primary btn-sm" style="margin-left:auto;" @click="openNew(localDateStr(new Date()), 10, 0)">
       <i class="fa fa-plus"></i> Новий запис
     </button>
@@ -1009,6 +943,62 @@ const SchedulePage = {
   <m-modal :show="showRespondModal" title="Відповідь на запит" size="lg" @close="showRespondModal=false">
     <respond-form-body v-if="selectedRequest" :api="api" :request="selectedRequest" @responded="onResponded" @cancel="showRespondModal=false"></respond-form-body>
   </m-modal>
+
+  <!-- Auto-populate modal -->
+  <m-modal :show="showAutoPopulate" title="Авто-наповнення" subtitle="Заплануйте повторювані слоти для клієнта" icon="rotate" size="sm" @close="showAutoPopulate=false">
+    <div style="display:flex;flex-direction:column;gap:16px;">
+      <div class="form-group">
+        <label class="label">Клієнт</label>
+        <select v-model="autoPopForm.client_id" class="select">
+          <option value="">— Оберіть клієнта —</option>
+          <option v-for="c in autoPopClients" :key="c.id" :value="c.id">{{ c.name }}</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="label">День тижня</label>
+        <div class="weekday-picker">
+          <button v-for="d in [{l:'Пн',v:1},{l:'Вт',v:2},{l:'Ср',v:3},{l:'Чт',v:4},{l:'Пт',v:5},{l:'Сб',v:6},{l:'Нд',v:7}]"
+            :key="d.v" type="button"
+            :class="['weekday-btn', autoPopForm.weekday === d.v ? 'active' : '']"
+            @click="autoPopForm.weekday = d.v">{{ d.l }}</button>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="label">Час початку</label>
+          <input type="time" v-model="autoPopForm.time" class="input">
+        </div>
+        <div class="form-group">
+          <label class="label">Тривалість (хв)</label>
+          <input type="number" v-model.number="autoPopForm.duration" class="input" min="15" step="15">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="label">Кількість тижнів</label>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <input type="range" v-model.number="autoPopForm.weeks" min="1" max="26" step="1" style="flex:1;">
+          <span style="font-size:14px;font-weight:700;min-width:48px;">{{ autoPopForm.weeks }} тиж.</span>
+        </div>
+        <p style="font-size:11px;color:var(--text-muted);margin-top:4px;">Починаючи з найближчого {{ [{l:'понеділка',v:1},{l:'вівторка',v:2},{l:'середи',v:3},{l:'четверга',v:4},{l:'п\'ятниці',v:5},{l:'суботи',v:6},{l:'неділі',v:7}].find(d=>d.v===autoPopForm.weekday)?.l }} — {{ autoPopForm.weeks }} записів</p>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="label">Ціна (₴)</label>
+          <input type="number" v-model="autoPopForm.price" class="input" placeholder="Необов'язково">
+        </div>
+      </div>
+      <div v-if="autoPopulating" style="text-align:center;padding:8px 0;">
+        <i class="fa fa-spinner fa-spin"></i>
+        Створення {{ autoPopProgress.current }} / {{ autoPopProgress.total }}…
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;">
+        <button class="btn btn-ghost" @click="showAutoPopulate=false">Скасувати</button>
+        <button class="btn btn-primary" :disabled="!autoPopForm.client_id || autoPopulating" @click="submitAutoPopulate">
+          <i class="fa fa-check"></i> Створити {{ autoPopForm.weeks }} записів
+        </button>
+      </div>
+    </div>
+  </m-modal>
 </div>`
 };
 
@@ -1019,8 +1009,9 @@ const SchedulePage = {
 const RequestsPage = {
     props: ['api'],
     emits: ['count'],
-    components: { MModal, MBadge, MAvatar, RespondFormBody },
+    components: { MModal, MBadge, MAvatar, RespondFormBody, ArchivePage },
     setup(props, { emit }) {
+        const subTab = ref('requests');
         const requests = ref([]);
         const filter = ref('pending');
         const loading = ref(false);
@@ -1044,64 +1035,61 @@ const RequestsPage = {
         watch(filter, load);
         onMounted(load);
 
-        return { requests, filter, loading, showRespond, selectedReq, load, openRespond, onResponded };
+        return { subTab, requests, filter, loading, showRespond, selectedReq, load, openRespond, onResponded };
     },
     template: `
 <div>
-  <div class="flex items-center justify-between mb-16">
-    <h1>Запити на запис</h1>
+  <div class="page-tabs mb-16">
+    <button :class="['page-tab', subTab==='requests' ? 'active' : '']" @click="subTab='requests'">
+      <i class="fa fa-inbox"></i> Запити
+    </button>
+    <button :class="['page-tab', subTab==='archive' ? 'active' : '']" @click="subTab='archive'">
+      <i class="fa fa-box-archive"></i> Архів сесій
+    </button>
   </div>
 
-  <!-- Filter chips -->
-  <div class="chip-row">
-    <button :class="'chip' + (filter==='pending' ? ' active' : '')" @click="filter='pending'">Нові</button>
-    <button :class="'chip' + (filter==='accepted' ? ' active' : '')" @click="filter='accepted'">Прийняті</button>
-    <button :class="'chip' + (filter==='declined' ? ' active' : '')" @click="filter='declined'">Відхилені</button>
-    <button :class="'chip' + (filter==='' ? ' active' : '')" @click="filter=''">Всі</button>
-  </div>
-
-  <!-- Loading -->
-  <div v-if="loading" class="empty"><i class="fa fa-spinner fa-spin"></i><p>Завантаження…</p></div>
-
-  <!-- Empty -->
-  <div v-else-if="!requests.length" class="empty">
-    <i class="fa fa-inbox"></i>
-    <p>Запитів немає</p>
-  </div>
-
-  <!-- List -->
-  <div v-else style="display:flex;flex-direction:column;gap:10px;">
-    <div v-for="r in requests" :key="r.id" class="req-card" @click="openRespond(r)">
-      <div class="req-header">
-        <div class="flex items-center gap-10">
-          <div class="avatar av-sm">{{ r.client_name?.charAt(0).toUpperCase() }}</div>
-          <span class="req-name">{{ r.client_name }}</span>
+  <!-- Requests sub-tab -->
+  <template v-if="subTab==='requests'">
+    <div class="chip-row">
+      <button :class="'chip' + (filter==='pending' ? ' active' : '')" @click="filter='pending'">Нові</button>
+      <button :class="'chip' + (filter==='accepted' ? ' active' : '')" @click="filter='accepted'">Прийняті</button>
+      <button :class="'chip' + (filter==='declined' ? ' active' : '')" @click="filter='declined'">Відхилені</button>
+      <button :class="'chip' + (filter==='' ? ' active' : '')" @click="filter=''">Всі</button>
+    </div>
+    <div v-if="loading" class="empty"><i class="fa fa-spinner fa-spin"></i><p>Завантаження…</p></div>
+    <div v-else-if="!requests.length" class="empty"><i class="fa fa-inbox"></i><p>Запитів немає</p></div>
+    <div v-else style="display:flex;flex-direction:column;gap:10px;">
+      <div v-for="r in requests" :key="r.id" class="req-card" @click="openRespond(r)">
+        <div class="req-header">
+          <div class="flex items-center gap-10">
+            <div class="avatar av-sm">{{ r.client_name?.charAt(0).toUpperCase() }}</div>
+            <span class="req-name">{{ r.client_name }}</span>
+          </div>
+          <div class="flex items-center gap-8">
+            <m-badge :status="r.status"></m-badge>
+            <span style="font-size:11px;color:var(--text-muted);">{{ r.created_at ? new Date(r.created_at).toLocaleDateString('uk',{month:'short',day:'numeric'}) : '' }}</span>
+          </div>
         </div>
-        <div class="flex items-center gap-8">
-          <m-badge :status="r.status"></m-badge>
-          <span style="font-size:11px;color:var(--text-muted);">{{ r.created_at ? new Date(r.created_at).toLocaleDateString('uk',{month:'short',day:'numeric'}) : '' }}</span>
+        <div class="req-meta">
+          <span v-if="r.client_phone"><i class="fa fa-phone"></i>{{ r.client_phone }}</span>
+          <span v-if="r.client_email"><i class="fa fa-envelope"></i>{{ r.client_email }}</span>
+          <span v-if="r.client_instagram"><i class="fa-brands fa-instagram"></i>{{ r.client_instagram }}</span>
+          <span v-if="r.service"><i class="fa fa-scissors"></i>{{ r.service.name }}</span>
+          <span v-if="r.preferred_date"><i class="fa fa-calendar"></i>{{ new Date(r.preferred_date).toLocaleDateString('uk',{month:'short',day:'numeric'}) }}{{ r.preferred_time ? ' ' + r.preferred_time : '' }}</span>
         </div>
-      </div>
-      <div class="req-meta">
-        <span v-if="r.client_phone"><i class="fa fa-phone"></i>{{ r.client_phone }}</span>
-        <span v-if="r.client_email"><i class="fa fa-envelope"></i>{{ r.client_email }}</span>
-        <span v-if="r.client_instagram"><i class="fa-brands fa-instagram"></i>{{ r.client_instagram }}</span>
-        <span v-if="r.service"><i class="fa fa-scissors"></i>{{ r.service.name }}</span>
-        <span v-if="r.preferred_date"><i class="fa fa-calendar"></i>{{ new Date(r.preferred_date).toLocaleDateString('uk',{month:'short',day:'numeric'}) }}{{ r.preferred_time ? ' ' + r.preferred_time : '' }}</span>
-      </div>
-      <p v-if="r.message" class="req-msg">"{{ r.message }}"</p>
-      <div v-if="r.status === 'pending'" class="flex gap-8" @click.stop>
-        <button class="btn btn-success btn-sm" @click="openRespond(r)">
-          <i class="fa fa-check"></i> Відповісти
-        </button>
+        <p v-if="r.message" class="req-msg">"{{ r.message }}"</p>
+        <div v-if="r.status === 'pending'" class="flex gap-8" @click.stop>
+          <button class="btn btn-success btn-sm" @click="openRespond(r)"><i class="fa fa-check"></i> Відповісти</button>
+        </div>
       </div>
     </div>
-  </div>
+    <m-modal :show="showRespond" title="Відповідь на запит" size="lg" @close="showRespond=false">
+      <respond-form-body v-if="selectedReq" :api="api" :request="selectedReq" @responded="onResponded" @cancel="showRespond=false"></respond-form-body>
+    </m-modal>
+  </template>
 
-  <!-- Respond modal -->
-  <m-modal :show="showRespond" title="Відповідь на запит" size="lg" @close="showRespond=false">
-    <respond-form-body v-if="selectedReq" :api="api" :request="selectedReq" @responded="onResponded" @cancel="showRespond=false"></respond-form-body>
-  </m-modal>
+  <!-- Archive sub-tab -->
+  <archive-page v-else :api="api"></archive-page>
 </div>`
 };
 
@@ -2444,5 +2432,417 @@ const SettingsPage = {
 </div>`
 };
 
+/* =====================================================================
+   6. FINANCES
+   ===================================================================== */
+const FinancesPage = {
+    props: ['api'],
+    components: { MModal },
+    setup(props) {
+        const expenses = ref([]);
+        const income = ref([]);
+        const loading = ref(false);
+        const tab = ref('expenses');
+        const year = ref(new Date().getFullYear());
+        const month = ref(new Date().getMonth() + 1);
+        const showModal = ref(false);
+        const editingExp = ref(null);
+        const saving = ref(false);
+        const expForm = reactive({ amount: '', category: 'other', description: '', date: new Date().toISOString().split('T')[0] });
+
+        const monthNames = ['Січень','Лютий','Березень','Квітень','Травень','Червень','Липень','Серпень','Вересень','Жовтень','Листопад','Грудень'];
+        const monthLabel = computed(() => monthNames[month.value - 1] + ' ' + year.value);
+        const fromDate = computed(() => year.value + '-' + String(month.value).padStart(2,'0') + '-01');
+        const toDate = computed(() => { const d = new Date(year.value, month.value, 0); return d.toISOString().split('T')[0]; });
+
+        const totalExp = computed(() => expenses.value.reduce((s,e) => s + Number(e.amount), 0));
+        const totalInc = computed(() => income.value.reduce((s,a) => s + Number(a.price), 0));
+        const profit = computed(() => totalInc.value - totalExp.value);
+
+        const catColors = { rent:'#f59e0b', materials:'#3b82f6', ads:'#8b5cf6', equipment:'#10b981', subscription:'#06b6d4', other:'#6b7280' };
+        const catLabels = { rent:'Оренда', materials:'Матеріали', ads:'Реклама', equipment:'Обладнання', subscription:'Підписка', other:'Інше' };
+        const catList = Object.entries(catLabels).map(([v,l]) => ({ v, l }));
+
+        async function load() {
+            loading.value = true;
+            const [exp, inc] = await Promise.all([
+                props.api.get('/expenses', { params: { from: fromDate.value, to: toDate.value } }).catch(()=>({data:[]})),
+                props.api.get('/finances/income', { params: { from: fromDate.value, to: toDate.value } }).catch(()=>({data:[]})),
+            ]);
+            expenses.value = exp.data;
+            income.value = inc.data;
+            loading.value = false;
+        }
+
+        function openAdd() {
+            editingExp.value = null;
+            Object.assign(expForm, { amount:'', category:'other', description:'', date: fromDate.value });
+            showModal.value = true;
+        }
+        function openEdit(e) {
+            editingExp.value = e;
+            Object.assign(expForm, { amount: e.amount, category: e.category, description: e.description||'', date: e.date });
+            showModal.value = true;
+        }
+        async function saveExpense() {
+            saving.value = true;
+            if (editingExp.value) { await props.api.put('/expenses/'+editingExp.value.id, expForm); }
+            else { await props.api.post('/expenses', expForm); }
+            saving.value = false; showModal.value = false; load();
+        }
+        async function deleteExpense(e) {
+            if (!confirm('Видалити витрату?')) return;
+            await props.api.delete('/expenses/'+e.id); load();
+        }
+        function prevMonth() { if (month.value===1){month.value=12;year.value--;}else month.value--; }
+        function nextMonth() { if (month.value===12){month.value=1;year.value++;}else month.value++; }
+
+        watch([year, month], load);
+        onMounted(load);
+
+        return { expenses, income, loading, tab, year, month, monthLabel, showModal, editingExp, saving, expForm,
+            totalExp, totalInc, profit, catColors, catLabels, catList,
+            openAdd, openEdit, saveExpense, deleteExpense, prevMonth, nextMonth };
+    },
+    template: `
+<div>
+  <div class="fin-header">
+    <h1>Фінанси</h1>
+    <div class="fin-month-nav">
+      <button class="btn btn-ghost btn-sm btn-icon" @click="prevMonth"><i class="fa fa-chevron-left"></i></button>
+      <span class="fin-month-label">{{ monthLabel }}</span>
+      <button class="btn btn-ghost btn-sm btn-icon" @click="nextMonth"><i class="fa fa-chevron-right"></i></button>
+    </div>
+  </div>
+
+  <!-- Summary cards -->
+  <div class="fin-summary">
+    <div class="fin-sum-card fin-sum-income">
+      <div class="fin-sum-icon"><i class="fa fa-arrow-trend-up"></i></div>
+      <div class="fin-sum-body">
+        <div class="fin-sum-label">Дохід</div>
+        <div class="fin-sum-value">₴{{ Number(totalInc).toLocaleString() }}</div>
+      </div>
+    </div>
+    <div class="fin-sum-card fin-sum-expense">
+      <div class="fin-sum-icon"><i class="fa fa-arrow-trend-down"></i></div>
+      <div class="fin-sum-body">
+        <div class="fin-sum-label">Витрати</div>
+        <div class="fin-sum-value">₴{{ Number(totalExp).toLocaleString() }}</div>
+      </div>
+    </div>
+    <div :class="['fin-sum-card', profit >= 0 ? 'fin-sum-profit' : 'fin-sum-loss']">
+      <div class="fin-sum-icon"><i :class="'fa fa-scale-' + (profit>=0 ? 'balanced' : 'unbalanced')"></i></div>
+      <div class="fin-sum-body">
+        <div class="fin-sum-label">Прибуток</div>
+        <div class="fin-sum-value">{{ profit >= 0 ? '+' : '' }}₴{{ Number(profit).toLocaleString() }}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="page-tabs mb-16">
+    <button :class="['page-tab', tab==='expenses' ? 'active' : '']" @click="tab='expenses'">
+      <i class="fa fa-receipt"></i> Витрати
+    </button>
+    <button :class="['page-tab', tab==='income' ? 'active' : '']" @click="tab='income'">
+      <i class="fa fa-coins"></i> Доходи
+    </button>
+  </div>
+
+  <!-- Expenses tab -->
+  <template v-if="tab==='expenses'">
+    <div class="flex items-center justify-between mb-12">
+      <span style="font-size:13px;color:var(--text-muted);">{{ expenses.length }} записів</span>
+      <button class="btn btn-primary btn-sm" @click="openAdd"><i class="fa fa-plus"></i> Додати витрату</button>
+    </div>
+    <div v-if="loading" class="empty"><i class="fa fa-spinner fa-spin"></i></div>
+    <div v-else-if="!expenses.length" class="empty">
+      <i class="fa fa-receipt"></i><p>Витрат за цей місяць немає</p>
+      <button class="btn btn-primary btn-sm" @click="openAdd"><i class="fa fa-plus"></i> Додати</button>
+    </div>
+    <div v-else class="card">
+      <div class="fin-exp-list">
+        <div v-for="e in expenses" :key="e.id" class="fin-exp-row" @click="openEdit(e)">
+          <span class="fin-exp-dot" :style="{background: catColors[e.category]||'#999'}"></span>
+          <div class="fin-exp-info">
+            <div class="fin-exp-name">{{ e.description || catLabels[e.category] || e.category }}</div>
+            <div class="fin-exp-meta">{{ catLabels[e.category]||e.category }} · {{ new Date(e.date).toLocaleDateString('uk',{day:'numeric',month:'short'}) }}</div>
+          </div>
+          <span class="fin-exp-amount">₴{{ Number(e.amount).toLocaleString() }}</span>
+          <button class="btn btn-ghost btn-icon btn-sm" @click.stop="deleteExpense(e)" style="color:var(--cancelled);"><i class="fa fa-trash"></i></button>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <!-- Income tab -->
+  <template v-else>
+    <div style="margin-bottom:12px;font-size:13px;color:var(--text-muted);">{{ income.length }} завершених сесій</div>
+    <div v-if="loading" class="empty"><i class="fa fa-spinner fa-spin"></i></div>
+    <div v-else-if="!income.length" class="empty"><i class="fa fa-coins"></i><p>Доходів за цей місяць немає</p></div>
+    <div v-else class="card">
+      <div class="fin-exp-list">
+        <div v-for="a in income" :key="a.id" class="fin-exp-row">
+          <div class="avatar av-xs" style="flex-shrink:0;">{{ a.client?.name?.charAt(0) }}</div>
+          <div class="fin-exp-info">
+            <div class="fin-exp-name">{{ a.client?.name || '—' }}</div>
+            <div class="fin-exp-meta">{{ a.service?.name || 'Сесія' }} · {{ new Date(a.scheduled_at).toLocaleDateString('uk',{day:'numeric',month:'short'}) }}</div>
+          </div>
+          <span class="fin-exp-amount" style="color:var(--completed);">+₴{{ Number(a.price).toLocaleString() }}</span>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <!-- Add/Edit modal -->
+  <m-modal :show="showModal" :title="editingExp ? 'Редагувати витрату' : 'Нова витрата'" size="sm" @close="showModal=false">
+    <div style="display:flex;flex-direction:column;gap:14px;">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="label">Сума (₴)</label>
+          <input type="number" v-model="expForm.amount" class="input" placeholder="0" min="0" step="0.01" autofocus>
+        </div>
+        <div class="form-group">
+          <label class="label">Дата</label>
+          <input type="date" v-model="expForm.date" class="input">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="label">Категорія</label>
+        <div class="cat-picker">
+          <button v-for="c in catList" :key="c.v" type="button"
+            :class="['cat-btn', expForm.category===c.v ? 'active' : '']"
+            :style="expForm.category===c.v ? {borderColor: catColors[c.v], background: catColors[c.v]+'22', color: catColors[c.v]} : {}"
+            @click="expForm.category=c.v">{{ c.l }}</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="label">Опис</label>
+        <input type="text" v-model="expForm.description" class="input" placeholder="Необов'язково">
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;">
+        <button class="btn btn-ghost" @click="showModal=false">Скасувати</button>
+        <button class="btn btn-primary" :disabled="!expForm.amount || saving" @click="saveExpense">
+          {{ saving ? 'Збереження…' : 'Зберегти' }}
+        </button>
+      </div>
+    </div>
+  </m-modal>
+</div>`
+};
+
+/* =====================================================================
+   7. ANALYTICS
+   ===================================================================== */
+const AnalyticsPage = {
+    props: ['api'],
+    setup(props) {
+        const data = ref(null);
+        const loading = ref(false);
+        const period = ref('month');
+        const from = ref('');
+        const to = ref('');
+        const chartInstances = {};
+
+        function setPeriod(p) {
+            period.value = p;
+            const now = new Date();
+            if (p === 'month') {
+                from.value = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+                to.value = new Date(now.getFullYear(), now.getMonth()+1, 0).toISOString().split('T')[0];
+            } else if (p === 'quarter') {
+                const q = Math.floor(now.getMonth()/3);
+                from.value = new Date(now.getFullYear(), q*3, 1).toISOString().split('T')[0];
+                to.value = new Date(now.getFullYear(), q*3+3, 0).toISOString().split('T')[0];
+            } else if (p === 'year') {
+                from.value = new Date(now.getFullYear(), 0, 1).toISOString().split('T')[0];
+                to.value = new Date(now.getFullYear(), 11, 31).toISOString().split('T')[0];
+            }
+        }
+
+        function mkChart(id, type, chartData, opts) {
+            const el = document.getElementById(id); if (!el) return;
+            chartInstances[id]?.destroy();
+            chartInstances[id] = new Chart(el, {
+                type, data: chartData,
+                options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, ...(opts||{}) }
+            });
+        }
+
+        function renderCharts(d) {
+            const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#3b5e47';
+            const textMuted = getComputedStyle(document.documentElement).getPropertyValue('--text-muted').trim() || '#888';
+
+            // Revenue bar
+            mkChart('an-revenue', 'bar', {
+                labels: d.revenue_chart.map(r=>r.label),
+                datasets: [{ label:'Дохід ₴', data: d.revenue_chart.map(r=>r.revenue),
+                    backgroundColor:'rgba(59,94,71,0.75)', borderRadius:6, borderSkipped:false }]
+            }, { scales:{ y:{ ticks:{ callback: v=>'₴'+v.toLocaleString(), color:textMuted }, grid:{color:'rgba(0,0,0,0.05)'} }, x:{ ticks:{color:textMuted}, grid:{display:false} } } });
+
+            // Sessions bar (secondary)
+            mkChart('an-sessions', 'bar', {
+                labels: d.revenue_chart.map(r=>r.label),
+                datasets: [{ label:'Сесій', data: d.revenue_chart.map(r=>r.sessions),
+                    backgroundColor:'rgba(59,130,246,0.7)', borderRadius:6, borderSkipped:false }]
+            }, { scales:{ y:{ ticks:{color:textMuted}, grid:{color:'rgba(0,0,0,0.05)'} }, x:{ ticks:{color:textMuted}, grid:{display:false} } } });
+
+            // Retention donut
+            mkChart('an-retention', 'doughnut', {
+                labels: ['Нові','Постійні'],
+                datasets: [{ data:[d.client_retention.new, d.client_retention.returning],
+                    backgroundColor:['rgba(139,92,246,0.8)','rgba(59,94,71,0.8)'], borderWidth:0 }]
+            }, { plugins:{ legend:{ display:true, position:'bottom', labels:{color:textMuted, boxWidth:12, padding:10} } }, cutout:'70%' });
+
+            // Completion donut
+            const cr = d.completion_rate;
+            mkChart('an-completion', 'doughnut', {
+                labels:['Завершено','Скасовано','Не з\'явився','Очікує'],
+                datasets:[{ data:[cr.completed,cr.cancelled,cr.no_show,cr.pending],
+                    backgroundColor:['rgba(16,185,129,.8)','rgba(239,68,68,.8)','rgba(107,114,128,.8)','rgba(245,158,11,.8)'],
+                    borderWidth:0 }]
+            }, { plugins:{ legend:{ display:true, position:'bottom', labels:{color:textMuted, boxWidth:12, padding:8} } }, cutout:'65%' });
+
+            // Top services horizontal bar
+            const svcs = (d.top_services||[]).slice(0,6);
+            mkChart('an-services', 'bar', {
+                labels: svcs.map(s=>s.name),
+                datasets:[{ label:'₴', data:svcs.map(s=>s.revenue),
+                    backgroundColor:svcs.map((_,i)=>['rgba(59,94,71,.75)','rgba(59,130,246,.7)','rgba(139,92,246,.7)','rgba(16,185,129,.7)','rgba(245,158,11,.7)','rgba(239,68,68,.7)'][i]||'rgba(99,102,241,.7)'),
+                    borderRadius:4, borderSkipped:false }]
+            }, { indexAxis:'y', scales:{ x:{ ticks:{ callback:v=>'₴'+v.toLocaleString(), color:textMuted }, grid:{color:'rgba(0,0,0,0.05)'} }, y:{ ticks:{color:textMuted}, grid:{display:false} } } });
+        }
+
+        async function load() {
+            loading.value = true;
+            try {
+                const { data: d } = await props.api.get('/analytics', { params: { from: from.value, to: to.value } });
+                data.value = d;
+                await nextTick();
+                renderCharts(d);
+            } catch(e) {}
+            loading.value = false;
+        }
+
+        watch([from, to], load);
+        onMounted(() => { setPeriod('month'); });
+        onUnmounted(() => { Object.values(chartInstances).forEach(c=>c?.destroy()); });
+
+        const dayLabels = ['','Пн','Вт','Ср','Чт','Пт','Сб','Нд'];
+
+        return { data, loading, period, from, to, setPeriod, dayLabels };
+    },
+    template: `
+<div>
+  <div class="an-header">
+    <h1>Аналітика</h1>
+    <div class="an-period-btns">
+      <button :class="['btn btn-sm', period==='month' ? 'btn-primary' : 'btn-ghost']" @click="setPeriod('month')">Місяць</button>
+      <button :class="['btn btn-sm', period==='quarter' ? 'btn-primary' : 'btn-ghost']" @click="setPeriod('quarter')">Квартал</button>
+      <button :class="['btn btn-sm', period==='year' ? 'btn-primary' : 'btn-ghost']" @click="setPeriod('year')">Рік</button>
+    </div>
+  </div>
+
+  <div v-if="loading && !data" class="empty" style="padding:60px 0;"><i class="fa fa-spinner fa-spin fa-2x"></i></div>
+
+  <template v-if="data">
+    <!-- KPI row -->
+    <div class="an-kpi-row">
+      <div class="an-kpi">
+        <div class="an-kpi-icon" style="background:var(--accent-soft);color:var(--accent);"><i class="fa fa-calendar-check"></i></div>
+        <div class="an-kpi-body">
+          <div class="an-kpi-label">Сесій</div>
+          <div class="an-kpi-value">{{ data.summary.total_sessions }}</div>
+        </div>
+      </div>
+      <div class="an-kpi">
+        <div class="an-kpi-icon" style="background:var(--pending-soft);color:var(--pending);"><i class="fa fa-coins"></i></div>
+        <div class="an-kpi-body">
+          <div class="an-kpi-label">Дохід</div>
+          <div class="an-kpi-value">₴{{ Number(data.summary.total_revenue).toLocaleString() }}</div>
+        </div>
+      </div>
+      <div class="an-kpi">
+        <div class="an-kpi-icon" style="background:var(--confirmed-soft);color:var(--confirmed);"><i class="fa fa-chart-line"></i></div>
+        <div class="an-kpi-body">
+          <div class="an-kpi-label">Середній чек</div>
+          <div class="an-kpi-value">₴{{ Number(data.summary.avg_session_value).toLocaleString() }}</div>
+        </div>
+      </div>
+      <div class="an-kpi">
+        <div class="an-kpi-icon" style="background:rgba(139,92,246,.12);color:#8b5cf6;"><i class="fa fa-user-plus"></i></div>
+        <div class="an-kpi-body">
+          <div class="an-kpi-label">Нових клієнтів</div>
+          <div class="an-kpi-value">{{ data.summary.new_clients }}</div>
+        </div>
+      </div>
+      <div class="an-kpi">
+        <div class="an-kpi-icon" style="background:rgba(239,68,68,.1);color:#ef4444;"><i class="fa fa-receipt"></i></div>
+        <div class="an-kpi-body">
+          <div class="an-kpi-label">Витрати</div>
+          <div class="an-kpi-value">₴{{ Number(data.summary.total_expenses).toLocaleString() }}</div>
+        </div>
+      </div>
+      <div :class="['an-kpi', data.summary.profit >= 0 ? '' : 'an-kpi-loss']">
+        <div class="an-kpi-icon" :style="data.summary.profit>=0 ? 'background:rgba(16,185,129,.12);color:#10b981;' : 'background:rgba(239,68,68,.1);color:#ef4444;'"><i class="fa fa-piggy-bank"></i></div>
+        <div class="an-kpi-body">
+          <div class="an-kpi-label">Прибуток</div>
+          <div class="an-kpi-value">{{ data.summary.profit>=0?'+':'' }}₴{{ Number(data.summary.profit).toLocaleString() }}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Charts grid -->
+    <div class="an-charts-grid">
+      <div class="card an-chart-card an-chart-wide">
+        <div class="card-header"><span class="card-title">Дохід за період</span></div>
+        <div class="an-chart-body"><canvas id="an-revenue"></canvas></div>
+      </div>
+      <div class="card an-chart-card an-chart-wide">
+        <div class="card-header"><span class="card-title">Кількість сесій</span></div>
+        <div class="an-chart-body"><canvas id="an-sessions"></canvas></div>
+      </div>
+      <div class="card an-chart-card">
+        <div class="card-header"><span class="card-title">Нові vs постійні</span></div>
+        <div class="an-chart-body" style="max-height:220px;"><canvas id="an-retention"></canvas></div>
+        <div v-if="data.client_retention.new===0&&data.client_retention.returning===0" class="empty" style="padding:20px 0;"><i class="fa fa-users"></i><p>Даних немає</p></div>
+      </div>
+      <div class="card an-chart-card">
+        <div class="card-header"><span class="card-title">Статуси сесій</span></div>
+        <div class="an-chart-body" style="max-height:220px;"><canvas id="an-completion"></canvas></div>
+      </div>
+      <div class="card an-chart-card an-chart-wide">
+        <div class="card-header"><span class="card-title">Топ послуг за доходом</span></div>
+        <div v-if="!data.top_services?.length" class="empty" style="padding:24px 0;"><i class="fa fa-ranking-star"></i><p>Даних немає</p></div>
+        <div v-else class="an-chart-body"><canvas id="an-services"></canvas></div>
+      </div>
+      <div class="card an-chart-card an-chart-wide">
+        <div class="card-header"><span class="card-title"><i class="fa fa-fire" style="color:var(--accent);margin-right:6px;"></i>Пікове навантаження</span></div>
+        <div class="an-heatmap">
+          <div class="an-heatmap-labels">
+            <div v-for="d in dayLabels.slice(1)" :key="d" class="an-heatmap-day">{{ d }}</div>
+          </div>
+          <div class="an-heatmap-grid">
+            <template v-for="h in Array.from({length:13},(_,i)=>i+8)" :key="h">
+              <div v-for="day in [1,2,3,4,5,6,7]" :key="day"
+                class="an-heatmap-cell"
+                :style="{ opacity: (data.busiest_slots.find(s=>s.day===day&&s.hour===h)?.count||0) > 0
+                  ? 0.15 + Math.min(0.85, (data.busiest_slots.find(s=>s.day===day&&s.hour===h)?.count||0) / 5 * 0.85) : 0.04,
+                  background: 'var(--accent)' }"
+                :title="(data.busiest_slots.find(s=>s.day===day&&s.hour===h)?.count||0) + ' сесій'">
+              </div>
+            </template>
+          </div>
+          <div class="an-heatmap-hours">
+            <span v-for="h in Array.from({length:13},(_,i)=>i+8)" :key="h">{{ String(h).padStart(2,'0') }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </template>
+</div>`
+};
+
 /* Export all pages */
-window.SpravnaPages = { DashboardPage, SchedulePage, RequestsPage, ArchivePage, ClientsPage, SettingsPage };
+window.SpravnaPages = { DashboardPage, SchedulePage, RequestsPage, ArchivePage, ClientsPage, SettingsPage, FinancesPage, AnalyticsPage };

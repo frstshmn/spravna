@@ -2,11 +2,13 @@
 
 use App\Http\Controllers\Api\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Api\Admin\UserController as AdminUserController;
+use App\Http\Controllers\Api\AnalyticsController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\AppointmentController;
 use App\Http\Controllers\Api\BookingRequestController;
 use App\Http\Controllers\Api\ClientController;
 use App\Http\Controllers\Api\DashboardController;
+use App\Http\Controllers\Api\ExpenseController;
 use App\Http\Controllers\Api\PortfolioController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\PublicController;
@@ -64,6 +66,13 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/booking-requests/{bookingRequest}',         [BookingRequestController::class, 'show']);
     Route::post('/booking-requests/{bookingRequest}/respond',[BookingRequestController::class, 'respond']);
     Route::delete('/booking-requests/{bookingRequest}',      [BookingRequestController::class, 'destroy']);
+
+    // Finances
+    Route::apiResource('expenses', ExpenseController::class)->except(['show']);
+    Route::get('/finances/income', [ExpenseController::class, 'income']);
+
+    // Analytics
+    Route::get('/analytics', [AnalyticsController::class, 'index']);
 
     // Portfolio
     Route::get('/portfolio',            [PortfolioController::class, 'index']);
