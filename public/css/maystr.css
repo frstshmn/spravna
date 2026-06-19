@@ -2169,7 +2169,7 @@ tbody td { padding: 11px 14px; font-size: 13px; vertical-align: middle; }
 .pub-glass-orb-1 { width: 600px; height: 600px; background: radial-gradient(circle, #a855f7 0%, transparent 70%); top: -200px; left: -150px; }
 .pub-glass-orb-2 { width: 500px; height: 500px; background: radial-gradient(circle, #14b8a6 0%, transparent 70%); top: 40%; right: -180px; }
 .pub-glass-orb-3 { width: 400px; height: 400px; background: radial-gradient(circle, #6366f1 0%, transparent 70%); bottom: -100px; left: 30%; }
-.pub-page.pub-theme-glass > * { position: relative; z-index: 1; }
+.pub-page.pub-theme-glass > *:not(.pub-glass-orb) { position: relative; z-index: 1; }
 
 /* Warm theme: divider */
 .pub-warm-divider {
