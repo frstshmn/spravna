@@ -1766,7 +1766,7 @@ const SettingsPage = {
             bio: '', specialty: '', phone: '', city: '', country: '',
             instagram: '', website: '', booking_notice: '', cancellation_policy: '',
             is_public: true, is_accepting_bookings: true, show_availability: true, currency: 'UAH',
-            theme: 'default',
+            theme: 'default', pub_corners: 'smooth',
             social_links: { facebook: '', tiktok: '', telegram: '', whatsapp: '' },
         });
 
@@ -1791,7 +1791,7 @@ const SettingsPage = {
             form.email = data.email || '';
             const p = data.profile || {};
             avatarUrl.value = M.avatarSrc(p);
-            ['bio','specialty','phone','city','country','instagram','website','booking_notice','cancellation_policy','is_public','is_accepting_bookings','show_availability','currency','theme'].forEach(k => {
+            ['bio','specialty','phone','city','country','instagram','website','booking_notice','cancellation_policy','is_public','is_accepting_bookings','show_availability','currency','theme','pub_corners'].forEach(k => {
                 if (p[k] !== undefined && p[k] !== null) form[k] = p[k];
             });
             form.social_links = { facebook: '', tiktok: '', telegram: '', whatsapp: '', ...(p.social_links || {}) };
@@ -1872,7 +1872,7 @@ const SettingsPage = {
             await props.api.put('/profile', {
                 is_public: form.is_public, is_accepting_bookings: form.is_accepting_bookings, show_availability: form.show_availability,
                 booking_notice: form.booking_notice, cancellation_policy: form.cancellation_policy,
-                currency: form.currency, social_links: form.social_links, theme: form.theme,
+                currency: form.currency, social_links: form.social_links, theme: form.theme, pub_corners: form.pub_corners,
             });
             savedPublic.value = true; savingPublic.value = false;
             setTimeout(() => savedPublic.value = false, 2500);
@@ -2217,14 +2217,19 @@ const SettingsPage = {
             <!-- Theme picker -->
             <div class="card">
               <div class="card-header"><span class="card-title"><i class="fa fa-palette" style="color:var(--accent);margin-right:6px;"></i>Тема публічної сторінки</span></div>
-              <div class="card-body">
+              <div class="card-body" style="display:flex;flex-direction:column;gap:20px;">
                 <div class="theme-picker-grid">
                   <button v-for="t in [
-                    { id:'default', label:'Default', sub:'Мінімалізм' },
-                    { id:'dark',    label:'Noir',    sub:'Studio Dark' },
-                    { id:'warm',    label:'Artisan', sub:'Золота теплота' },
-                    { id:'bold',    label:'Editorial',sub:'Контраст' },
-                    { id:'glass',   label:'Aurora',  sub:'Скло & Градієнт' },
+                    { id:'default',  label:'Default',   sub:'Мінімалізм' },
+                    { id:'dark',     label:'Noir',       sub:'Studio Dark' },
+                    { id:'warm',     label:'Artisan',    sub:'Золота теплота' },
+                    { id:'bold',     label:'Editorial',  sub:'Контраст' },
+                    { id:'glass',    label:'Aurora',     sub:'Скло & Градієнт' },
+                    { id:'ocean',    label:'Ocean',      sub:'Тихий океан' },
+                    { id:'sakura',   label:'Sakura',     sub:'Квіткова ніжність' },
+                    { id:'midnight', label:'Midnight',   sub:'Нічне індиго' },
+                    { id:'copper',   label:'Copper',     sub:'Індустріальний' },
+                    { id:'mint',     label:'Mint',       sub:'Свіжа зелень' },
                   ]" :key="t.id" type="button"
                     :class="['theme-swatch-btn', form.theme === t.id ? 'active' : '']"
                     @click="form.theme = t.id">
@@ -2237,6 +2242,21 @@ const SettingsPage = {
                     <div class="theme-swatch-sub">{{ t.sub }}</div>
                     <i v-if="form.theme === t.id" class="fa fa-circle-check theme-swatch-check"></i>
                   </button>
+                </div>
+
+                <!-- Corner style toggle -->
+                <div>
+                  <p style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px;">Стиль кутів</p>
+                  <div class="corners-toggle">
+                    <button type="button" :class="['corners-opt', form.pub_corners === 'smooth' ? 'active' : '']" @click="form.pub_corners = 'smooth'">
+                      <span class="corners-preview corners-smooth"></span>
+                      <span>Заокруглені</span>
+                    </button>
+                    <button type="button" :class="['corners-opt', form.pub_corners === 'sharp' ? 'active' : '']" @click="form.pub_corners = 'sharp'">
+                      <span class="corners-preview corners-sharp"></span>
+                      <span>Гострі</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

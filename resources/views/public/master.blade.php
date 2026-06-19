@@ -9,10 +9,9 @@
 <link rel="stylesheet" href="/css/maystr.css">
 <script src="/js/vendor/vue.global.prod.js"></script>
 <script src="/js/vendor/axios.min.js"></script>
-@php $theme = $profile->theme ?: 'default'; @endphp
 </head>
 <body>
-<div class="pub-page pub-theme-{{ $theme }}">
+<div class="pub-page pub-theme-{{ $theme }} pub-corners-{{ $corners }}">
 
     @if($theme === 'glass')
     <div class="pub-glass-orb pub-glass-orb-1"></div>

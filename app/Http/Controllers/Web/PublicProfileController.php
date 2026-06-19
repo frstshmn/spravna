@@ -22,6 +22,9 @@ class PublicProfileController extends Controller
             return ['id' => $s->id, 'name' => $s->name];
         })->values()->toJson();
 
-        return view('public.master', compact('profile', 'master', 'services', 'portfolio', 'servicesJson'));
+        $theme = $profile->theme ?: 'default';
+        $corners = $profile->pub_corners ?: 'smooth';
+
+        return view('public.master', compact('profile', 'master', 'services', 'portfolio', 'servicesJson', 'theme', 'corners'));
     }
 }

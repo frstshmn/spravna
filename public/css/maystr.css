@@ -2434,9 +2434,294 @@ tbody td { padding: 11px 14px; font-size: 13px; vertical-align: middle; }
 .pub-theme-glass .pub-book-cta { background: #a855f7; border: none; }
 .pub-theme-glass .pub-book-cta:hover { background: #9333ea; }
 
-/* Select override in dark/glass themes */
+/* Select override in dark/glass/midnight themes */
 .pub-theme-dark .select option,
-.pub-theme-glass .select option { background: #1a1a1a; color: #e8e8e8; }
+.pub-theme-glass .select option,
+.pub-theme-midnight .select option,
+.pub-theme-copper .select option { background: #1a1a1a; color: #e8e8e8; }
+
+/* ── OCEAN theme (Тихий океан) ── */
+.pub-theme-ocean {
+  background: linear-gradient(160deg, #e8f6f8 0%, #d0edf5 50%, #e8f4f0 100%);
+  --pub-bg:          #e8f6f8;
+  --pub-surface:     rgba(255,255,255,0.7);
+  --pub-border:      rgba(8,145,178,0.18);
+  --pub-text:        #0c3547;
+  --pub-text-sub:    #26748a;
+  --pub-text-muted:  #5a9eb5;
+  --pub-accent:      #0891b2;
+  --pub-accent-soft: rgba(8,145,178,0.12);
+  --pub-accent-text: #0369a1;
+}
+.pub-theme-ocean .pub-topbar {
+  background: rgba(232,246,248,0.85);
+  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  border-bottom-color: rgba(8,145,178,0.14);
+}
+.pub-theme-ocean .pub-master-head { padding: 32px 0 0; }
+.pub-theme-ocean .pub-svc-card {
+  background: rgba(255,255,255,0.72); border: 1px solid rgba(8,145,178,.18);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+}
+.pub-theme-ocean .booking-form-card { background: rgba(255,255,255,.72); border-color: rgba(8,145,178,.18); }
+.pub-theme-ocean .availability-card { background: rgba(255,255,255,.7); border-color: rgba(8,145,178,.16); }
+.pub-theme-ocean .input, .pub-theme-ocean .select, .pub-theme-ocean .textarea { background: rgba(255,255,255,.8); border-color: rgba(8,145,178,.22); }
+.pub-theme-ocean .btn-primary { background: #0891b2; }
+.pub-theme-ocean .btn-primary:hover { background: #0369a1; }
+.pub-theme-ocean .pub-specialty-badge { background: rgba(8,145,178,.12); color: #0891b2; }
+.pub-theme-ocean .pub-section-title i { color: #0891b2; }
+.pub-theme-ocean .pub-social-link { background: rgba(255,255,255,.7); border-color: rgba(8,145,178,.16); }
+.pub-theme-ocean .pub-social-link:hover { border-color: #0891b2; color: #0891b2; }
+.pub-theme-ocean .avail-day.selected { background: #0891b2 !important; }
+.pub-theme-ocean .avail-slot.free:hover { background: rgba(8,145,178,.12); border-color: #0891b2; color: #0891b2; }
+.pub-theme-ocean .pub-footer { background: rgba(232,246,248,.9); border-top-color: rgba(8,145,178,.14); }
+.pub-theme-ocean .pub-book-success { background: rgba(8,145,178,.1); }
+.pub-theme-ocean .pub-closed { background: rgba(255,255,255,.7); border-color: rgba(8,145,178,.16); }
+.pub-theme-ocean .pub-notice { background: rgba(255,255,255,.7); border-color: rgba(8,145,178,.14); }
+
+/* ── SAKURA theme (Квіткова ніжність) ── */
+.pub-theme-sakura {
+  background: linear-gradient(150deg, #fdf2f8 0%, #fce7f3 50%, #fff0f5 100%);
+  --pub-bg:          #fdf2f8;
+  --pub-surface:     rgba(255,255,255,0.75);
+  --pub-border:      rgba(219,39,119,0.15);
+  --pub-text:        #4a0d27;
+  --pub-text-sub:    #9d174d;
+  --pub-text-muted:  #c084a0;
+  --pub-accent:      #db2777;
+  --pub-accent-soft: rgba(219,39,119,0.10);
+  --pub-accent-text: #be185d;
+}
+.pub-theme-sakura .pub-topbar { background: rgba(253,242,248,0.88); border-bottom-color: rgba(219,39,119,.12); }
+.pub-theme-sakura .pub-master-head { padding: 32px 0 0; }
+.pub-theme-sakura .pub-avatar-lg { border-radius: 50%; border: 3px solid rgba(219,39,119,.25); }
+.pub-theme-sakura .pub-svc-card { background: rgba(255,255,255,.78); border-color: rgba(219,39,119,.16); border-radius: 20px; }
+.pub-theme-sakura .booking-form-card { background: rgba(255,255,255,.78); border-color: rgba(219,39,119,.15); border-radius: 24px; }
+.pub-theme-sakura .availability-card { background: rgba(255,255,255,.75); border-color: rgba(219,39,119,.14); border-radius: 20px; }
+.pub-theme-sakura .input, .pub-theme-sakura .select, .pub-theme-sakura .textarea { background: rgba(255,255,255,.85); border-color: rgba(219,39,119,.2); }
+.pub-theme-sakura .btn-primary { background: #db2777; }
+.pub-theme-sakura .btn-primary:hover { background: #be185d; }
+.pub-theme-sakura .pub-specialty-badge { background: rgba(219,39,119,.1); color: #db2777; }
+.pub-theme-sakura .pub-section-title i { color: #db2777; }
+.pub-theme-sakura .pub-social-link { background: rgba(255,255,255,.75); border-color: rgba(219,39,119,.14); }
+.pub-theme-sakura .pub-social-link:hover { border-color: #db2777; color: #db2777; }
+.pub-theme-sakura .avail-day.selected { background: #db2777 !important; }
+.pub-theme-sakura .avail-slot.free:hover { background: rgba(219,39,119,.1); border-color: #db2777; color: #db2777; }
+.pub-theme-sakura .pub-footer { background: rgba(253,242,248,.9); border-top-color: rgba(219,39,119,.12); }
+.pub-theme-sakura .pub-book-success { background: rgba(219,39,119,.08); }
+.pub-theme-sakura .pub-closed { background: rgba(255,255,255,.75); border-color: rgba(219,39,119,.14); }
+.pub-theme-sakura .pub-notice { background: rgba(255,255,255,.72); border-color: rgba(219,39,119,.13); }
+
+/* ── MIDNIGHT theme (Нічне індиго) ── */
+.pub-theme-midnight {
+  background: linear-gradient(160deg, #0a0e1a 0%, #0d1230 50%, #0e0a20 100%);
+  color: #e0e0ff;
+  --pub-bg:          #0a0e1a;
+  --pub-surface:     #131830;
+  --pub-border:      rgba(129,140,248,0.2);
+  --pub-text:        #e8e8ff;
+  --pub-text-sub:    #9ea5d0;
+  --pub-text-muted:  #5d6390;
+  --pub-accent:      #818cf8;
+  --pub-accent-soft: rgba(129,140,248,0.14);
+  --pub-accent-text: #a5b4fc;
+}
+.pub-theme-midnight .pub-topbar { background: rgba(10,14,26,0.9); border-bottom-color: rgba(129,140,248,.18); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
+.pub-theme-midnight .pub-brand-name { color: #e8e8ff; }
+.pub-theme-midnight .pub-master-head { padding: 32px 0 0; }
+.pub-theme-midnight .pub-svc-card { background: #131830; border: 1px solid rgba(129,140,248,.2); }
+.pub-theme-midnight .pub-svc-card:hover { border-color: #818cf8; box-shadow: 0 0 16px rgba(129,140,248,.15); }
+.pub-theme-midnight .booking-form-card { background: #131830; border-color: rgba(129,140,248,.2); }
+.pub-theme-midnight .availability-card { background: #0f1228; border-color: rgba(129,140,248,.18); }
+.pub-theme-midnight .input, .pub-theme-midnight .select, .pub-theme-midnight .textarea { background: #0d1020; border-color: rgba(129,140,248,.25); color: #e0e0ff; }
+.pub-theme-midnight .input::placeholder, .pub-theme-midnight .textarea::placeholder { color: #3d4570; }
+.pub-theme-midnight .label { color: #7a82c0; }
+.pub-theme-midnight .dt-trigger { background: #0d1020; border-color: rgba(129,140,248,.25); color: #e0e0ff; }
+.pub-theme-midnight .btn-primary { background: #818cf8; color: #0a0e1a; font-weight: 700; }
+.pub-theme-midnight .btn-primary:hover { background: #6366f1; }
+.pub-theme-midnight .btn-ghost { color: #5d6390; }
+.pub-theme-midnight .btn-ghost:hover { background: #131830; color: #9ea5d0; }
+.pub-theme-midnight .pub-specialty-badge { background: rgba(129,140,248,.15); color: #818cf8; }
+.pub-theme-midnight .pub-section-title i { color: #818cf8; }
+.pub-theme-midnight .pub-social-link { background: #131830; border-color: rgba(129,140,248,.2); color: #9ea5d0; }
+.pub-theme-midnight .pub-social-link:hover { border-color: #818cf8; color: #818cf8; }
+.pub-theme-midnight .pub-notice { background: #131830; border-color: rgba(129,140,248,.18); }
+.pub-theme-midnight .pub-footer { background: #080b14; border-top-color: rgba(129,140,248,.15); }
+.pub-theme-midnight .pub-footer-link { color: #818cf8; }
+.pub-theme-midnight .avail-day.avail-available { background: rgba(129,140,248,.15); }
+.pub-theme-midnight .avail-day.selected { background: #818cf8 !important; color: #0a0e1a !important; }
+.pub-theme-midnight .avail-slot { background: #131830; border-color: rgba(129,140,248,.2); color: #9ea5d0; }
+.pub-theme-midnight .avail-slot.free:hover { background: rgba(129,140,248,.15); border-color: #818cf8; color: #818cf8; }
+.pub-theme-midnight .pub-book-success { background: rgba(129,140,248,.12); }
+.pub-theme-midnight .pub-closed { background: #131830; border-color: rgba(129,140,248,.18); }
+
+/* ── COPPER theme (Індустріальний) ── */
+.pub-theme-copper {
+  background: #141210;
+  color: #e8d5c0;
+  --pub-bg:          #141210;
+  --pub-surface:     #1e1a16;
+  --pub-border:      rgba(217,119,6,0.25);
+  --pub-text:        #f0dcc8;
+  --pub-text-sub:    #b8956a;
+  --pub-text-muted:  #7a6248;
+  --pub-accent:      #d97706;
+  --pub-accent-soft: rgba(217,119,6,0.14);
+  --pub-accent-text: #fbbf24;
+}
+.pub-theme-copper .pub-topbar { background: rgba(20,18,16,0.92); border-bottom-color: rgba(217,119,6,.22); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+.pub-theme-copper .pub-brand-name { color: #f0dcc8; }
+.pub-theme-copper .pub-brand-icon { background: #d97706; }
+.pub-theme-copper .pub-master-head { padding: 32px 0 0; }
+.pub-theme-copper .pub-svc-card { background: #1e1a16; border: 1px solid rgba(217,119,6,.22); }
+.pub-theme-copper .pub-svc-card:hover { border-color: #d97706; box-shadow: 0 0 14px rgba(217,119,6,.12); }
+.pub-theme-copper .booking-form-card { background: #1a1612; border-color: rgba(217,119,6,.22); }
+.pub-theme-copper .availability-card { background: #181410; border-color: rgba(217,119,6,.2); }
+.pub-theme-copper .input, .pub-theme-copper .select, .pub-theme-copper .textarea { background: #120f0c; border-color: rgba(217,119,6,.28); color: #f0dcc8; }
+.pub-theme-copper .input::placeholder, .pub-theme-copper .textarea::placeholder { color: #4a3828; }
+.pub-theme-copper .label { color: #8a7060; }
+.pub-theme-copper .dt-trigger { background: #120f0c; border-color: rgba(217,119,6,.28); color: #f0dcc8; }
+.pub-theme-copper .btn-primary { background: #d97706; color: #120f0c; font-weight: 700; }
+.pub-theme-copper .btn-primary:hover { background: #b45309; }
+.pub-theme-copper .btn-ghost { color: #7a6248; }
+.pub-theme-copper .btn-ghost:hover { background: #1e1a16; color: #b8956a; }
+.pub-theme-copper .pub-specialty-badge { background: rgba(217,119,6,.14); color: #d97706; }
+.pub-theme-copper .pub-section-title i { color: #d97706; }
+.pub-theme-copper .pub-social-link { background: #1e1a16; border-color: rgba(217,119,6,.2); color: #b8956a; }
+.pub-theme-copper .pub-social-link:hover { border-color: #d97706; color: #d97706; }
+.pub-theme-copper .pub-notice { background: #1e1a16; border-color: rgba(217,119,6,.2); }
+.pub-theme-copper .pub-footer { background: #0e0c0a; border-top-color: rgba(217,119,6,.18); }
+.pub-theme-copper .pub-footer-link { color: #d97706; }
+.pub-theme-copper .avail-day.avail-available { background: rgba(217,119,6,.14); }
+.pub-theme-copper .avail-day.selected { background: #d97706 !important; color: #120f0c !important; }
+.pub-theme-copper .avail-slot { background: #1e1a16; border-color: rgba(217,119,6,.2); color: #b8956a; }
+.pub-theme-copper .avail-slot.free:hover { background: rgba(217,119,6,.14); border-color: #d97706; color: #d97706; }
+.pub-theme-copper .pub-book-success { background: rgba(217,119,6,.12); }
+.pub-theme-copper .pub-closed { background: #1e1a16; border-color: rgba(217,119,6,.2); }
+
+/* ── MINT theme (Свіжа зелень) ── */
+.pub-theme-mint {
+  background: linear-gradient(150deg, #f0faf5 0%, #e8f7f0 50%, #f5fbf8 100%);
+  --pub-bg:          #f0faf5;
+  --pub-surface:     rgba(255,255,255,0.75);
+  --pub-border:      rgba(5,150,105,0.15);
+  --pub-text:        #0d3d28;
+  --pub-text-sub:    #1e7a52;
+  --pub-text-muted:  #5aab84;
+  --pub-accent:      #059669;
+  --pub-accent-soft: rgba(5,150,105,0.11);
+  --pub-accent-text: #047857;
+}
+.pub-theme-mint .pub-topbar { background: rgba(240,250,245,0.88); border-bottom-color: rgba(5,150,105,.13); }
+.pub-theme-mint .pub-master-head { padding: 32px 0 0; }
+.pub-theme-mint .pub-svc-card { background: rgba(255,255,255,.75); border-color: rgba(5,150,105,.16); }
+.pub-theme-mint .booking-form-card { background: rgba(255,255,255,.75); border-color: rgba(5,150,105,.15); }
+.pub-theme-mint .availability-card { background: rgba(255,255,255,.72); border-color: rgba(5,150,105,.14); }
+.pub-theme-mint .input, .pub-theme-mint .select, .pub-theme-mint .textarea { background: rgba(255,255,255,.85); border-color: rgba(5,150,105,.2); }
+.pub-theme-mint .btn-primary { background: #059669; }
+.pub-theme-mint .btn-primary:hover { background: #047857; }
+.pub-theme-mint .pub-specialty-badge { background: rgba(5,150,105,.1); color: #059669; }
+.pub-theme-mint .pub-section-title i { color: #059669; }
+.pub-theme-mint .pub-social-link { background: rgba(255,255,255,.72); border-color: rgba(5,150,105,.14); }
+.pub-theme-mint .pub-social-link:hover { border-color: #059669; color: #059669; }
+.pub-theme-mint .avail-day.selected { background: #059669 !important; }
+.pub-theme-mint .avail-slot.free:hover { background: rgba(5,150,105,.1); border-color: #059669; color: #059669; }
+.pub-theme-mint .pub-footer { background: rgba(240,250,245,.9); border-top-color: rgba(5,150,105,.13); }
+.pub-theme-mint .pub-book-success { background: rgba(5,150,105,.09); }
+.pub-theme-mint .pub-closed { background: rgba(255,255,255,.72); border-color: rgba(5,150,105,.14); }
+.pub-theme-mint .pub-notice { background: rgba(255,255,255,.72); border-color: rgba(5,150,105,.13); }
+
+/* ── Geometric swatches for new themes ── */
+.theme-swatch-ocean    { background: linear-gradient(135deg, #e8f6f8 0%, #0891b2 100%); }
+.theme-swatch-sakura   { background: linear-gradient(135deg, #fdf2f8 0%, #f9a8d4 100%); }
+.theme-swatch-midnight { background: linear-gradient(135deg, #0a0e1a 0%, #1e1b4b 100%); }
+.theme-swatch-copper   { background: linear-gradient(135deg, #141210 0%, #3d2b0e 100%); }
+.theme-swatch-mint     { background: linear-gradient(135deg, #f0faf5 0%, #059669 100%); }
+
+.theme-swatch-ocean .ts-geo-1    { width: 44px; height: 44px; background: rgba(8,145,178,.45); top: 5px; left: 8px; }
+.theme-swatch-ocean .ts-geo-2    { width: 28px; height: 28px; background: rgba(255,255,255,.35); bottom: 8px; left: 35px; }
+.theme-swatch-ocean .ts-geo-3    { width: 55px; height: 55px; background: rgba(8,145,178,.25); top: -10px; right: -10px; }
+
+.theme-swatch-sakura .ts-geo-1   { width: 36px; height: 36px; background: rgba(219,39,119,.45); top: 8px; left: 12px; border-radius: 60% 40% 40% 60% / 60% 60% 40% 40%; }
+.theme-swatch-sakura .ts-geo-2   { width: 22px; height: 22px; background: rgba(244,114,182,.5); top: 5px; right: 18px; border-radius: 40% 60% 60% 40% / 40% 40% 60% 60%; }
+.theme-swatch-sakura .ts-geo-3   { width: 50px; height: 50px; background: rgba(219,39,119,.18); bottom: -15px; right: 5px; border-radius: 50%; }
+
+.theme-swatch-midnight .ts-geo-1 { width: 40px; height: 40px; background: rgba(129,140,248,.55); top: 8px; left: 10px; box-shadow: 0 0 10px rgba(129,140,248,.4); }
+.theme-swatch-midnight .ts-geo-2 { width: 20px; height: 20px; background: rgba(99,102,241,.4); top: 5px; right: 18px; }
+.theme-swatch-midnight .ts-geo-3 { width: 50px; height: 50px; background: rgba(129,140,248,.1); bottom: -15px; right: 8px; }
+
+.theme-swatch-copper .ts-geo-1   { width: 40px; height: 12px; background: #d97706; border-radius: 0; top: 22px; left: 10px; box-shadow: 0 0 8px rgba(217,119,6,.5); }
+.theme-swatch-copper .ts-geo-2   { width: 25px; height: 12px; background: #92400e; border-radius: 0; top: 40px; left: 10px; }
+.theme-swatch-copper .ts-geo-3   { width: 20px; height: 20px; background: rgba(217,119,6,.35); border-radius: 0; top: 12px; right: 14px; }
+
+.theme-swatch-mint .ts-geo-1     { width: 42px; height: 42px; background: rgba(5,150,105,.4); top: 8px; left: 10px; }
+.theme-swatch-mint .ts-geo-2     { width: 24px; height: 24px; background: rgba(5,150,105,.25); bottom: 8px; left: 40px; }
+.theme-swatch-mint .ts-geo-3     { width: 52px; height: 52px; background: rgba(5,150,105,.15); top: -12px; right: -8px; }
+
+/* =====================================================================
+   PUBLIC PAGE — CORNER STYLES
+   ===================================================================== */
+
+/* Sharp corners: override all border-radii on pub-page elements to 0 */
+.pub-corners-sharp .pub-topbar,
+.pub-corners-sharp .pub-brand-icon,
+.pub-corners-sharp .pub-book-cta,
+.pub-corners-sharp .pub-avatar-lg,
+.pub-corners-sharp .pub-specialty-badge,
+.pub-corners-sharp .pub-social-link,
+.pub-corners-sharp .pub-svc-card,
+.pub-corners-sharp .pub-notice,
+.pub-corners-sharp .pub-closed,
+.pub-corners-sharp .pub-book-success,
+.pub-corners-sharp .booking-form-card,
+.pub-corners-sharp .availability-card,
+.pub-corners-sharp .avail-nav-btn,
+.pub-corners-sharp .avail-day,
+.pub-corners-sharp .avail-slot,
+.pub-corners-sharp .pub-footer,
+.pub-corners-sharp .btn,
+.pub-corners-sharp .input,
+.pub-corners-sharp .select,
+.pub-corners-sharp .textarea,
+.pub-corners-sharp .dt-trigger { border-radius: 0 !important; }
+
+/* Smooth corners: generous radii (overrides theme-specific radii where needed) */
+.pub-corners-smooth .pub-svc-card { border-radius: var(--r-lg); }
+.pub-corners-smooth .booking-form-card { border-radius: var(--r-2xl); }
+.pub-corners-smooth .availability-card { border-radius: var(--r-2xl); }
+.pub-corners-smooth .pub-specialty-badge { border-radius: 20px; }
+.pub-corners-smooth .pub-social-link { border-radius: 20px; }
+.pub-corners-smooth .pub-avatar-lg { border-radius: var(--r-xl); }
+
+/* =====================================================================
+   CORNER TOGGLE UI (settings)
+   ===================================================================== */
+.corners-toggle {
+  display: flex; gap: 10px;
+}
+.corners-opt {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 16px; border-radius: var(--r-lg);
+  border: 2px solid var(--border-2); background: var(--surface-2);
+  cursor: pointer; transition: .15s; font-size: 13px; font-weight: 500; color: var(--text-sub);
+  flex: 1; justify-content: center;
+}
+.corners-opt:hover { border-color: var(--accent); color: var(--text); }
+.corners-opt.active { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-text); font-weight: 600; }
+.corners-preview {
+  display: inline-block; width: 22px; height: 16px;
+  border: 2px solid currentColor; flex-shrink: 0;
+}
+.corners-smooth { border-radius: 6px; }
+.corners-sharp  { border-radius: 0; }
+
+/* Also update theme picker grid for 10 items */
+.theme-picker-grid { grid-template-columns: repeat(5, 1fr); }
+@media (max-width: 1100px) { .theme-picker-grid { grid-template-columns: repeat(5, 1fr); } }
+@media (max-width: 860px)  { .theme-picker-grid { grid-template-columns: repeat(5, 1fr); } }
+@media (max-width: 680px)  { .theme-picker-grid { grid-template-columns: repeat(4, 1fr); } }
+@media (max-width: 520px)  { .theme-picker-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 380px)  { .theme-picker-grid { grid-template-columns: repeat(2, 1fr); } }
 
 /* =====================================================================
    THEME PICKER (settings)

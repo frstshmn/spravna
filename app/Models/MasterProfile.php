@@ -11,7 +11,7 @@ class MasterProfile extends Model
         'user_id', 'slug', 'bio', 'specialty', 'avatar', 'phone',
         'city', 'country', 'instagram', 'website', 'booking_notice',
         'cancellation_policy', 'is_public', 'is_accepting_bookings',
-        'show_availability', 'currency', 'social_links', 'theme',
+        'show_availability', 'currency', 'social_links', 'theme', 'pub_corners',
     ];
 
     protected function casts(): array
