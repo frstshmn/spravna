@@ -2210,59 +2210,112 @@ tbody td { padding: 11px 14px; font-size: 13px; vertical-align: middle; }
 }
 .pub-theme-default .btn-primary:hover { background: #2e4d38; }
 
-/* ── DARK theme (Noir/Studio) ── */
+/* ── LIGHT theme — accent color via --pub-accent / --pub-accent-rgb inline vars ── */
+.pub-theme-light { background: #f4f3f0; }
+.pub-theme-light .pub-topbar {
+  background: rgba(255,255,255,0.82);
+  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  border-bottom-color: rgba(0,0,0,0.07);
+}
+.pub-theme-light .pub-brand-icon { background: var(--pub-accent, #0891b2); }
+.pub-theme-light .pub-specialty-badge { background: rgba(var(--pub-accent-rgb,8 145 178),0.12); color: var(--pub-accent, #0891b2); }
+.pub-theme-light .pub-section-title i { color: var(--pub-accent, #0891b2); }
+.pub-theme-light .pub-svc-card { background: rgba(255,255,255,0.78); border: 1px solid rgba(var(--pub-accent-rgb,8 145 178),0.13); }
+.pub-theme-light .pub-svc-card:hover { border-color: rgba(var(--pub-accent-rgb,8 145 178),0.38); }
+.pub-theme-light .pub-svc-dot { background: var(--pub-accent, #0891b2); }
+.pub-theme-light .pub-svc-price { color: var(--pub-accent, #0891b2); }
+.pub-theme-light .pub-social-link:hover { border-color: var(--pub-accent, #0891b2); color: var(--pub-accent, #0891b2); }
+.pub-theme-light .pub-book-cta { background: var(--pub-accent, #0891b2); border: none; color: #fff; }
+.pub-theme-light .pub-book-cta:hover { filter: brightness(1.08); }
+.pub-theme-light .booking-form-card,
+.pub-theme-light .availability-card {
+  background: rgba(255,255,255,0.75);
+  border: 1px solid rgba(var(--pub-accent-rgb,8 145 178),0.14);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+}
+.pub-theme-light .btn-primary { background: var(--pub-accent, #0891b2); color: #fff; }
+.pub-theme-light .btn-primary:hover { filter: brightness(1.08); }
+.pub-theme-light .pub-notice { background: rgba(var(--pub-accent-rgb,8 145 178),0.07); border-color: rgba(var(--pub-accent-rgb,8 145 178),0.15); }
+.pub-theme-light .pub-book-success { background: rgba(var(--pub-accent-rgb,8 145 178),0.1); }
+.pub-theme-light .pub-closed { background: rgba(var(--pub-accent-rgb,8 145 178),0.05); border-color: rgba(var(--pub-accent-rgb,8 145 178),0.12); }
+.pub-theme-light .pub-footer { background: rgba(255,255,255,0.6); border-top-color: rgba(0,0,0,0.07); }
+.pub-theme-light .pub-footer-link { color: var(--pub-accent, #0891b2); }
+/* Light calendar */
+.pub-theme-light .avail-day.avail-available { background: rgba(var(--pub-accent-rgb,8 145 178),0.12); }
+.pub-theme-light .avail-day.today { color: var(--pub-accent, #0891b2); }
+.pub-theme-light .avail-day.avail-available.today { color: var(--pub-accent, #0891b2); }
+.pub-theme-light .avail-day.selected { background: var(--pub-accent, #0891b2) !important; color: #fff !important; }
+.pub-theme-light .avail-slot.free:hover { background: rgba(var(--pub-accent-rgb,8 145 178),0.1); border-color: var(--pub-accent, #0891b2); color: var(--pub-accent, #0891b2); }
+.pub-theme-light .avail-nav-btn:hover:not(:disabled) { background: rgba(var(--pub-accent-rgb,8 145 178),0.1); color: var(--pub-accent, #0891b2); }
+.pub-theme-light .avail-dot-available { background: var(--pub-accent, #0891b2); }
+
+/* ── DARK theme — accent color via --pub-accent / --pub-accent-rgb inline vars ── */
 .pub-theme-dark {
-  background: #0d0d0d;
-  color: #e8e8e8;
-  --pub-bg:          #0d0d0d;
-  --pub-surface:     #1a1a1a;
-  --pub-border:      #2a2a2a;
-  --pub-text:        #f0f0f0;
-  --pub-text-sub:    #a0a0a0;
-  --pub-text-muted:  #666;
-  --pub-accent:      #22c55e;
-  --pub-accent-soft: rgba(34,197,94,0.12);
-  --pub-accent-text: #22c55e;
-  --pub-hero-bg:     #000;
+  background: radial-gradient(ellipse at 20% 0%, rgba(var(--pub-accent-rgb,34 197 94),0.08) 0%, #0c0c0c 55%);
+  color: #f0f0f0;
 }
 .pub-theme-dark .pub-topbar {
-  background: rgba(13,13,13,0.9);
-  border-bottom-color: #2a2a2a;
+  background: rgba(0,0,0,0.72);
+  backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+  border-bottom-color: rgba(255,255,255,0.08);
 }
 .pub-theme-dark .pub-brand-name { color: #f0f0f0; }
-.pub-theme-dark .pub-svc-card {
-  background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 4px;
-  box-shadow: 0 0 0 1px #2a2a2a;
-}
-.pub-theme-dark .pub-svc-card:hover { border-color: #22c55e; box-shadow: 0 0 12px rgba(34,197,94,.15); }
-.pub-theme-dark .booking-form-card {
-  background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 8px;
-}
-.pub-theme-dark .availability-card {
-  background: #141414; border: 1px solid #2a2a2a;
-}
-.pub-theme-dark .input, .pub-theme-dark .select, .pub-theme-dark .textarea {
-  background: #111; border: 1px solid #333; color: #e8e8e8;
-}
-.pub-theme-dark .input::placeholder, .pub-theme-dark .textarea::placeholder { color: #555; }
-.pub-theme-dark .label { color: #888; }
-.pub-theme-dark .dt-trigger { background: #111; border: 1px solid #333; color: #e8e8e8; }
-.pub-theme-dark .btn-primary { background: #22c55e; color: #000; font-weight: 700; }
-.pub-theme-dark .btn-primary:hover { background: #16a34a; }
-.pub-theme-dark .btn-ghost { color: #888; }
-.pub-theme-dark .btn-ghost:hover { background: #1f1f1f; color: #ccc; }
-.pub-theme-dark .pub-notice { background: #1a1a1a; border-color: #2a2a2a; }
-.pub-theme-dark .pub-footer { background: #0a0a0a; border-top-color: #2a2a2a; }
-.pub-theme-dark .avail-day.avail-available { background: rgba(34,197,94,.15); }
-.pub-theme-dark .avail-day.selected { background: #22c55e !important; color: #000 !important; }
-.pub-theme-dark .avail-slot { background: #1a1a1a; border-color: #333; color: #ccc; }
-.pub-theme-dark .avail-slot.free:hover { background: rgba(34,197,94,.15); border-color: #22c55e; color: #22c55e; }
-.pub-theme-dark .pub-social-link { background: #1a1a1a; border-color: #2a2a2a; color: #aaa; }
-.pub-theme-dark .pub-social-link:hover { border-color: #22c55e; color: #22c55e; }
-.pub-theme-dark .pub-specialty-badge { background: rgba(34,197,94,.12); color: #22c55e; }
-.pub-theme-dark .pub-section-title i { color: #22c55e; }
-.pub-theme-dark .pub-closed { background: #1a1a1a; border-color: #2a2a2a; }
-.pub-theme-dark .pub-book-success { background: rgba(34,197,94,.1); }
+.pub-theme-dark .pub-brand-icon { background: var(--pub-accent, #22c55e); }
+.pub-theme-dark .pub-specialty-badge { background: rgba(var(--pub-accent-rgb,34 197 94),0.18); color: var(--pub-accent, #22c55e); }
+.pub-theme-dark .pub-section-title { color: #f0f0f0; }
+.pub-theme-dark .pub-section-title i { color: var(--pub-accent, #22c55e); }
+.pub-theme-dark .pub-svc-name { color: #e8e8e8; }
+.pub-theme-dark .pub-svc-desc { color: rgba(255,255,255,0.55); }
+.pub-theme-dark .pub-svc-price { color: var(--pub-accent, #22c55e); }
+.pub-theme-dark .pub-svc-dur { color: rgba(255,255,255,0.45); }
+.pub-theme-dark .pub-svc-card { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); }
+.pub-theme-dark .pub-svc-card:hover { border-color: rgba(var(--pub-accent-rgb,34 197 94),0.45); background: rgba(var(--pub-accent-rgb,34 197 94),0.07); }
+.pub-theme-dark .pub-svc-dot { background: var(--pub-accent, #22c55e); }
+.pub-theme-dark .pub-social-link { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.12); color: rgba(255,255,255,0.7); }
+.pub-theme-dark .pub-social-link:hover { border-color: var(--pub-accent, #22c55e); color: var(--pub-accent, #22c55e); }
+.pub-theme-dark .pub-book-cta { background: var(--pub-accent, #22c55e); border: none; color: #fff; }
+.pub-theme-dark .pub-book-cta:hover { filter: brightness(1.1); }
+.pub-theme-dark .pub-book-title { color: #f0f0f0; }
+.pub-theme-dark .pub-book-sub { color: rgba(255,255,255,0.55); }
+.pub-theme-dark .booking-form-card { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); }
+.pub-theme-dark .availability-card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); }
+.pub-theme-dark .label { color: rgba(255,255,255,0.6); }
+.pub-theme-dark .input, .pub-theme-dark .select, .pub-theme-dark .textarea { background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.15); color: #f0f0f0; }
+.pub-theme-dark .input::placeholder, .pub-theme-dark .textarea::placeholder { color: rgba(255,255,255,0.3); }
+.pub-theme-dark .dt-trigger { background: rgba(255,255,255,0.07); border-color: rgba(255,255,255,0.15); color: #f0f0f0; }
+.pub-theme-dark .btn-primary { background: var(--pub-accent, #22c55e); color: #fff; font-weight: 700; }
+.pub-theme-dark .btn-primary:hover { filter: brightness(1.1); }
+.pub-theme-dark .btn-ghost { color: rgba(255,255,255,0.6); }
+.pub-theme-dark .btn-ghost:hover { background: rgba(255,255,255,0.08); color: #e0e0e0; }
+.pub-theme-dark .pub-notice { background: rgba(255,255,255,0.04); border-color: rgba(255,255,255,0.1); }
+.pub-theme-dark .pub-closed { background: rgba(255,255,255,0.04); border-color: rgba(255,255,255,0.1); }
+.pub-theme-dark .pub-book-success { background: rgba(var(--pub-accent-rgb,34 197 94),0.12); }
+.pub-theme-dark .pub-footer { background: rgba(0,0,0,0.3); border-top-color: rgba(255,255,255,0.08); }
+.pub-theme-dark .pub-footer-link { color: var(--pub-accent, #22c55e); }
+.pub-theme-dark .select option { background: #1a1a1a; color: #e8e8e8; }
+/* Dark calendar */
+.pub-theme-dark .avail-cal-title,
+.pub-theme-dark .avail-month-label,
+.pub-theme-dark .avail-slots-hdr { color: #e0e0e0; }
+.pub-theme-dark .avail-weekdays span { color: rgba(255,255,255,.35); }
+.pub-theme-dark .avail-nav-btn { color: rgba(255,255,255,.45); }
+.pub-theme-dark .avail-nav-btn:hover:not(:disabled) { background: rgba(var(--pub-accent-rgb,34 197 94),.12); color: var(--pub-accent, #22c55e); }
+.pub-theme-dark .avail-day { color: #b0b0b0; }
+.pub-theme-dark .avail-day.avail-available { background: rgba(var(--pub-accent-rgb,34 197 94),.15); color: var(--pub-accent, #22c55e); }
+.pub-theme-dark .avail-day.avail-full { background: rgba(239,68,68,.1); color: #f87171; }
+.pub-theme-dark .avail-day.avail-closed,
+.pub-theme-dark .avail-day.avail-past { color: rgba(255,255,255,.18); opacity: 1; }
+.pub-theme-dark .avail-day.today { color: var(--pub-accent, #22c55e); }
+.pub-theme-dark .avail-day.selected { background: var(--pub-accent, #22c55e) !important; color: #fff !important; }
+.pub-theme-dark .avail-slot { background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.12); color: rgba(255,255,255,0.7); }
+.pub-theme-dark .avail-slot.free:hover { background: rgba(var(--pub-accent-rgb,34 197 94),.15); border-color: var(--pub-accent, #22c55e); color: var(--pub-accent, #22c55e); }
+.pub-theme-dark .avail-slots { border-top-color: rgba(255,255,255,.1); }
+.pub-theme-dark .avail-slots-empty,
+.pub-theme-dark .avail-hint { color: rgba(255,255,255,.35); }
+.pub-theme-dark .avail-hint i { color: var(--pub-accent, #22c55e); }
+.pub-theme-dark .avail-legend { color: rgba(255,255,255,.45); }
+.pub-theme-dark .avail-dot-available { background: var(--pub-accent, #22c55e); }
+.pub-theme-dark .avail-dot-closed { background: rgba(255,255,255,.22); }
 
 /* ── WARM theme (Artisan/Golden) ── */
 .pub-theme-warm {
@@ -2629,26 +2682,6 @@ tbody td { padding: 11px 14px; font-size: 13px; vertical-align: middle; }
    labels, weekday headers, nav buttons and day numbers are visible.
    ===================================================================== */
 
-/* ── Dark / Noir ── */
-.pub-theme-dark .avail-cal-title,
-.pub-theme-dark .avail-month-label,
-.pub-theme-dark .avail-slots-hdr { color: #e0e0e0; }
-.pub-theme-dark .avail-weekdays span { color: rgba(255,255,255,.35); }
-.pub-theme-dark .avail-nav-btn { color: rgba(255,255,255,.45); }
-.pub-theme-dark .avail-nav-btn:hover:not(:disabled) { background: rgba(34,197,94,.12); color: #22c55e; }
-.pub-theme-dark .avail-day { color: #b0b0b0; }
-.pub-theme-dark .avail-day.avail-available { color: #4ade80; }
-.pub-theme-dark .avail-day.avail-full { background: rgba(239,68,68,.1); color: #f87171; }
-.pub-theme-dark .avail-day.avail-closed,
-.pub-theme-dark .avail-day.avail-past { color: rgba(255,255,255,.18); opacity: 1; }
-.pub-theme-dark .avail-day.today { color: #22c55e; }
-.pub-theme-dark .avail-slots { border-top-color: #2a2a2a; }
-.pub-theme-dark .avail-slots-empty,
-.pub-theme-dark .avail-hint { color: rgba(255,255,255,.35); }
-.pub-theme-dark .avail-hint i { color: #22c55e; }
-.pub-theme-dark .avail-legend { color: rgba(255,255,255,.45); }
-.pub-theme-dark .avail-dot-closed { background: #444; }
-
 /* ── Glass / Aurora ── */
 .pub-theme-glass .avail-cal-title,
 .pub-theme-glass .avail-month-label,
@@ -2824,23 +2857,26 @@ body:has(.pub-page)::after { display: none !important; }
 .corners-smooth { border-radius: 6px; }
 .corners-sharp  { border-radius: 0; }
 
-/* Also update theme picker grid for 10 items */
-.theme-picker-grid { grid-template-columns: repeat(5, 1fr); }
-@media (max-width: 1100px) { .theme-picker-grid { grid-template-columns: repeat(5, 1fr); } }
-@media (max-width: 860px)  { .theme-picker-grid { grid-template-columns: repeat(5, 1fr); } }
-@media (max-width: 680px)  { .theme-picker-grid { grid-template-columns: repeat(4, 1fr); } }
-@media (max-width: 520px)  { .theme-picker-grid { grid-template-columns: repeat(3, 1fr); } }
-@media (max-width: 380px)  { .theme-picker-grid { grid-template-columns: repeat(2, 1fr); } }
+/* Accent color picker (shown below theme swatches for light/dark themes) */
+.accent-picker { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.accent-picker-label { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .6px; }
+.accent-dots { display: flex; gap: 8px; }
+.accent-dot {
+  width: 28px; height: 28px; border-radius: 50%; cursor: pointer;
+  border: 3px solid transparent; outline: none; transition: .15s;
+  box-shadow: 0 1px 4px rgba(0,0,0,.18);
+}
+.accent-dot:hover { transform: scale(1.15); }
+.accent-dot.active { border-color: rgba(0,0,0,.25); box-shadow: 0 0 0 3px rgba(0,0,0,.12); }
 
 /* =====================================================================
    THEME PICKER (settings)
    ===================================================================== */
 .theme-picker-grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 10px;
 }
-@media (max-width: 900px) { .theme-picker-grid { grid-template-columns: repeat(3, 1fr); } }
 @media (max-width: 500px) { .theme-picker-grid { grid-template-columns: repeat(2, 1fr); } }
 
 .theme-swatch-btn {
@@ -2857,7 +2893,8 @@ body:has(.pub-page)::after { display: none !important; }
   position: relative; overflow: hidden;
 }
 .theme-swatch-default { background: linear-gradient(135deg, #edeae4 0%, #d5d0c8 100%); }
-.theme-swatch-dark    { background: linear-gradient(135deg, #0d0d0d 0%, #1a2a1a 100%); }
+.theme-swatch-light   { background: #f4f3f0; }
+.theme-swatch-dark    { background: linear-gradient(135deg, #0c0c0c 0%, #181818 100%); }
 .theme-swatch-warm    { background: linear-gradient(135deg, #fdf6ee 0%, #f0d9c2 100%); }
 .theme-swatch-bold    { background: #fff; border-bottom: 3px solid #111; }
 .theme-swatch-glass   { background: linear-gradient(135deg, #1e1040 0%, #0d1f3c 50%, #0a2e2a 100%); }
@@ -2870,10 +2907,15 @@ body:has(.pub-page)::after { display: none !important; }
 .theme-swatch-default .ts-geo-2 { width: 25px; height: 25px; background: rgba(59,94,71,.15); top: 5px; right: 15px; }
 .theme-swatch-default .ts-geo-3 { width: 60px; height: 60px; background: rgba(255,255,255,.4); bottom: -20px; right: -10px; }
 
-/* Dark */
-.theme-swatch-dark .ts-geo-1 { width: 40px; height: 40px; background: rgba(34,197,94,.35); top: 10px; left: 12px; box-shadow: 0 0 12px rgba(34,197,94,.4); }
-.theme-swatch-dark .ts-geo-2 { width: 20px; height: 20px; background: rgba(34,197,94,.2); top: 5px; right: 15px; }
-.theme-swatch-dark .ts-geo-3 { width: 50px; height: 50px; background: rgba(34,197,94,.08); bottom: -15px; right: 10px; }
+/* Light — pie of 4 accent colours */
+.theme-swatch-light .ts-geo-1 { width: 48px; height: 48px; background: conic-gradient(#0891b2 0deg 90deg, #db2777 90deg 180deg, #c4632a 180deg 270deg, #059669 270deg 360deg); border-radius: 50%; top: 8px; left: 10px; }
+.theme-swatch-light .ts-geo-2 { width: 22px; height: 22px; background: rgba(0,0,0,.06); bottom: 8px; left: 38px; }
+.theme-swatch-light .ts-geo-3 { display: none; }
+
+/* Dark — pie of 3 accent colours */
+.theme-swatch-dark .ts-geo-1 { width: 48px; height: 48px; background: conic-gradient(#22c55e 0deg 120deg, #d97706 120deg 240deg, #a855f7 240deg 360deg); border-radius: 50%; top: 8px; left: 10px; }
+.theme-swatch-dark .ts-geo-2 { width: 22px; height: 22px; background: rgba(255,255,255,.08); bottom: 8px; left: 38px; }
+.theme-swatch-dark .ts-geo-3 { display: none; }
 
 /* Warm */
 .theme-swatch-warm .ts-geo-1 { width: 42px; height: 42px; background: rgba(196,99,42,.3); top: 8px; left: 10px; border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%; }

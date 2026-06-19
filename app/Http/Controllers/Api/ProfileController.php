@@ -38,8 +38,9 @@ class ProfileController extends Controller
             'show_availability'    => 'boolean',
             'currency'             => 'string|size:3',
             'social_links'         => 'nullable|array',
-            'theme'                => 'nullable|string|in:default,dark,warm,bold,glass,ocean,sakura,midnight,copper,mint',
+            'theme'                => 'nullable|string|in:default,light,dark,bold,warm,glass,ocean,sakura,midnight,copper,mint',
             'pub_corners'          => 'nullable|string|in:smooth,sharp',
+            'pub_accent'           => ['nullable', 'string', 'regex:/^#[0-9a-fA-F]{6}$/'],
         ]);
 
         if (!empty($userData)) {

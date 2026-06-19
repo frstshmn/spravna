@@ -1766,7 +1766,7 @@ const SettingsPage = {
             bio: '', specialty: '', phone: '', city: '', country: '',
             instagram: '', website: '', booking_notice: '', cancellation_policy: '',
             is_public: true, is_accepting_bookings: true, show_availability: true, currency: 'UAH',
-            theme: 'default', pub_corners: 'smooth',
+            theme: 'default', pub_corners: 'smooth', pub_accent: '#0891b2',
             social_links: { facebook: '', tiktok: '', telegram: '', whatsapp: '' },
         });
 
@@ -1791,7 +1791,7 @@ const SettingsPage = {
             form.email = data.email || '';
             const p = data.profile || {};
             avatarUrl.value = M.avatarSrc(p);
-            ['bio','specialty','phone','city','country','instagram','website','booking_notice','cancellation_policy','is_public','is_accepting_bookings','show_availability','currency','theme','pub_corners'].forEach(k => {
+            ['bio','specialty','phone','city','country','instagram','website','booking_notice','cancellation_policy','is_public','is_accepting_bookings','show_availability','currency','theme','pub_corners','pub_accent'].forEach(k => {
                 if (p[k] !== undefined && p[k] !== null) form[k] = p[k];
             });
             form.social_links = { facebook: '', tiktok: '', telegram: '', whatsapp: '', ...(p.social_links || {}) };
@@ -1872,7 +1872,7 @@ const SettingsPage = {
             await props.api.put('/profile', {
                 is_public: form.is_public, is_accepting_bookings: form.is_accepting_bookings, show_availability: form.show_availability,
                 booking_notice: form.booking_notice, cancellation_policy: form.cancellation_policy,
-                currency: form.currency, social_links: form.social_links, theme: form.theme, pub_corners: form.pub_corners,
+                currency: form.currency, social_links: form.social_links, theme: form.theme, pub_corners: form.pub_corners, pub_accent: form.pub_accent,
             });
             savedPublic.value = true; savingPublic.value = false;
             setTimeout(() => savedPublic.value = false, 2500);
@@ -2220,19 +2220,13 @@ const SettingsPage = {
               <div class="card-body" style="display:flex;flex-direction:column;gap:20px;">
                 <div class="theme-picker-grid">
                   <button v-for="t in [
-                    { id:'default',  label:'Default',   sub:'Мінімалізм' },
-                    { id:'dark',     label:'Noir',       sub:'Studio Dark' },
-                    { id:'warm',     label:'Artisan',    sub:'Золота теплота' },
-                    { id:'bold',     label:'Editorial',  sub:'Контраст' },
-                    { id:'glass',    label:'Aurora',     sub:'Скло & Градієнт' },
-                    { id:'ocean',    label:'Ocean',      sub:'Тихий океан' },
-                    { id:'sakura',   label:'Sakura',     sub:'Квіткова ніжність' },
-                    { id:'midnight', label:'Midnight',   sub:'Нічне індиго' },
-                    { id:'copper',   label:'Copper',     sub:'Індустріальний' },
-                    { id:'mint',     label:'Mint',       sub:'Свіжа зелень' },
+                    { id:'default', label:'Default',   sub:'Мінімалізм' },
+                    { id:'light',   label:'Light',     sub:'Акцент на колір' },
+                    { id:'dark',    label:'Dark',      sub:'Нічний режим' },
+                    { id:'bold',    label:'Editorial', sub:'Контраст' },
                   ]" :key="t.id" type="button"
                     :class="['theme-swatch-btn', form.theme === t.id ? 'active' : '']"
-                    @click="form.theme = t.id">
+                    @click="form.theme = t.id; if(t.id==='light' && !['#0891b2','#db2777','#c4632a','#059669'].includes(form.pub_accent)) form.pub_accent='#0891b2'; if(t.id==='dark' && !['#22c55e','#d97706','#a855f7'].includes(form.pub_accent)) form.pub_accent='#22c55e';">
                     <div :class="'theme-swatch theme-swatch-' + t.id">
                       <div class="ts-geo ts-geo-1"></div>
                       <div class="ts-geo ts-geo-2"></div>
@@ -2242,6 +2236,29 @@ const SettingsPage = {
                     <div class="theme-swatch-sub">{{ t.sub }}</div>
                     <i v-if="form.theme === t.id" class="fa fa-circle-check theme-swatch-check"></i>
                   </button>
+                </div>
+
+                <!-- Accent colour picker (only for light / dark themes) -->
+                <div v-if="form.theme === 'light' || form.theme === 'dark'" class="accent-picker">
+                  <span class="accent-picker-label">Акцентний колір</span>
+                  <div class="accent-dots">
+                    <template v-if="form.theme === 'light'">
+                      <button v-for="a in [{c:'#0891b2',l:'Ocean'},{c:'#db2777',l:'Sakura'},{c:'#c4632a',l:'Artisan'},{c:'#059669',l:'Mint'}]"
+                        :key="a.c" type="button"
+                        :class="['accent-dot', form.pub_accent === a.c ? 'active' : '']"
+                        :style="{background: a.c}" :title="a.l"
+                        @click="form.pub_accent = a.c">
+                      </button>
+                    </template>
+                    <template v-if="form.theme === 'dark'">
+                      <button v-for="a in [{c:'#22c55e',l:'Noir'},{c:'#d97706',l:'Copper'},{c:'#a855f7',l:'Aurora'}]"
+                        :key="a.c" type="button"
+                        :class="['accent-dot', form.pub_accent === a.c ? 'active' : '']"
+                        :style="{background: a.c}" :title="a.l"
+                        @click="form.pub_accent = a.c">
+                      </button>
+                    </template>
+                  </div>
                 </div>
 
                 <!-- Corner style toggle -->

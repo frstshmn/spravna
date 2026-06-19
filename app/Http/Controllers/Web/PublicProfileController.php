@@ -22,9 +22,17 @@ class PublicProfileController extends Controller
             return ['id' => $s->id, 'name' => $s->name];
         })->values()->toJson();
 
-        $theme = $profile->theme ?: 'default';
+        $theme   = $profile->theme ?: 'default';
         $corners = $profile->pub_corners ?: 'smooth';
 
-        return view('public.master', compact('profile', 'master', 'services', 'portfolio', 'servicesJson', 'theme', 'corners'));
+        $defaultAccents = ['light' => '#0891b2', 'dark' => '#22c55e'];
+        $accent         = $profile->pub_accent ?: ($defaultAccents[$theme] ?? null);
+
+        $accentRgb = null;
+        if ($accent && preg_match('/^#([0-9a-fA-F]{6})$/', $accent, $m)) {
+            $accentRgb = hexdec(substr($m[1], 0, 2)) . ',' . hexdec(substr($m[1], 2, 2)) . ',' . hexdec(substr($m[1], 4, 2));
+        }
+
+        return view('public.master', compact('profile', 'master', 'services', 'portfolio', 'servicesJson', 'theme', 'corners', 'accent', 'accentRgb'));
     }
 }

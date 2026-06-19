@@ -11,7 +11,7 @@
 <script src="/js/vendor/axios.min.js"></script>
 </head>
 <body data-corners="{{ $corners }}">
-<div class="pub-page pub-theme-{{ $theme }} pub-corners-{{ $corners }}">
+<div class="pub-page pub-theme-{{ $theme }} pub-corners-{{ $corners }}"@if($accentRgb) style="--pub-accent:{{ $accent }};--pub-accent-rgb:{{ $accentRgb }}"@endif>
 
     @if($theme === 'glass')
     <div class="pub-glass-orb pub-glass-orb-1"></div>
