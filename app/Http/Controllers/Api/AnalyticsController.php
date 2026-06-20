@@ -57,6 +57,19 @@ class AnalyticsController extends Controller
             ->values()
             ->take(6);
 
+        // Top clients by revenue
+        $topClients = $appts->where('status', 'completed')
+            ->whereNotNull('client_id')
+            ->groupBy('client_id')
+            ->map(fn($g) => [
+                'name'    => $g->first()->client?->name ?? '—',
+                'count'   => $g->count(),
+                'revenue' => (float) $g->sum('price'),
+            ])
+            ->sortByDesc('revenue')
+            ->values()
+            ->take(5);
+
         // Busiest hour/day slots (heatmap data)
         $busiest = [];
         foreach ($appts as $a) {
@@ -112,21 +125,43 @@ class AnalyticsController extends Controller
             ->map(fn($g) => ['category' => $g->first()->category, 'total' => (float) $g->sum('amount')])
             ->values();
 
+        // Expenses bucketed into the same time periods as revenue_chart
+        $expensesChart = [];
+        if ($diffMonths <= 2) {
+            $expCursor = $from->copy()->startOfWeek();
+            while ($expCursor <= $to) {
+                $expWeekEnd = $expCursor->copy()->endOfWeek();
+                $slice = $expenses->filter(fn($e) => $e->date->between($expCursor, $expWeekEnd));
+                $expensesChart[] = ['label' => $expCursor->format('d M'), 'total' => (float) $slice->sum('amount')];
+                $expCursor->addWeek();
+            }
+        } else {
+            $expCursor = $from->copy()->startOfMonth();
+            while ($expCursor <= $to) {
+                $expMonthEnd = $expCursor->copy()->endOfMonth();
+                $slice = $expenses->filter(fn($e) => $e->date->between($expCursor, $expMonthEnd));
+                $expensesChart[] = ['label' => $expCursor->locale('uk')->monthName . ' ' . $expCursor->year, 'total' => (float) $slice->sum('amount')];
+                $expCursor->addMonth();
+            }
+        }
+
         return response()->json([
             'summary' => [
-                'total_revenue'    => (float) $totalRevenue,
-                'total_sessions'   => $totalSessions,
-                'avg_session_value'=> round($avgValue, 2),
-                'new_clients'      => $newCount,
-                'returning_clients'=> $returningCount,
-                'total_expenses'   => (float) $totalExpenses,
-                'profit'           => (float) ($totalRevenue - $totalExpenses),
+                'total_revenue'     => (float) $totalRevenue,
+                'total_sessions'    => $totalSessions,
+                'avg_session_value' => round($avgValue, 2),
+                'new_clients'       => $newCount,
+                'returning_clients' => $returningCount,
+                'total_expenses'    => (float) $totalExpenses,
+                'profit'            => (float) ($totalRevenue - $totalExpenses),
             ],
-            'revenue_chart'      => $revenueChart,
-            'completion_rate'    => $completion,
-            'top_services'       => $topServices,
-            'busiest_slots'      => $busiestArr,
-            'client_retention'   => ['new' => $newCount, 'returning' => $returningCount],
+            'revenue_chart'        => $revenueChart,
+            'expenses_chart'       => $expensesChart,
+            'completion_rate'      => $completion,
+            'top_services'         => $topServices,
+            'top_clients'          => $topClients,
+            'busiest_slots'        => $busiestArr,
+            'client_retention'     => ['new' => $newCount, 'returning' => $returningCount],
             'expenses_by_category' => $expensesByCategory,
         ]);
     }

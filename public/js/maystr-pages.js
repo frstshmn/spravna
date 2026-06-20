@@ -2792,47 +2792,100 @@ const AnalyticsPage = {
         }
 
         function renderCharts(d) {
-            const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#3b5e47';
             const textMuted = getComputedStyle(document.documentElement).getPropertyValue('--text-muted').trim() || '#888';
+            const tf = { size: 10 };
+            const ll = { color: textMuted, boxWidth: 10, padding: 8, font: { size: 10 } };
 
-            // Revenue bar
-            mkChart('an-revenue', 'bar', {
-                labels: d.revenue_chart.map(r=>r.label),
-                datasets: [{ label:'Дохід ₴', data: d.revenue_chart.map(r=>r.revenue),
-                    backgroundColor:'rgba(59,94,71,0.75)', borderRadius:6, borderSkipped:false }]
-            }, { scales:{ y:{ ticks:{ callback: v=>'₴'+v.toLocaleString(), color:textMuted }, grid:{color:'rgba(0,0,0,0.05)'} }, x:{ ticks:{color:textMuted}, grid:{display:false} } } });
+            // 1. Revenue + Sessions dual-axis mixed chart
+            mkChart('an-rev-sess', 'bar', {
+                labels: d.revenue_chart.map(r => r.label),
+                datasets: [
+                    { type: 'bar', label: 'Дохід ₴', data: d.revenue_chart.map(r => r.revenue),
+                      backgroundColor: 'rgba(59,94,71,0.7)', borderRadius: 4, borderSkipped: false, yAxisID: 'y' },
+                    { type: 'line', label: 'Сесій', data: d.revenue_chart.map(r => r.sessions),
+                      borderColor: 'rgba(59,130,246,0.9)', backgroundColor: 'transparent',
+                      tension: 0.3, yAxisID: 'y1', pointRadius: 4, pointBackgroundColor: 'rgba(59,130,246,1)', fill: false }
+                ]
+            }, {
+                scales: {
+                    y:  { type: 'linear', position: 'left',  ticks: { callback: v => '₴' + v.toLocaleString(), color: textMuted, font: tf }, grid: { color: 'rgba(0,0,0,0.04)' } },
+                    y1: { type: 'linear', position: 'right', ticks: { color: textMuted, font: tf }, grid: { display: false } },
+                    x:  { ticks: { color: textMuted, maxTicksLimit: 8, font: tf }, grid: { display: false } }
+                },
+                plugins: { legend: { display: true, position: 'top', labels: ll } }
+            });
 
-            // Sessions bar (secondary)
-            mkChart('an-sessions', 'bar', {
-                labels: d.revenue_chart.map(r=>r.label),
-                datasets: [{ label:'Сесій', data: d.revenue_chart.map(r=>r.sessions),
-                    backgroundColor:'rgba(59,130,246,0.7)', borderRadius:6, borderSkipped:false }]
-            }, { scales:{ y:{ ticks:{color:textMuted}, grid:{color:'rgba(0,0,0,0.05)'} }, x:{ ticks:{color:textMuted}, grid:{display:false} } } });
+            // 2. Average check trend
+            mkChart('an-avg-check', 'line', {
+                labels: d.revenue_chart.map(r => r.label),
+                datasets: [{ label: 'Середній чек ₴', data: d.revenue_chart.map(r => r.sessions > 0 ? Math.round(r.revenue / r.sessions) : 0),
+                    borderColor: 'rgba(245,158,11,0.9)', backgroundColor: 'rgba(245,158,11,0.12)', fill: true, tension: 0.4, pointRadius: 3 }]
+            }, { scales: { y: { ticks: { callback: v => '₴' + v.toLocaleString(), color: textMuted, font: tf }, grid: { color: 'rgba(0,0,0,0.04)' } }, x: { ticks: { color: textMuted, maxTicksLimit: 6, font: tf }, grid: { display: false } } } });
 
-            // Retention donut
+            // 3. Revenue vs Expenses vs Profit area chart
+            const ec = d.expenses_chart || [];
+            mkChart('an-fin-trend', 'line', {
+                labels: d.revenue_chart.map(r => r.label),
+                datasets: [
+                    { label: 'Дохід ₴', data: d.revenue_chart.map(r => r.revenue),
+                      borderColor: 'rgba(59,94,71,0.9)', backgroundColor: 'rgba(59,94,71,0.08)', fill: true, tension: 0.3, pointRadius: 3 },
+                    { label: 'Витрати ₴', data: ec.map(e => e.total),
+                      borderColor: 'rgba(239,68,68,0.8)', backgroundColor: 'rgba(239,68,68,0.07)', fill: true, tension: 0.3, pointRadius: 3 },
+                    { label: 'Прибуток ₴', data: d.revenue_chart.map((r, i) => r.revenue - (ec[i]?.total || 0)),
+                      borderColor: 'rgba(16,185,129,0.9)', backgroundColor: 'transparent', borderDash: [4, 3], tension: 0.3, pointRadius: 3, fill: false }
+                ]
+            }, {
+                scales: { y: { ticks: { callback: v => '₴' + v.toLocaleString(), color: textMuted, font: tf }, grid: { color: 'rgba(0,0,0,0.04)' } }, x: { ticks: { color: textMuted, maxTicksLimit: 8, font: tf }, grid: { display: false } } },
+                plugins: { legend: { display: true, position: 'top', labels: ll } }
+            });
+
+            // 4. Expenses by category donut
+            const cats = d.expenses_by_category || [];
+            if (cats.length) mkChart('an-exp-cats', 'doughnut', {
+                labels: cats.map(c => c.category || 'Інше'),
+                datasets: [{ data: cats.map(c => c.total),
+                    backgroundColor: ['rgba(239,68,68,.75)', 'rgba(245,158,11,.75)', 'rgba(139,92,246,.75)', 'rgba(59,130,246,.75)', 'rgba(16,185,129,.75)', 'rgba(107,114,128,.75)'],
+                    borderWidth: 0 }]
+            }, { plugins: { legend: { display: true, position: 'bottom', labels: ll } }, cutout: '65%' });
+
+            // 5. Client retention donut
             mkChart('an-retention', 'doughnut', {
-                labels: ['Нові','Постійні'],
-                datasets: [{ data:[d.client_retention.new, d.client_retention.returning],
-                    backgroundColor:['rgba(139,92,246,0.8)','rgba(59,94,71,0.8)'], borderWidth:0 }]
-            }, { plugins:{ legend:{ display:true, position:'bottom', labels:{color:textMuted, boxWidth:12, padding:10} } }, cutout:'70%' });
+                labels: ['Нові', 'Постійні'],
+                datasets: [{ data: [d.client_retention.new, d.client_retention.returning],
+                    backgroundColor: ['rgba(139,92,246,0.8)', 'rgba(59,94,71,0.8)'], borderWidth: 0 }]
+            }, { plugins: { legend: { display: true, position: 'bottom', labels: ll } }, cutout: '70%' });
 
-            // Completion donut
+            // 6. Top clients horizontal bar
+            const tc = (d.top_clients || []).slice(0, 5);
+            if (tc.length) mkChart('an-top-clients', 'bar', {
+                labels: tc.map(c => c.name),
+                datasets: [{ label: 'Дохід ₴', data: tc.map(c => c.revenue),
+                    backgroundColor: 'rgba(139,92,246,0.7)', borderRadius: 4, borderSkipped: false }]
+            }, {
+                indexAxis: 'y',
+                scales: { x: { ticks: { callback: v => '₴' + v.toLocaleString(), color: textMuted, font: tf }, grid: { color: 'rgba(0,0,0,0.04)' } }, y: { ticks: { color: textMuted, font: tf }, grid: { display: false } } }
+            });
+
+            // 7. Top services horizontal bar
+            const svcs = (d.top_services || []).slice(0, 6);
+            if (svcs.length) mkChart('an-services', 'bar', {
+                labels: svcs.map(s => s.name),
+                datasets: [{ label: '₴', data: svcs.map(s => s.revenue),
+                    backgroundColor: svcs.map((_, i) => ['rgba(59,94,71,.75)', 'rgba(59,130,246,.7)', 'rgba(139,92,246,.7)', 'rgba(16,185,129,.7)', 'rgba(245,158,11,.7)', 'rgba(239,68,68,.7)'][i] || 'rgba(99,102,241,.7)'),
+                    borderRadius: 4, borderSkipped: false }]
+            }, {
+                indexAxis: 'y',
+                scales: { x: { ticks: { callback: v => '₴' + v.toLocaleString(), color: textMuted, font: tf }, grid: { color: 'rgba(0,0,0,0.04)' } }, y: { ticks: { color: textMuted, font: tf }, grid: { display: false } } }
+            });
+
+            // 8. Session completion donut
             const cr = d.completion_rate;
             mkChart('an-completion', 'doughnut', {
-                labels:['Завершено','Скасовано','Не з\'явився','Очікує'],
-                datasets:[{ data:[cr.completed,cr.cancelled,cr.no_show,cr.pending],
-                    backgroundColor:['rgba(16,185,129,.8)','rgba(239,68,68,.8)','rgba(107,114,128,.8)','rgba(245,158,11,.8)'],
-                    borderWidth:0 }]
-            }, { plugins:{ legend:{ display:true, position:'bottom', labels:{color:textMuted, boxWidth:12, padding:8} } }, cutout:'65%' });
-
-            // Top services horizontal bar
-            const svcs = (d.top_services||[]).slice(0,6);
-            mkChart('an-services', 'bar', {
-                labels: svcs.map(s=>s.name),
-                datasets:[{ label:'₴', data:svcs.map(s=>s.revenue),
-                    backgroundColor:svcs.map((_,i)=>['rgba(59,94,71,.75)','rgba(59,130,246,.7)','rgba(139,92,246,.7)','rgba(16,185,129,.7)','rgba(245,158,11,.7)','rgba(239,68,68,.7)'][i]||'rgba(99,102,241,.7)'),
-                    borderRadius:4, borderSkipped:false }]
-            }, { indexAxis:'y', scales:{ x:{ ticks:{ callback:v=>'₴'+v.toLocaleString(), color:textMuted }, grid:{color:'rgba(0,0,0,0.05)'} }, y:{ ticks:{color:textMuted}, grid:{display:false} } } });
+                labels: ['Завершено', 'Скасовано', "Не з'явився", 'Очікує'],
+                datasets: [{ data: [cr.completed, cr.cancelled, cr.no_show, cr.pending],
+                    backgroundColor: ['rgba(16,185,129,.8)', 'rgba(239,68,68,.8)', 'rgba(107,114,128,.8)', 'rgba(245,158,11,.8)'],
+                    borderWidth: 0 }]
+            }, { plugins: { legend: { display: true, position: 'bottom', labels: ll } }, cutout: '65%' });
         }
 
         async function load() {
@@ -2922,32 +2975,78 @@ const AnalyticsPage = {
       </div>
     </div>
 
-    <!-- Charts grid -->
-    <div class="an-charts-grid">
-      <div class="card an-chart-card an-chart-wide">
-        <div class="card-header"><span class="card-title">Дохід за період</span></div>
-        <div class="an-chart-body"><canvas id="an-revenue"></canvas></div>
+    <!-- Section 1: Тренди -->
+    <div class="an-section">
+      <div class="an-section-label">Тренди за період</div>
+      <div class="an-section-grid an-grid-32">
+        <div class="card an-chart-card">
+          <div class="card-header"><span class="card-title">Дохід та кількість сесій</span></div>
+          <div class="an-chart-body"><canvas id="an-rev-sess"></canvas></div>
+        </div>
+        <div class="card an-chart-card">
+          <div class="card-header"><span class="card-title">Середній чек</span></div>
+          <div class="an-chart-body-sm"><canvas id="an-avg-check"></canvas></div>
+        </div>
       </div>
-      <div class="card an-chart-card an-chart-wide">
-        <div class="card-header"><span class="card-title">Кількість сесій</span></div>
-        <div class="an-chart-body"><canvas id="an-sessions"></canvas></div>
+    </div>
+
+    <!-- Section 2: Фінансовий баланс -->
+    <div class="an-section">
+      <div class="an-section-label">Фінансовий баланс</div>
+      <div class="an-section-grid an-grid-32">
+        <div class="card an-chart-card">
+          <div class="card-header"><span class="card-title">Дохід · Витрати · Прибуток</span></div>
+          <div class="an-chart-body"><canvas id="an-fin-trend"></canvas></div>
+        </div>
+        <div class="card an-chart-card">
+          <div class="card-header"><span class="card-title">Структура витрат</span></div>
+          <template v-if="data.expenses_by_category && data.expenses_by_category.length">
+            <div class="an-chart-body-sm"><canvas id="an-exp-cats"></canvas></div>
+          </template>
+          <div v-else class="empty" style="padding:28px 0;font-size:13px;"><i class="fa fa-receipt" style="margin-bottom:6px;"></i><p>Витрат не знайдено</p></div>
+        </div>
       </div>
+    </div>
+
+    <!-- Section 3: Клієнти -->
+    <div class="an-section">
+      <div class="an-section-label">Клієнти</div>
+      <div class="an-section-grid an-grid-22">
+        <div class="card an-chart-card">
+          <div class="card-header">
+            <span class="card-title">Нові та постійні</span>
+            <span style="font-size:11px;color:var(--text-muted);">Нових: {{ data.client_retention.new }} · Постійних: {{ data.client_retention.returning }}</span>
+          </div>
+          <div class="an-chart-body-sm"><canvas id="an-retention"></canvas></div>
+        </div>
+        <div class="card an-chart-card">
+          <div class="card-header"><span class="card-title">Топ клієнтів за доходом</span></div>
+          <div v-if="!data.top_clients?.length" class="empty" style="padding:28px 0;font-size:13px;"><i class="fa fa-users" style="margin-bottom:6px;"></i><p>Немає даних</p></div>
+          <div v-else class="an-chart-body"><canvas id="an-top-clients"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 4: Послуги та сесії -->
+    <div class="an-section">
+      <div class="an-section-label">Послуги та сесії</div>
+      <div class="an-section-grid an-grid-22">
+        <div class="card an-chart-card">
+          <div class="card-header"><span class="card-title">Топ послуг за доходом</span></div>
+          <div v-if="!data.top_services?.length" class="empty" style="padding:28px 0;font-size:13px;"><i class="fa fa-ranking-star" style="margin-bottom:6px;"></i><p>Немає даних</p></div>
+          <div v-else class="an-chart-body"><canvas id="an-services"></canvas></div>
+        </div>
+        <div class="card an-chart-card">
+          <div class="card-header"><span class="card-title">Статуси сесій</span></div>
+          <div class="an-chart-body-sm"><canvas id="an-completion"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 5: Навантаження -->
+    <div class="an-section">
+      <div class="an-section-label"><i class="fa fa-fire" style="color:var(--accent);margin-right:5px;"></i>Пікове навантаження</div>
       <div class="card an-chart-card">
-        <div class="card-header"><span class="card-title">Нові vs постійні</span></div>
-        <div class="an-chart-body" style="max-height:220px;"><canvas id="an-retention"></canvas></div>
-        <div v-if="data.client_retention.new===0&&data.client_retention.returning===0" class="empty" style="padding:20px 0;"><i class="fa fa-users"></i><p>Даних немає</p></div>
-      </div>
-      <div class="card an-chart-card">
-        <div class="card-header"><span class="card-title">Статуси сесій</span></div>
-        <div class="an-chart-body" style="max-height:220px;"><canvas id="an-completion"></canvas></div>
-      </div>
-      <div class="card an-chart-card an-chart-wide">
-        <div class="card-header"><span class="card-title">Топ послуг за доходом</span></div>
-        <div v-if="!data.top_services?.length" class="empty" style="padding:24px 0;"><i class="fa fa-ranking-star"></i><p>Даних немає</p></div>
-        <div v-else class="an-chart-body"><canvas id="an-services"></canvas></div>
-      </div>
-      <div class="card an-chart-card an-chart-wide">
-        <div class="card-header"><span class="card-title"><i class="fa fa-fire" style="color:var(--accent);margin-right:6px;"></i>Пікове навантаження</span></div>
         <div class="an-heatmap">
           <div class="an-heatmap-labels">
             <div v-for="d in dayLabels.slice(1)" :key="d" class="an-heatmap-day">{{ d }}</div>
