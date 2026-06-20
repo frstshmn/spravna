@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Api\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Api\AnalyticsController;
+use App\Http\Controllers\Api\ClientAnalysisController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\AppointmentController;
 use App\Http\Controllers\Api\BookingRequestController;
@@ -73,6 +74,10 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Analytics
     Route::get('/analytics', [AnalyticsController::class, 'index']);
+
+    // AI client analysis
+    Route::get('/analysis/{clientId}',         [ClientAnalysisController::class, 'show']);
+    Route::post('/analysis/{clientId}/refresh', [ClientAnalysisController::class, 'refresh']);
 
     // Portfolio
     Route::get('/portfolio',            [PortfolioController::class, 'index']);
