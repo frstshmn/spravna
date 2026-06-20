@@ -60,7 +60,7 @@ PROMPT;
         $client = $user->clients()->find($clientId);
 
         if (! $client) {
-            return null;
+            throw new \RuntimeException('client_not_found');
         }
 
         $prompt = $this->buildPrompt($user, $client, $period);

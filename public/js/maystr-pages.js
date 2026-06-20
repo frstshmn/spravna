@@ -2900,12 +2900,60 @@ const AnalyticsPage = {
         }
 
         watch([from, to], load);
-        onMounted(() => { setPeriod('month'); });
+        onMounted(() => { setPeriod('month'); loadClientsForAnalysis(); });
         onUnmounted(() => { Object.values(chartInstances).forEach(c=>c?.destroy()); });
 
         const dayLabels = ['','Пн','Вт','Ср','Чт','Пт','Сб','Нд'];
 
-        return { data, loading, period, from, to, setPeriod, dayLabels };
+        // ── AI client analysis ──
+        const clients = ref([]);
+        const selectedAnalysisClientId = ref(null);
+        const analysisPeriod = ref(new Date().toISOString().slice(0, 7));
+        const clientAnalysis = ref(null);
+        const analysisLoading = ref(false);
+        const refreshing = ref(false);
+        const analysisError = ref('');
+
+        async function loadClientsForAnalysis() {
+            try {
+                const { data: d } = await props.api.get('/clients', { params: { per_page: 200 } });
+                clients.value = d.data ?? d;
+            } catch(e) {}
+        }
+
+        async function loadAnalysis() {
+            if (!selectedAnalysisClientId.value) { clientAnalysis.value = null; analysisError.value = ''; return; }
+            analysisLoading.value = true;
+            analysisError.value = '';
+            try {
+                const { data: d } = await props.api.get(`/analysis/${selectedAnalysisClientId.value}`, { params: { period: analysisPeriod.value } });
+                clientAnalysis.value = d;
+            } catch(e) {
+                clientAnalysis.value = null;
+                if (e.response?.status !== 404) {
+                    analysisError.value = e.response?.data?.error || 'Не вдалося отримати аналіз';
+                }
+            }
+            analysisLoading.value = false;
+        }
+
+        async function refreshAnalysis() {
+            if (!selectedAnalysisClientId.value) return;
+            refreshing.value = true;
+            analysisError.value = '';
+            try {
+                const { data: d } = await props.api.post(`/analysis/${selectedAnalysisClientId.value}/refresh`, null, { params: { period: analysisPeriod.value } });
+                clientAnalysis.value = d;
+            } catch(e) {
+                analysisError.value = e.response?.data?.error || 'Не вдалося оновити аналіз';
+            }
+            refreshing.value = false;
+        }
+
+        watch([selectedAnalysisClientId, analysisPeriod], loadAnalysis);
+
+        return { data, loading, period, from, to, setPeriod, dayLabels,
+            clients, selectedAnalysisClientId, analysisPeriod, clientAnalysis, analysisLoading, refreshing, analysisError, refreshAnalysis };
     },
     template: `
 <div>
@@ -3068,6 +3116,59 @@ const AnalyticsPage = {
         </div>
       </div>
     </div>
+    <!-- Section 6: AI аналіз клієнта -->
+    <div class="an-section">
+      <div class="an-section-label"><i class="fa fa-robot" style="color:var(--accent);margin-right:5px;"></i>AI-аналіз клієнта</div>
+      <div class="card">
+        <div class="modal-body">
+          <div class="an-ai-controls">
+            <select v-model="selectedAnalysisClientId" class="input" style="flex:1;min-width:160px;max-width:280px;">
+              <option :value="null">— Оберіть клієнта —</option>
+              <option v-for="c in clients" :key="c.id" :value="c.id">{{ c.name }}</option>
+            </select>
+            <input type="month" v-model="analysisPeriod" class="input input-sm" style="width:150px;">
+            <button v-if="clientAnalysis && !analysisLoading" @click="refreshAnalysis" :disabled="refreshing" class="btn btn-ghost btn-sm">
+              <i :class="['fa', refreshing ? 'fa-spinner fa-spin' : 'fa-rotate-right']"></i> Оновити
+            </button>
+          </div>
+
+          <div v-if="analysisError" class="an-ai-error">{{ analysisError }}</div>
+
+          <div v-if="analysisLoading" class="empty" style="padding:48px 0;">
+            <i class="fa fa-spinner fa-spin fa-2x" style="color:var(--accent);"></i>
+            <p style="margin-top:14px;font-size:13px;color:var(--text-muted);">Аналізую дані клієнта...</p>
+          </div>
+          <div v-else-if="!selectedAnalysisClientId" class="empty" style="padding:48px 0;">
+            <i class="fa fa-robot fa-2x" style="color:var(--text-muted);"></i>
+            <p style="margin-top:10px;font-size:13px;color:var(--text-muted);">Оберіть клієнта для AI-аналізу за місяць</p>
+          </div>
+          <template v-else-if="clientAnalysis">
+            <div class="an-ai-result">
+              <div class="an-ai-col">
+                <div class="an-ai-col-title"><i class="fa fa-lightbulb" style="color:var(--pending);"></i>Спостереження</div>
+                <ul class="an-ai-list" v-if="clientAnalysis.highlights?.length">
+                  <li v-for="(h, i) in clientAnalysis.highlights" :key="i">{{ h }}</li>
+                </ul>
+                <div v-else class="an-ai-empty">Немає спостережень за цей місяць</div>
+              </div>
+              <div class="an-ai-col">
+                <div class="an-ai-col-title"><i class="fa fa-wand-magic-sparkles" style="color:var(--accent);"></i>Рекомендації</div>
+                <ul class="an-ai-list" v-if="clientAnalysis.suggestions?.length">
+                  <li v-for="(s, i) in clientAnalysis.suggestions" :key="i">{{ s }}</li>
+                </ul>
+                <div v-else class="an-ai-empty">Немає рекомендацій</div>
+              </div>
+            </div>
+            <div class="an-ai-meta">Згенеровано {{ new Date(clientAnalysis.generated_at).toLocaleString('uk-UA') }}<span v-if="clientAnalysis.generation_type==='manual'"> · вручну</span></div>
+          </template>
+          <div v-else style="padding:40px 0;" class="empty">
+            <i class="fa fa-circle-xmark fa-2x" style="color:var(--text-muted);margin-bottom:10px;"></i>
+            <p style="font-size:13px;color:var(--text-muted);">Немає даних за обраний місяць</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </template>
 </div>`
 };
