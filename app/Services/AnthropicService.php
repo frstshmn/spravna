@@ -52,7 +52,14 @@ class AnthropicService
 
     private function parseAndValidate(string $text): array
     {
-        $decoded = json_decode(trim($text), true);
+        $text = trim($text);
+
+        // Strip markdown code fences Claude sometimes adds despite instructions
+        if (preg_match('/```(?:json)?\s*([\s\S]+?)\s*```/i', $text, $m)) {
+            $text = trim($m[1]);
+        }
+
+        $decoded = json_decode($text, true);
 
         if (json_last_error() !== JSON_ERROR_NONE) {
             throw new \RuntimeException('Anthropic returned invalid JSON: ' . json_last_error_msg());
