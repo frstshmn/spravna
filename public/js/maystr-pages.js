@@ -1004,97 +1004,7 @@ const SchedulePage = {
 
 
 /* =====================================================================
-   3. REQUESTS
-   ===================================================================== */
-const RequestsPage = {
-    props: ['api'],
-    emits: ['count'],
-    components: { MModal, MBadge, MAvatar, RespondFormBody, ArchivePage },
-    setup(props, { emit }) {
-        const subTab = ref('requests');
-        const requests = ref([]);
-        const filter = ref('pending');
-        const loading = ref(false);
-        const showRespond = ref(false);
-        const selectedReq = ref(null);
-
-        async function load() {
-            loading.value = true;
-            try {
-                const params = filter.value ? { status: filter.value, per_page: 50 } : { per_page: 50 };
-                const { data } = await props.api.get('/booking-requests', { params });
-                requests.value = data.data ?? data;
-                if (filter.value === 'pending') emit('count', data.meta?.total ?? data.total ?? requests.value.length);
-            } catch(e) {}
-            loading.value = false;
-        }
-
-        function openRespond(r) { selectedReq.value = r; showRespond.value = true; }
-        function onResponded() { showRespond.value = false; load(); }
-
-        watch(filter, load);
-        onMounted(load);
-
-        return { subTab, requests, filter, loading, showRespond, selectedReq, load, openRespond, onResponded };
-    },
-    template: `
-<div>
-  <div class="page-tabs mb-16">
-    <button :class="['page-tab', subTab==='requests' ? 'active' : '']" @click="subTab='requests'">
-      <i class="fa fa-inbox"></i> Запити
-    </button>
-    <button :class="['page-tab', subTab==='archive' ? 'active' : '']" @click="subTab='archive'">
-      <i class="fa fa-box-archive"></i> Архів сесій
-    </button>
-  </div>
-
-  <!-- Requests sub-tab -->
-  <template v-if="subTab==='requests'">
-    <div class="chip-row">
-      <button :class="'chip' + (filter==='pending' ? ' active' : '')" @click="filter='pending'">Нові</button>
-      <button :class="'chip' + (filter==='accepted' ? ' active' : '')" @click="filter='accepted'">Прийняті</button>
-      <button :class="'chip' + (filter==='declined' ? ' active' : '')" @click="filter='declined'">Відхилені</button>
-      <button :class="'chip' + (filter==='' ? ' active' : '')" @click="filter=''">Всі</button>
-    </div>
-    <div v-if="loading" class="empty"><i class="fa fa-spinner fa-spin"></i><p>Завантаження…</p></div>
-    <div v-else-if="!requests.length" class="empty"><i class="fa fa-inbox"></i><p>Запитів немає</p></div>
-    <div v-else style="display:flex;flex-direction:column;gap:10px;">
-      <div v-for="r in requests" :key="r.id" class="req-card" @click="openRespond(r)">
-        <div class="req-header">
-          <div class="flex items-center gap-10">
-            <div class="avatar av-sm">{{ r.client_name?.charAt(0).toUpperCase() }}</div>
-            <span class="req-name">{{ r.client_name }}</span>
-          </div>
-          <div class="flex items-center gap-8">
-            <m-badge :status="r.status"></m-badge>
-            <span style="font-size:11px;color:var(--text-muted);">{{ r.created_at ? new Date(r.created_at).toLocaleDateString('uk',{month:'short',day:'numeric'}) : '' }}</span>
-          </div>
-        </div>
-        <div class="req-meta">
-          <span v-if="r.client_phone"><i class="fa fa-phone"></i>{{ r.client_phone }}</span>
-          <span v-if="r.client_email"><i class="fa fa-envelope"></i>{{ r.client_email }}</span>
-          <span v-if="r.client_instagram"><i class="fa-brands fa-instagram"></i>{{ r.client_instagram }}</span>
-          <span v-if="r.service"><i class="fa fa-scissors"></i>{{ r.service.name }}</span>
-          <span v-if="r.preferred_date"><i class="fa fa-calendar"></i>{{ new Date(r.preferred_date).toLocaleDateString('uk',{month:'short',day:'numeric'}) }}{{ r.preferred_time ? ' ' + r.preferred_time : '' }}</span>
-        </div>
-        <p v-if="r.message" class="req-msg">"{{ r.message }}"</p>
-        <div v-if="r.status === 'pending'" class="flex gap-8" @click.stop>
-          <button class="btn btn-success btn-sm" @click="openRespond(r)"><i class="fa fa-check"></i> Відповісти</button>
-        </div>
-      </div>
-    </div>
-    <m-modal :show="showRespond" title="Відповідь на запит" size="lg" @close="showRespond=false">
-      <respond-form-body v-if="selectedReq" :api="api" :request="selectedReq" @responded="onResponded" @cancel="showRespond=false"></respond-form-body>
-    </m-modal>
-  </template>
-
-  <!-- Archive sub-tab -->
-  <archive-page v-else :api="api"></archive-page>
-</div>`
-};
-
-/* =====================================================================
-   4. ARCHIVE
+   3b. ARCHIVE (defined here so RequestsPage can reference it in components:{})
    ===================================================================== */
 const ArchivePage = {
     props: ['api'],
@@ -1189,6 +1099,96 @@ const ArchivePage = {
   <m-modal :show="showModal" :title="viewingAppt ? 'Сесія: ' + (viewingAppt.client?.name || '') : ''" size="lg" @close="showModal=false">
     <appointment-form-body v-if="viewingAppt" :api="api" :existing="viewingAppt" @saved="onSaved" @cancel="showModal=false"></appointment-form-body>
   </m-modal>
+</div>`
+};
+
+/* =====================================================================
+   3. REQUESTS
+   ===================================================================== */
+const RequestsPage = {
+    props: ['api'],
+    emits: ['count'],
+    components: { MModal, MBadge, MAvatar, RespondFormBody, ArchivePage },
+    setup(props, { emit }) {
+        const subTab = ref('requests');
+        const requests = ref([]);
+        const filter = ref('pending');
+        const loading = ref(false);
+        const showRespond = ref(false);
+        const selectedReq = ref(null);
+
+        async function load() {
+            loading.value = true;
+            try {
+                const params = filter.value ? { status: filter.value, per_page: 50 } : { per_page: 50 };
+                const { data } = await props.api.get('/booking-requests', { params });
+                requests.value = data.data ?? data;
+                if (filter.value === 'pending') emit('count', data.meta?.total ?? data.total ?? requests.value.length);
+            } catch(e) {}
+            loading.value = false;
+        }
+
+        function openRespond(r) { selectedReq.value = r; showRespond.value = true; }
+        function onResponded() { showRespond.value = false; load(); }
+
+        watch(filter, load);
+        onMounted(load);
+
+        return { subTab, requests, filter, loading, showRespond, selectedReq, load, openRespond, onResponded };
+    },
+    template: `
+<div>
+  <div class="page-tabs mb-16">
+    <button :class="['page-tab', subTab==='requests' ? 'active' : '']" @click="subTab='requests'">
+      <i class="fa fa-inbox"></i> Запити
+    </button>
+    <button :class="['page-tab', subTab==='archive' ? 'active' : '']" @click="subTab='archive'">
+      <i class="fa fa-box-archive"></i> Архів сесій
+    </button>
+  </div>
+
+  <!-- Requests sub-tab -->
+  <template v-if="subTab==='requests'">
+    <div class="chip-row">
+      <button :class="'chip' + (filter==='pending' ? ' active' : '')" @click="filter='pending'">Нові</button>
+      <button :class="'chip' + (filter==='accepted' ? ' active' : '')" @click="filter='accepted'">Прийняті</button>
+      <button :class="'chip' + (filter==='declined' ? ' active' : '')" @click="filter='declined'">Відхилені</button>
+      <button :class="'chip' + (filter==='' ? ' active' : '')" @click="filter=''">Всі</button>
+    </div>
+    <div v-if="loading" class="empty"><i class="fa fa-spinner fa-spin"></i><p>Завантаження…</p></div>
+    <div v-else-if="!requests.length" class="empty"><i class="fa fa-inbox"></i><p>Запитів немає</p></div>
+    <div v-else style="display:flex;flex-direction:column;gap:10px;">
+      <div v-for="r in requests" :key="r.id" class="req-card" @click="openRespond(r)">
+        <div class="req-header">
+          <div class="flex items-center gap-10">
+            <div class="avatar av-sm">{{ r.client_name?.charAt(0).toUpperCase() }}</div>
+            <span class="req-name">{{ r.client_name }}</span>
+          </div>
+          <div class="flex items-center gap-8">
+            <m-badge :status="r.status"></m-badge>
+            <span style="font-size:11px;color:var(--text-muted);">{{ r.created_at ? new Date(r.created_at).toLocaleDateString('uk',{month:'short',day:'numeric'}) : '' }}</span>
+          </div>
+        </div>
+        <div class="req-meta">
+          <span v-if="r.client_phone"><i class="fa fa-phone"></i>{{ r.client_phone }}</span>
+          <span v-if="r.client_email"><i class="fa fa-envelope"></i>{{ r.client_email }}</span>
+          <span v-if="r.client_instagram"><i class="fa-brands fa-instagram"></i>{{ r.client_instagram }}</span>
+          <span v-if="r.service"><i class="fa fa-scissors"></i>{{ r.service.name }}</span>
+          <span v-if="r.preferred_date"><i class="fa fa-calendar"></i>{{ new Date(r.preferred_date).toLocaleDateString('uk',{month:'short',day:'numeric'}) }}{{ r.preferred_time ? ' ' + r.preferred_time : '' }}</span>
+        </div>
+        <p v-if="r.message" class="req-msg">"{{ r.message }}"</p>
+        <div v-if="r.status === 'pending'" class="flex gap-8" @click.stop>
+          <button class="btn btn-success btn-sm" @click="openRespond(r)"><i class="fa fa-check"></i> Відповісти</button>
+        </div>
+      </div>
+    </div>
+    <m-modal :show="showRespond" title="Відповідь на запит" size="lg" @close="showRespond=false">
+      <respond-form-body v-if="selectedReq" :api="api" :request="selectedReq" @responded="onResponded" @cancel="showRespond=false"></respond-form-body>
+    </m-modal>
+  </template>
+
+  <!-- Archive sub-tab -->
+  <archive-page v-else :api="api"></archive-page>
 </div>`
 };
 
