@@ -14,9 +14,10 @@ class ExpenseController extends Controller
     {
         $q = $request->user()->expenses()->orderByDesc('date');
 
-        if ($request->filled('from')) $q->where('date', '>=', $request->from);
-        if ($request->filled('to'))   $q->where('date', '<=', $request->to);
+        if ($request->filled('from'))     $q->where('date', '>=', $request->from);
+        if ($request->filled('to'))       $q->where('date', '<=', $request->to);
         if ($request->filled('category')) $q->where('category', $request->category);
+        if ($request->filled('type'))     $q->where('type', $request->type);
 
         return response()->json($q->get());
     }
@@ -24,12 +25,14 @@ class ExpenseController extends Controller
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate([
+            'type'        => 'nullable|in:expense,income',
             'amount'      => 'required|numeric|min:0',
             'category'    => 'nullable|string|max:50',
             'description' => 'nullable|string|max:255',
             'date'        => 'required|date',
         ]);
 
+        $data['type'] = $data['type'] ?? 'expense';
         $expense = $request->user()->expenses()->create($data);
 
         return response()->json($expense, 201);
@@ -40,6 +43,7 @@ class ExpenseController extends Controller
         abort_unless($expense->user_id === $request->user()->id, 403);
 
         $data = $request->validate([
+            'type'        => 'nullable|in:expense,income',
             'amount'      => 'sometimes|numeric|min:0',
             'category'    => 'nullable|string|max:50',
             'description' => 'nullable|string|max:255',

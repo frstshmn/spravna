@@ -188,7 +188,7 @@ const DashboardPage = {
                 const expTo = new Date(now2.getFullYear(), now2.getMonth() + 1, 0).toISOString().split('T')[0];
                 const [dash, exp] = await Promise.all([
                     props.api.get('/dashboard'),
-                    props.api.get('/expenses', { params: { from: expFrom, to: expTo } }).catch(() => ({ data: [] })),
+                    props.api.get('/expenses', { params: { from: expFrom, to: expTo, type: 'expense' } }).catch(() => ({ data: [] })),
                 ]);
                 stats.value = dash.data.stats;
                 todayAppts.value = dash.data.today_appointments;
@@ -2474,14 +2474,23 @@ const FinancesPage = {
     setup(props) {
         const expenses = ref([]);
         const income = ref([]);
+        const manualIncome = ref([]);
         const loading = ref(false);
         const tab = ref('expenses');
         const year = ref(new Date().getFullYear());
         const month = ref(new Date().getMonth() + 1);
-        const showModal = ref(false);
+
+        /* expense modal */
+        const showExpModal = ref(false);
         const editingExp = ref(null);
         const saving = ref(false);
         const expForm = reactive({ amount: '', category: 'other', description: '', date: new Date().toISOString().split('T')[0] });
+
+        /* income modal */
+        const showIncModal = ref(false);
+        const editingInc = ref(null);
+        const savingInc = ref(false);
+        const incForm = reactive({ amount: '', description: '', date: new Date().toISOString().split('T')[0] });
 
         const monthNames = ['Січень','Лютий','Березень','Квітень','Травень','Червень','Липень','Серпень','Вересень','Жовтень','Листопад','Грудень'];
         const monthLabel = computed(() => monthNames[month.value - 1] + ' ' + year.value);
@@ -2489,7 +2498,7 @@ const FinancesPage = {
         const toDate = computed(() => { const d = new Date(year.value, month.value, 0); return d.toISOString().split('T')[0]; });
 
         const totalExp = computed(() => expenses.value.reduce((s,e) => s + Number(e.amount), 0));
-        const totalInc = computed(() => income.value.reduce((s,a) => s + Number(a.price), 0));
+        const totalInc = computed(() => income.value.reduce((s,a) => s + Number(a.price), 0) + manualIncome.value.reduce((s,i) => s + Number(i.amount), 0));
         const profit = computed(() => totalInc.value - totalExp.value);
 
         const catColors = { rent:'#f59e0b', materials:'#3b82f6', ads:'#8b5cf6', equipment:'#10b981', subscription:'#06b6d4', other:'#6b7280' };
@@ -2498,44 +2507,72 @@ const FinancesPage = {
 
         async function load() {
             loading.value = true;
-            const [exp, inc] = await Promise.all([
-                props.api.get('/expenses', { params: { from: fromDate.value, to: toDate.value } }).catch(()=>({data:[]})),
+            const [exp, inc, manInc] = await Promise.all([
+                props.api.get('/expenses', { params: { from: fromDate.value, to: toDate.value, type: 'expense' } }).catch(()=>({data:[]})),
                 props.api.get('/finances/income', { params: { from: fromDate.value, to: toDate.value } }).catch(()=>({data:[]})),
+                props.api.get('/expenses', { params: { from: fromDate.value, to: toDate.value, type: 'income' } }).catch(()=>({data:[]})),
             ]);
             expenses.value = exp.data;
             income.value = inc.data;
+            manualIncome.value = manInc.data;
             loading.value = false;
         }
 
         function openAdd() {
             editingExp.value = null;
             Object.assign(expForm, { amount:'', category:'other', description:'', date: fromDate.value });
-            showModal.value = true;
+            showExpModal.value = true;
         }
         function openEdit(e) {
             editingExp.value = e;
             Object.assign(expForm, { amount: e.amount, category: e.category, description: e.description||'', date: e.date });
-            showModal.value = true;
+            showExpModal.value = true;
         }
         async function saveExpense() {
             saving.value = true;
             if (editingExp.value) { await props.api.put('/expenses/'+editingExp.value.id, expForm); }
-            else { await props.api.post('/expenses', expForm); }
-            saving.value = false; showModal.value = false; load();
+            else { await props.api.post('/expenses', { ...expForm, type: 'expense' }); }
+            saving.value = false; showExpModal.value = false; load();
         }
         async function deleteExpense(e) {
             if (!confirm('Видалити витрату?')) return;
             await props.api.delete('/expenses/'+e.id); load();
         }
+
+        function openAddIncome() {
+            editingInc.value = null;
+            Object.assign(incForm, { amount:'', description:'', date: fromDate.value });
+            showIncModal.value = true;
+        }
+        function openEditIncome(i) {
+            editingInc.value = i;
+            Object.assign(incForm, { amount: i.amount, description: i.description||'', date: i.date });
+            showIncModal.value = true;
+        }
+        async function saveIncome() {
+            savingInc.value = true;
+            if (editingInc.value) { await props.api.put('/expenses/'+editingInc.value.id, { ...incForm, type: 'income' }); }
+            else { await props.api.post('/expenses', { ...incForm, type: 'income', category: 'other' }); }
+            savingInc.value = false; showIncModal.value = false; load();
+        }
+        async function deleteIncome(i) {
+            if (!confirm('Видалити запис доходу?')) return;
+            await props.api.delete('/expenses/'+i.id); load();
+        }
+
         function prevMonth() { if (month.value===1){month.value=12;year.value--;}else month.value--; }
         function nextMonth() { if (month.value===12){month.value=1;year.value++;}else month.value++; }
 
         watch([year, month], load);
         onMounted(load);
 
-        return { expenses, income, loading, tab, year, month, monthLabel, showModal, editingExp, saving, expForm,
+        return { expenses, income, manualIncome, loading, tab, year, month, monthLabel,
+            showExpModal, editingExp, saving, expForm,
+            showIncModal, editingInc, savingInc, incForm,
             totalExp, totalInc, profit, catColors, catLabels, catList,
-            openAdd, openEdit, saveExpense, deleteExpense, prevMonth, nextMonth };
+            openAdd, openEdit, saveExpense, deleteExpense,
+            openAddIncome, openEditIncome, saveIncome, deleteIncome,
+            prevMonth, nextMonth };
     },
     template: `
 <div>
@@ -2565,7 +2602,7 @@ const FinancesPage = {
       </div>
     </div>
     <div :class="['fin-sum-card', profit >= 0 ? 'fin-sum-profit' : 'fin-sum-loss']">
-      <div class="fin-sum-icon"><i :class="'fa fa-scale-' + (profit>=0 ? 'balanced' : 'unbalanced')"></i></div>
+      <div class="fin-sum-icon"><i class="fa fa-piggy-bank"></i></div>
       <div class="fin-sum-body">
         <div class="fin-sum-label">Прибуток</div>
         <div class="fin-sum-value">{{ profit >= 0 ? '+' : '' }}₴{{ Number(profit).toLocaleString() }}</div>
@@ -2585,14 +2622,13 @@ const FinancesPage = {
 
   <!-- Expenses tab -->
   <template v-if="tab==='expenses'">
-    <div class="flex items-center justify-between mb-12">
-      <span style="font-size:13px;color:var(--text-muted);">{{ expenses.length }} записів</span>
+    <div class="fin-tab-toolbar">
+      <span class="fin-count-label">{{ expenses.length }} записів</span>
       <button class="btn btn-primary btn-sm" @click="openAdd"><i class="fa fa-plus"></i> Додати витрату</button>
     </div>
-    <div v-if="loading" class="empty"><i class="fa fa-spinner fa-spin"></i></div>
+    <div v-if="loading" class="empty" style="padding:32px 0;"><i class="fa fa-spinner fa-spin"></i></div>
     <div v-else-if="!expenses.length" class="empty">
       <i class="fa fa-receipt"></i><p>Витрат за цей місяць немає</p>
-      <button class="btn btn-primary btn-sm" @click="openAdd"><i class="fa fa-plus"></i> Додати</button>
     </div>
     <div v-else class="card">
       <div class="fin-exp-list">
@@ -2611,30 +2647,54 @@ const FinancesPage = {
 
   <!-- Income tab -->
   <template v-else>
-    <div style="margin-bottom:12px;font-size:13px;color:var(--text-muted);">{{ income.length }} завершених сесій</div>
-    <div v-if="loading" class="empty"><i class="fa fa-spinner fa-spin"></i></div>
-    <div v-else-if="!income.length" class="empty"><i class="fa fa-coins"></i><p>Доходів за цей місяць немає</p></div>
-    <div v-else class="card">
-      <div class="fin-exp-list">
-        <div v-for="a in income" :key="a.id" class="fin-exp-row">
-          <div class="avatar av-xs" style="flex-shrink:0;">{{ a.client?.name?.charAt(0) }}</div>
-          <div class="fin-exp-info">
-            <div class="fin-exp-name">{{ a.client?.name || '—' }}</div>
-            <div class="fin-exp-meta">{{ a.service?.name || 'Сесія' }} · {{ new Date(a.scheduled_at).toLocaleDateString('uk',{day:'numeric',month:'short'}) }}</div>
+    <div class="fin-tab-toolbar">
+      <span class="fin-count-label">{{ income.length + manualIncome.length }} записів</span>
+      <button class="btn btn-primary btn-sm" @click="openAddIncome"><i class="fa fa-plus"></i> Додати дохід</button>
+    </div>
+    <div v-if="loading" class="empty" style="padding:32px 0;"><i class="fa fa-spinner fa-spin"></i></div>
+    <div v-else-if="!income.length && !manualIncome.length" class="empty">
+      <i class="fa fa-coins"></i><p>Доходів за цей місяць немає</p>
+    </div>
+    <template v-else>
+      <!-- Manual income -->
+      <div v-if="manualIncome.length" class="card" style="margin-bottom:12px;">
+        <div class="card-header"><span class="card-title" style="font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);">Інший дохід</span></div>
+        <div class="fin-exp-list">
+          <div v-for="i in manualIncome" :key="i.id" class="fin-exp-row" @click="openEditIncome(i)">
+            <span class="fin-exp-dot" style="background:#10b981;"></span>
+            <div class="fin-exp-info">
+              <div class="fin-exp-name">{{ i.description || 'Дохід' }}</div>
+              <div class="fin-exp-meta">{{ new Date(i.date).toLocaleDateString('uk',{day:'numeric',month:'short'}) }}</div>
+            </div>
+            <span class="fin-exp-amount" style="color:var(--completed);">+₴{{ Number(i.amount).toLocaleString() }}</span>
+            <button class="btn btn-ghost btn-icon btn-sm" @click.stop="deleteIncome(i)" style="color:var(--cancelled);"><i class="fa fa-trash"></i></button>
           </div>
-          <span class="fin-exp-amount" style="color:var(--completed);">+₴{{ Number(a.price).toLocaleString() }}</span>
         </div>
       </div>
-    </div>
+      <!-- Appointment income -->
+      <div v-if="income.length" class="card">
+        <div class="card-header"><span class="card-title" style="font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);">Завершені сесії</span></div>
+        <div class="fin-exp-list">
+          <div v-for="a in income" :key="a.id" class="fin-exp-row">
+            <div class="avatar av-xs" style="flex-shrink:0;">{{ a.client?.name?.charAt(0) }}</div>
+            <div class="fin-exp-info">
+              <div class="fin-exp-name">{{ a.client?.name || '—' }}</div>
+              <div class="fin-exp-meta">{{ a.service?.name || 'Сесія' }} · {{ new Date(a.scheduled_at).toLocaleDateString('uk',{day:'numeric',month:'short'}) }}</div>
+            </div>
+            <span class="fin-exp-amount" style="color:var(--completed);">+₴{{ Number(a.price).toLocaleString() }}</span>
+          </div>
+        </div>
+      </div>
+    </template>
   </template>
 
-  <!-- Add/Edit modal -->
-  <m-modal :show="showModal" :title="editingExp ? 'Редагувати витрату' : 'Нова витрата'" size="sm" @close="showModal=false">
-    <div style="display:flex;flex-direction:column;gap:14px;">
+  <!-- Expense modal -->
+  <m-modal :show="showExpModal" :title="editingExp ? 'Редагувати витрату' : 'Нова витрата'" size="sm" @close="showExpModal=false">
+    <div class="modal-body">
       <div class="form-row">
         <div class="form-group">
           <label class="label">Сума (₴)</label>
-          <input type="number" v-model="expForm.amount" class="input" placeholder="0" min="0" step="0.01" autofocus>
+          <input type="number" v-model="expForm.amount" class="input" placeholder="0" min="0" step="0.01">
         </div>
         <div class="form-group">
           <label class="label">Дата</label>
@@ -2654,10 +2714,36 @@ const FinancesPage = {
         <label class="label">Опис</label>
         <input type="text" v-model="expForm.description" class="input" placeholder="Необов'язково">
       </div>
-      <div style="display:flex;gap:8px;justify-content:flex-end;">
-        <button class="btn btn-ghost" @click="showModal=false">Скасувати</button>
+      <div class="form-actions">
+        <button class="btn btn-ghost" @click="showExpModal=false">Скасувати</button>
         <button class="btn btn-primary" :disabled="!expForm.amount || saving" @click="saveExpense">
           {{ saving ? 'Збереження…' : 'Зберегти' }}
+        </button>
+      </div>
+    </div>
+  </m-modal>
+
+  <!-- Income modal -->
+  <m-modal :show="showIncModal" :title="editingInc ? 'Редагувати дохід' : 'Новий дохід'" size="sm" @close="showIncModal=false">
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="label">Сума (₴)</label>
+          <input type="number" v-model="incForm.amount" class="input" placeholder="0" min="0" step="0.01">
+        </div>
+        <div class="form-group">
+          <label class="label">Дата</label>
+          <input type="date" v-model="incForm.date" class="input">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="label">Опис</label>
+        <input type="text" v-model="incForm.description" class="input" placeholder="Наприклад: чайові, продаж матеріалів…">
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-ghost" @click="showIncModal=false">Скасувати</button>
+        <button class="btn btn-primary" :disabled="!incForm.amount || savingInc" @click="saveIncome">
+          {{ savingInc ? 'Збереження…' : 'Зберегти' }}
         </button>
       </div>
     </div>
@@ -2680,6 +2766,7 @@ const AnalyticsPage = {
 
         function setPeriod(p) {
             period.value = p;
+            if (p === 'custom') return;
             const now = new Date();
             if (p === 'month') {
                 from.value = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
@@ -2770,10 +2857,18 @@ const AnalyticsPage = {
 <div>
   <div class="an-header">
     <h1>Аналітика</h1>
-    <div class="an-period-btns">
-      <button :class="['btn btn-sm', period==='month' ? 'btn-primary' : 'btn-ghost']" @click="setPeriod('month')">Місяць</button>
-      <button :class="['btn btn-sm', period==='quarter' ? 'btn-primary' : 'btn-ghost']" @click="setPeriod('quarter')">Квартал</button>
-      <button :class="['btn btn-sm', period==='year' ? 'btn-primary' : 'btn-ghost']" @click="setPeriod('year')">Рік</button>
+    <div class="an-controls">
+      <div class="an-period-btns">
+        <button :class="['btn btn-sm', period==='month' ? 'btn-primary' : 'btn-ghost']" @click="setPeriod('month')">Місяць</button>
+        <button :class="['btn btn-sm', period==='quarter' ? 'btn-primary' : 'btn-ghost']" @click="setPeriod('quarter')">Квартал</button>
+        <button :class="['btn btn-sm', period==='year' ? 'btn-primary' : 'btn-ghost']" @click="setPeriod('year')">Рік</button>
+        <button :class="['btn btn-sm', period==='custom' ? 'btn-primary' : 'btn-ghost']" @click="setPeriod('custom')">Свій</button>
+      </div>
+      <div v-if="period==='custom'" class="an-custom-range">
+        <input type="date" v-model="from" class="input input-sm">
+        <span class="an-range-sep">—</span>
+        <input type="date" v-model="to" class="input input-sm">
+      </div>
     </div>
   </div>
 
