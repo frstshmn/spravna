@@ -15,7 +15,7 @@ class AnthropicService
 
     public function __construct()
     {
-        $this->apiKey = (string) env('ANTHROPIC_API_KEY', '');
+        $this->apiKey = (string) config('services.anthropic.key', '');
     }
 
     /**
