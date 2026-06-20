@@ -980,7 +980,7 @@ const SchedulePage = {
 
   <!-- Auto-populate modal -->
   <m-modal :show="showAutoPopulate" title="Авто-наповнення" subtitle="Заплануйте повторювані слоти для клієнта" icon="rotate" size="sm" @close="showAutoPopulate=false">
-    <div style="display:flex;flex-direction:column;gap:16px;">
+    <div class="modal-body" style="display:flex;flex-direction:column;gap:16px;">
       <div class="form-group">
         <label class="label">Клієнт</label>
         <select v-model="autoPopForm.client_id" class="select">
