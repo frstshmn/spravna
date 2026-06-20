@@ -18,6 +18,7 @@ const DashboardPage = {
         const upcoming = ref([]);
         const topServices = ref([]);
         const chart = ref([]);
+        const dashExpenses = ref([]);
         const showApptModal = ref(false);
         const editingAppt = ref(null);
         const showClientModal = ref(false);
@@ -182,12 +183,19 @@ const DashboardPage = {
 
         async function load() {
             try {
-                const { data } = await props.api.get('/dashboard');
-                stats.value = data.stats;
-                todayAppts.value = data.today_appointments;
-                upcoming.value = data.upcoming_appointments;
-                topServices.value = data.top_services || [];
-                chart.value = data.revenue_chart;
+                const now2 = new Date();
+                const expFrom = new Date(now2.getFullYear(), now2.getMonth(), 1).toISOString().split('T')[0];
+                const expTo = new Date(now2.getFullYear(), now2.getMonth() + 1, 0).toISOString().split('T')[0];
+                const [dash, exp] = await Promise.all([
+                    props.api.get('/dashboard'),
+                    props.api.get('/expenses', { params: { from: expFrom, to: expTo } }).catch(() => ({ data: [] })),
+                ]);
+                stats.value = dash.data.stats;
+                todayAppts.value = dash.data.today_appointments;
+                upcoming.value = dash.data.upcoming_appointments;
+                topServices.value = dash.data.top_services || [];
+                chart.value = dash.data.revenue_chart;
+                dashExpenses.value = exp.data.slice(0, 5);
                 nextTick(drawChart);
             } catch(e) {}
         }
@@ -207,7 +215,7 @@ const DashboardPage = {
             showClientModal, newClient, onClientSaved,
             timelineRange, timelineHours, timeline, tickPos, trackHeight, nowPos, nowLabel, apptTimeLabel,
             pubSettings, pubLinkCopied, copyPublicLink, togglePubSetting,
-            dashView, load,
+            dashView, dashExpenses, load,
         };
     },
     template: `
@@ -377,6 +385,31 @@ const DashboardPage = {
             <button :class="'toggle' + (pubSettings.is_accepting_bookings ? ' on' : '')" @click="togglePubSetting('is_accepting_bookings')"></button>
             <span>{{ pubSettings.is_accepting_bookings ? 'Приймає' : 'Не приймає' }} запити</span>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Expenses column -->
+    <div class="card dash-expenses-card">
+      <div class="card-header">
+        <span class="card-title"><i class="fa fa-receipt" style="color:var(--cancelled);margin-right:6px;"></i>Витрати цього місяця</span>
+        <button class="btn btn-ghost btn-sm btn-icon" @click="$emit('navigate','finances')" title="Всі фінанси"><i class="fa fa-arrow-right"></i></button>
+      </div>
+      <div v-if="!dashExpenses.length" class="empty" style="padding:20px 0;font-size:13px;">
+        <i class="fa fa-receipt"></i><p>Витрат немає</p>
+      </div>
+      <div v-else class="dash-exp-list">
+        <div v-for="e in dashExpenses" :key="e.id" class="dash-exp-row">
+          <span class="dash-exp-dot" :style="{background: {rent:'#f59e0b',materials:'#3b82f6',ads:'#8b5cf6',equipment:'#10b981',subscription:'#06b6d4',other:'#6b7280'}[e.category]||'#6b7280'}"></span>
+          <div class="dash-exp-info">
+            <div class="dash-exp-name truncate">{{ e.description || {rent:'Оренда',materials:'Матеріали',ads:'Реклама',equipment:'Обладнання',subscription:'Підписка',other:'Інше'}[e.category] || e.category }}</div>
+            <div class="dash-exp-date">{{ new Date(e.date).toLocaleDateString('uk',{day:'numeric',month:'short'}) }}</div>
+          </div>
+          <span class="dash-exp-amount">₴{{ Number(e.amount).toLocaleString() }}</span>
+        </div>
+        <div class="dash-exp-total">
+          <span>Разом</span>
+          <span>₴{{ dashExpenses.reduce((s,e)=>s+Number(e.amount),0).toLocaleString() }}</span>
         </div>
       </div>
     </div>
