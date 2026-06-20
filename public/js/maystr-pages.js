@@ -842,6 +842,7 @@ const SchedulePage = {
             showRespondModal, selectedRequest, openRequest, onResponded,
             prepDuration, prepAutoEnabled, prepApplying, sessionsWithoutPrep, applyPrepToWeek, removeAutoPrep,
             showAutoPopulate, autoPopClients, autoPopulating, autoPopProgress, autoPopForm, openAutoPopulate, submitAutoPopulate,
+            autoPopDays: [{l:'понеділка',v:1},{l:'вівторка',v:2},{l:'середи',v:3},{l:'четверга',v:4},{l:"п'ятниці",v:5},{l:'суботи',v:6},{l:'неділі',v:7}],
         };
     },
     template: `
@@ -1012,7 +1013,7 @@ const SchedulePage = {
           <input type="range" v-model.number="autoPopForm.weeks" min="1" max="26" step="1" style="flex:1;">
           <span style="font-size:14px;font-weight:700;min-width:48px;">{{ autoPopForm.weeks }} тиж.</span>
         </div>
-        <p style="font-size:11px;color:var(--text-muted);margin-top:4px;">Починаючи з найближчого {{ [{l:'понеділка',v:1},{l:'вівторка',v:2},{l:'середи',v:3},{l:'четверга',v:4},{l:'п\'ятниці',v:5},{l:'суботи',v:6},{l:'неділі',v:7}].find(d=>d.v===autoPopForm.weekday)?.l }} — {{ autoPopForm.weeks }} записів</p>
+        <p style="font-size:11px;color:var(--text-muted);margin-top:4px;">Починаючи з найближчого {{ autoPopDays.find(d=>d.v===autoPopForm.weekday)?.l }} — {{ autoPopForm.weeks }} записів</p>
       </div>
       <div class="form-row">
         <div class="form-group">
