@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Log;
 class AnthropicService
 {
     private const API_URL    = 'https://api.anthropic.com/v1/messages';
-    private const MODEL      = 'claude-haiku-4-5-20251001';
+    private const MODEL      = 'claude-haiku-4-5';
     private const MAX_TOKENS = 800;
 
     private string $apiKey;
@@ -40,8 +40,9 @@ class AnthropicService
             ]);
 
         if (! $response->successful()) {
-            Log::error('Anthropic API error', ['status' => $response->status()]);
-            throw new \RuntimeException('Anthropic API request failed with status ' . $response->status());
+            $errorMsg = $response->json('error.message', '');
+            Log::error('Anthropic API error', ['status' => $response->status(), 'body' => $response->body()]);
+            throw new \RuntimeException('Anthropic API ' . $response->status() . ($errorMsg ? ': ' . $errorMsg : ''));
         }
 
         $text = $response->json('content.0.text', '');

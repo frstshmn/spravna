@@ -68,7 +68,7 @@ PROMPT;
                     throw new \RuntimeException('AI-сервіс повернув некоректну відповідь. Спробуйте пізніше.');
                 }
             }
-            throw new \RuntimeException('AI-сервіс тимчасово недоступний. Перевірте налаштування API ключа.');
+            throw new \RuntimeException('AI-сервіс недоступний: ' . $e->getMessage());
         }
     }
 
