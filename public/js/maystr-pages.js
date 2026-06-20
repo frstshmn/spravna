@@ -2900,60 +2900,65 @@ const AnalyticsPage = {
         }
 
         watch([from, to], load);
-        onMounted(() => { setPeriod('month'); loadClientsForAnalysis(); });
-        onUnmounted(() => { Object.values(chartInstances).forEach(c=>c?.destroy()); });
+        onMounted(() => { setPeriod('month'); loadUserAnalysis(); });
+        onUnmounted(() => { Object.values(chartInstances).forEach(c=>c?.destroy()); if (countdownTimer) clearInterval(countdownTimer); });
 
         const dayLabels = ['','Пн','Вт','Ср','Чт','Пт','Сб','Нд'];
 
-        // ── AI client analysis ──
-        const clients = ref([]);
-        const selectedAnalysisClientId = ref(null);
-        const analysisPeriod = ref(new Date().toISOString().slice(0, 7));
-        const clientAnalysis = ref(null);
-        const analysisLoading = ref(false);
-        const refreshing = ref(false);
-        const analysisError = ref('');
+        // ── AI business analysis ──
+        const userAnalysis = ref(null);
+        const userAnalysisPeriod = ref(new Date().toISOString().slice(0, 7));
+        const userAnalysisLoading = ref(false);
+        const userAnalysisError = ref('');
+        const countdown = ref('');
+        let countdownTimer = null;
 
-        async function loadClientsForAnalysis() {
-            try {
-                const { data: d } = await props.api.get('/clients', { params: { per_page: 200 } });
-                clients.value = d.data ?? d;
-            } catch(e) {}
-        }
-
-        async function loadAnalysis() {
-            if (!selectedAnalysisClientId.value) { clientAnalysis.value = null; analysisError.value = ''; return; }
-            analysisLoading.value = true;
-            analysisError.value = '';
-            try {
-                const { data: d } = await props.api.get(`/analysis/${selectedAnalysisClientId.value}`, { params: { period: analysisPeriod.value } });
-                clientAnalysis.value = d;
-            } catch(e) {
-                clientAnalysis.value = null;
-                if (e.response?.status !== 404) {
-                    analysisError.value = e.response?.data?.error || 'Не вдалося отримати аналіз';
-                }
+        function startCountdown(generatedAt) {
+            if (countdownTimer) clearInterval(countdownTimer);
+            function tick() {
+                const diff = new Date(generatedAt).getTime() + 3600000 - Date.now();
+                if (diff <= 0) { countdown.value = ''; clearInterval(countdownTimer); countdownTimer = null; return; }
+                const m = Math.floor(diff / 60000), s = Math.floor((diff % 60000) / 1000);
+                countdown.value = String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
             }
-            analysisLoading.value = false;
+            tick();
+            countdownTimer = setInterval(tick, 1000);
         }
 
-        async function refreshAnalysis() {
-            if (!selectedAnalysisClientId.value) return;
-            refreshing.value = true;
-            analysisError.value = '';
+        async function loadUserAnalysis() {
+            userAnalysisError.value = '';
             try {
-                const { data: d } = await props.api.post(`/analysis/${selectedAnalysisClientId.value}/refresh`, null, { params: { period: analysisPeriod.value } });
-                clientAnalysis.value = d;
+                const { data: d } = await props.api.get('/user-analysis', { params: { period: userAnalysisPeriod.value } });
+                userAnalysis.value = d;
+                startCountdown(d.generated_at);
             } catch(e) {
-                analysisError.value = e.response?.data?.error || 'Не вдалося оновити аналіз';
+                userAnalysis.value = null;
+                countdown.value = '';
+                if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
             }
-            refreshing.value = false;
         }
 
-        watch([selectedAnalysisClientId, analysisPeriod], loadAnalysis);
+        async function generateAnalysis() {
+            userAnalysisLoading.value = true;
+            userAnalysisError.value = '';
+            try {
+                const { data: d } = await props.api.post('/user-analysis/generate', null, { params: { period: userAnalysisPeriod.value } });
+                userAnalysis.value = d;
+                startCountdown(d.generated_at);
+            } catch(e) {
+                userAnalysisError.value = e.response?.data?.error || 'Не вдалося згенерувати аналіз';
+            }
+            userAnalysisLoading.value = false;
+        }
+
+        watch(userAnalysisPeriod, () => {
+            userAnalysis.value = null; countdown.value = '';
+            if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
+            loadUserAnalysis();
+        });
 
         return { data, loading, period, from, to, setPeriod, dayLabels,
-            clients, selectedAnalysisClientId, analysisPeriod, clientAnalysis, analysisLoading, refreshing, analysisError, refreshAnalysis };
+            userAnalysis, userAnalysisPeriod, userAnalysisLoading, userAnalysisError, countdown, generateAnalysis };
     },
     template: `
 <div>
@@ -2970,6 +2975,61 @@ const AnalyticsPage = {
         <input type="date" v-model="from" class="input input-sm">
         <span class="an-range-sep">—</span>
         <input type="date" v-model="to" class="input input-sm">
+      </div>
+    </div>
+  </div>
+
+  <!-- AI Business Analysis -->
+  <div class="an-section">
+    <div class="card">
+      <div class="modal-body">
+        <div class="an-ai-head">
+          <div>
+            <div class="an-ai-title"><i class="fa fa-robot" style="color:var(--accent);margin-right:7px;"></i>AI-аналіз бізнесу</div>
+            <div class="an-ai-sub">Щомісячні інсайти на основі ваших даних</div>
+          </div>
+          <input type="month" v-model="userAnalysisPeriod" class="input input-sm" style="width:150px;flex-shrink:0;">
+        </div>
+
+        <div v-if="userAnalysisError" class="an-ai-error">{{ userAnalysisError }}</div>
+
+        <div v-if="userAnalysisLoading" class="empty" style="padding:44px 0;">
+          <i class="fa fa-spinner fa-spin fa-2x" style="color:var(--accent);"></i>
+          <p style="margin-top:12px;font-size:13px;color:var(--text-muted);">Генерую аналіз вашого бізнесу...</p>
+        </div>
+        <template v-else-if="userAnalysis">
+          <div class="an-ai-result">
+            <div class="an-ai-col">
+              <div class="an-ai-col-title"><i class="fa fa-lightbulb" style="color:var(--pending);"></i>Спостереження</div>
+              <ul class="an-ai-list" v-if="userAnalysis.highlights?.length">
+                <li v-for="(h,i) in userAnalysis.highlights" :key="i">{{ h }}</li>
+              </ul>
+              <div v-else class="an-ai-empty">Немає спостережень</div>
+            </div>
+            <div class="an-ai-col">
+              <div class="an-ai-col-title"><i class="fa fa-wand-magic-sparkles" style="color:var(--accent);"></i>Рекомендації</div>
+              <ul class="an-ai-list" v-if="userAnalysis.suggestions?.length">
+                <li v-for="(s,i) in userAnalysis.suggestions" :key="i">{{ s }}</li>
+              </ul>
+              <div v-else class="an-ai-empty">Немає рекомендацій</div>
+            </div>
+          </div>
+          <div class="an-ai-footer">
+            <span class="an-ai-meta">Згенеровано {{ new Date(userAnalysis.generated_at).toLocaleString('uk-UA') }}</span>
+            <button @click="generateAnalysis" :disabled="!!countdown || userAnalysisLoading" class="btn btn-ghost btn-sm">
+              <i class="fa fa-rotate-right"></i>
+              <span v-if="countdown">Оновити через {{ countdown }}</span>
+              <span v-else>Оновити аналіз</span>
+            </button>
+          </div>
+        </template>
+        <div v-else class="an-ai-prompt">
+          <i class="fa fa-robot fa-2x" style="color:var(--text-muted);"></i>
+          <p>Натисніть, щоб отримати AI-аналіз вашого бізнесу за обраний місяць</p>
+          <button @click="generateAnalysis" :disabled="userAnalysisLoading" class="btn btn-primary btn-sm">
+            <i class="fa fa-wand-magic-sparkles"></i> Генерувати аналіз
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -3116,59 +3176,6 @@ const AnalyticsPage = {
         </div>
       </div>
     </div>
-    <!-- Section 6: AI аналіз клієнта -->
-    <div class="an-section">
-      <div class="an-section-label"><i class="fa fa-robot" style="color:var(--accent);margin-right:5px;"></i>AI-аналіз клієнта</div>
-      <div class="card">
-        <div class="modal-body">
-          <div class="an-ai-controls">
-            <select v-model="selectedAnalysisClientId" class="input" style="flex:1;min-width:160px;max-width:280px;">
-              <option :value="null">— Оберіть клієнта —</option>
-              <option v-for="c in clients" :key="c.id" :value="c.id">{{ c.name }}</option>
-            </select>
-            <input type="month" v-model="analysisPeriod" class="input input-sm" style="width:150px;">
-            <button v-if="clientAnalysis && !analysisLoading" @click="refreshAnalysis" :disabled="refreshing" class="btn btn-ghost btn-sm">
-              <i :class="['fa', refreshing ? 'fa-spinner fa-spin' : 'fa-rotate-right']"></i> Оновити
-            </button>
-          </div>
-
-          <div v-if="analysisError" class="an-ai-error">{{ analysisError }}</div>
-
-          <div v-if="analysisLoading" class="empty" style="padding:48px 0;">
-            <i class="fa fa-spinner fa-spin fa-2x" style="color:var(--accent);"></i>
-            <p style="margin-top:14px;font-size:13px;color:var(--text-muted);">Аналізую дані клієнта...</p>
-          </div>
-          <div v-else-if="!selectedAnalysisClientId" class="empty" style="padding:48px 0;">
-            <i class="fa fa-robot fa-2x" style="color:var(--text-muted);"></i>
-            <p style="margin-top:10px;font-size:13px;color:var(--text-muted);">Оберіть клієнта для AI-аналізу за місяць</p>
-          </div>
-          <template v-else-if="clientAnalysis">
-            <div class="an-ai-result">
-              <div class="an-ai-col">
-                <div class="an-ai-col-title"><i class="fa fa-lightbulb" style="color:var(--pending);"></i>Спостереження</div>
-                <ul class="an-ai-list" v-if="clientAnalysis.highlights?.length">
-                  <li v-for="(h, i) in clientAnalysis.highlights" :key="i">{{ h }}</li>
-                </ul>
-                <div v-else class="an-ai-empty">Немає спостережень за цей місяць</div>
-              </div>
-              <div class="an-ai-col">
-                <div class="an-ai-col-title"><i class="fa fa-wand-magic-sparkles" style="color:var(--accent);"></i>Рекомендації</div>
-                <ul class="an-ai-list" v-if="clientAnalysis.suggestions?.length">
-                  <li v-for="(s, i) in clientAnalysis.suggestions" :key="i">{{ s }}</li>
-                </ul>
-                <div v-else class="an-ai-empty">Немає рекомендацій</div>
-              </div>
-            </div>
-            <div class="an-ai-meta">Згенеровано {{ new Date(clientAnalysis.generated_at).toLocaleString('uk-UA') }}<span v-if="clientAnalysis.generation_type==='manual'"> · вручну</span></div>
-          </template>
-          <div v-else style="padding:40px 0;" class="empty">
-            <i class="fa fa-circle-xmark fa-2x" style="color:var(--text-muted);margin-bottom:10px;"></i>
-            <p style="font-size:13px;color:var(--text-muted);">Немає даних за обраний місяць</p>
-          </div>
-        </div>
-      </div>
-    </div>
-
   </template>
 </div>`
 };

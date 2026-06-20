@@ -3128,16 +3128,21 @@ body:has(.pub-page)::after { display: none !important; }
   .an-custom-range .input { flex: 1; min-width: 0; }
 }
 
-/* AI analysis section */
-.an-ai-controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
-.an-ai-result { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 8px; }
+/* AI business analysis section */
+.an-ai-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+.an-ai-title { font-size: 15px; font-weight: 700; color: var(--text); }
+.an-ai-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.an-ai-result { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 4px; }
 .an-ai-col-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--text-sub); display: flex; align-items: center; gap: 6px; margin-bottom: 10px; }
 .an-ai-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
 .an-ai-list li { font-size: 13px; line-height: 1.55; padding: 9px 12px 9px 14px; background: var(--bg); border-radius: 8px; border-left: 3px solid var(--accent); color: var(--text); }
 .an-ai-empty { font-size: 12px; color: var(--text-muted); font-style: italic; padding: 4px 0; }
-.an-ai-meta { margin-top: 14px; font-size: 11px; color: var(--text-muted); text-align: right; }
-.an-ai-error { background: rgba(239,68,68,.08); border: 1px solid rgba(239,68,68,.2); border-radius: 8px; padding: 10px 14px; font-size: 13px; color: #ef4444; margin-bottom: 14px; }
-@media (max-width: 640px) { .an-ai-result { grid-template-columns: 1fr; } }
+.an-ai-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 16px; gap: 12px; flex-wrap: wrap; }
+.an-ai-meta { font-size: 11px; color: var(--text-muted); }
+.an-ai-prompt { text-align: center; padding: 36px 0 8px; display: flex; flex-direction: column; align-items: center; gap: 0; }
+.an-ai-prompt p { font-size: 13px; color: var(--text-muted); margin: 10px 0 16px; max-width: 340px; line-height: 1.5; }
+.an-ai-error { background: rgba(239,68,68,.08); border: 1px solid rgba(239,68,68,.2); border-radius: 8px; padding: 10px 14px; font-size: 13px; color: #ef4444; margin-bottom: 12px; }
+@media (max-width: 640px) { .an-ai-result { grid-template-columns: 1fr; } .an-ai-footer { flex-direction: column; align-items: flex-start; } }
 
 /* =====================================================================
    TOUCH & MOBILE ADAPTATION
