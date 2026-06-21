@@ -28,18 +28,24 @@ PROMPT;
         return UserAnalysis::where('user_id', $user->id)->where('period', $period)->first();
     }
 
+    /** Seconds remaining on the global 1-hour cooldown (across all periods). 0 = no cooldown. */
+    public function globalCooldownSeconds(User $user): int
+    {
+        $last = UserAnalysis::where('user_id', $user->id)->orderByDesc('generated_at')->value('generated_at');
+        if (! $last) {
+            return 0;
+        }
+        return max(0, 3600 - (int) Carbon::parse($last)->diffInSeconds(now()));
+    }
+
     /**
-     * Generate a new analysis. Throws \RuntimeException('cooldown:{seconds}') if < 60 min since last.
+     * Generate a new analysis. Throws \RuntimeException('cooldown:{seconds}') if < 60 min since ANY last generation.
      */
     public function generate(User $user, string $period): UserAnalysis
     {
-        $cached = $this->getCached($user, $period);
-
-        if ($cached) {
-            $secondsLeft = 3600 - (int) $cached->generated_at->diffInSeconds(now());
-            if ($secondsLeft > 0) {
-                throw new \RuntimeException('cooldown:' . $secondsLeft);
-            }
+        $secondsLeft = $this->globalCooldownSeconds($user);
+        if ($secondsLeft > 0) {
+            throw new \RuntimeException('cooldown:' . $secondsLeft);
         }
 
         $prompt = $this->buildPrompt($user, $period);

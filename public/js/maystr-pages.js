@@ -2913,16 +2913,20 @@ const AnalyticsPage = {
         const countdown = ref('');
         let countdownTimer = null;
 
-        function startCountdown(generatedAt) {
+        function startCountdownUntil(targetMs) {
             if (countdownTimer) clearInterval(countdownTimer);
             function tick() {
-                const diff = new Date(generatedAt).getTime() + 3600000 - Date.now();
+                const diff = targetMs - Date.now();
                 if (diff <= 0) { countdown.value = ''; clearInterval(countdownTimer); countdownTimer = null; return; }
                 const m = Math.floor(diff / 60000), s = Math.floor((diff % 60000) / 1000);
                 countdown.value = String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
             }
             tick();
             countdownTimer = setInterval(tick, 1000);
+        }
+
+        function startCountdown(generatedAt) {
+            startCountdownUntil(new Date(generatedAt).getTime() + 3600000);
         }
 
         async function loadUserAnalysis() {
@@ -2933,8 +2937,13 @@ const AnalyticsPage = {
                 startCountdown(d.generated_at);
             } catch(e) {
                 userAnalysis.value = null;
-                countdown.value = '';
-                if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
+                const retryAfter = e.response?.data?.retry_after;
+                if (retryAfter > 0) {
+                    startCountdownUntil(Date.now() + retryAfter * 1000);
+                } else {
+                    countdown.value = '';
+                    if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
+                }
             }
         }
 
@@ -2946,14 +2955,18 @@ const AnalyticsPage = {
                 userAnalysis.value = d;
                 startCountdown(d.generated_at);
             } catch(e) {
+                const retryAfter = e.response?.data?.retry_after;
+                if (retryAfter > 0) {
+                    startCountdownUntil(Date.now() + retryAfter * 1000);
+                }
                 userAnalysisError.value = e.response?.data?.error || 'Не вдалося згенерувати аналіз';
             }
             userAnalysisLoading.value = false;
         }
 
         watch(userAnalysisPeriod, () => {
-            userAnalysis.value = null; countdown.value = '';
-            if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
+            userAnalysis.value = null;
+            if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; countdown.value = ''; }
             loadUserAnalysis();
         });
 

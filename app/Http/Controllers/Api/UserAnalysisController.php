@@ -18,7 +18,8 @@ class UserAnalysisController extends Controller
         $analysis = $this->service->getCached($request->user(), $period);
 
         if (! $analysis) {
-            return response()->json(['exists' => false], 404);
+            $retryAfter = $this->service->globalCooldownSeconds($request->user());
+            return response()->json(['exists' => false, 'retry_after' => $retryAfter], 404);
         }
 
         return response()->json($this->format($analysis));
