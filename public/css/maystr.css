@@ -3139,6 +3139,8 @@ body:has(.pub-page)::after { display: none !important; }
 .an-ai-empty { font-size: 12px; color: var(--text-muted); font-style: italic; padding: 4px 0; }
 .an-ai-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 16px; gap: 12px; flex-wrap: wrap; }
 .an-ai-meta { font-size: 11px; color: var(--text-muted); }
+.an-ai-disclaimer { display: block; font-size: 11px; color: var(--text-muted); opacity: .7; margin-top: 3px; }
+.an-ai-disclaimer .fa { font-size: 10px; margin-right: 3px; }
 .an-ai-prompt { text-align: center; padding: 36px 0 8px; display: flex; flex-direction: column; align-items: center; gap: 0; }
 .an-ai-prompt p { font-size: 13px; color: var(--text-muted); margin: 10px 0 16px; max-width: 340px; line-height: 1.5; }
 .an-ai-error { background: rgba(239,68,68,.08); border: 1px solid rgba(239,68,68,.2); border-radius: 8px; padding: 10px 14px; font-size: 13px; color: #ef4444; margin-bottom: 12px; }

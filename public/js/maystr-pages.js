@@ -3028,7 +3028,10 @@ const AnalyticsPage = {
             </div>
           </div>
           <div class="an-ai-footer">
-            <span class="an-ai-meta">Згенеровано {{ new Date(userAnalysis.generated_at).toLocaleString('uk-UA') }}</span>
+            <div>
+              <span class="an-ai-meta">Згенеровано {{ new Date(userAnalysis.generated_at).toLocaleString('uk-UA') }}</span>
+              <span class="an-ai-disclaimer"><i class="fa fa-triangle-exclamation"></i> AI може помилятися — перевіряйте висновки самостійно</span>
+            </div>
             <button @click="generateAnalysis" :disabled="!!countdown || userAnalysisLoading" class="btn btn-ghost btn-sm">
               <i class="fa fa-rotate-right"></i>
               <span v-if="countdown">Оновити через {{ countdown }}</span>
