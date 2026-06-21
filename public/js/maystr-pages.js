@@ -3039,8 +3039,10 @@ const AnalyticsPage = {
         <div v-else class="an-ai-prompt">
           <i class="fa fa-robot fa-2x" style="color:var(--text-muted);"></i>
           <p>Натисніть, щоб отримати AI-аналіз вашого бізнесу за обраний місяць</p>
-          <button @click="generateAnalysis" :disabled="userAnalysisLoading" class="btn btn-primary btn-sm">
-            <i class="fa fa-wand-magic-sparkles"></i> Генерувати аналіз
+          <button @click="generateAnalysis" :disabled="!!countdown || userAnalysisLoading" class="btn btn-primary btn-sm">
+            <i class="fa fa-wand-magic-sparkles"></i>
+            <span v-if="countdown">Доступно через {{ countdown }}</span>
+            <span v-else>Генерувати аналіз</span>
           </button>
         </div>
       </div>
