@@ -3387,8 +3387,8 @@ const StudioPage = {
         <div style="position:relative;">
           <img v-if="studio.photo_url" :src="studio.photo_url" style="width:56px;height:56px;border-radius:14px;object-fit:cover;border:2px solid var(--border);">
           <div v-else style="width:56px;height:56px;border-radius:14px;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:22px;color:#fff;"><i class="fa fa-store"></i></div>
-          <label v-if="isOwner" style="position:absolute;bottom:-4px;right:-4px;background:var(--card);border:1px solid var(--border);border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:10px;" :title="photoUploading?'Завантаження…':'Змінити фото'">
-            <i :class="photoUploading?'fa fa-spinner fa-spin':'fa fa-camera'" style="color:var(--text-sub);"></i>
+          <label v-if="isOwner" style="position:absolute;bottom:-4px;right:-4px;background:#fff;border:1.5px solid #ccc;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:10px;box-shadow:0 1px 3px rgba(0,0,0,.18);" :title="photoUploading?'Завантаження…':'Змінити фото'">
+            <i :class="photoUploading?'fa fa-spinner fa-spin':'fa fa-camera'" style="color:#333;"></i>
             <input type="file" accept="image/*" style="display:none;" @change="uploadPhoto">
           </label>
         </div>
