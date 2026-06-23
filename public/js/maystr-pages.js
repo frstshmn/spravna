@@ -3413,16 +3413,16 @@ const StudioPage = {
     </div>
 
     <!-- Tabs -->
-    <div class="tabs" style="margin-top:20px;">
-      <button :class="'tab-btn'+(activeTab==='members'?' active':'')" @click="activeTab='members'"><i class="fa fa-users"></i> Учасники</button>
-      <button v-if="memberTab" :class="'tab-btn'+(activeTab==='memberdetail'?' active':'')" @click="activeTab='memberdetail'">
+    <div class="page-tabs" style="margin-top:20px;">
+      <button :class="'page-tab'+(activeTab==='members'?' active':'')" @click="activeTab='members'"><i class="fa fa-users"></i> Учасники</button>
+      <button v-if="memberTab" :class="'page-tab'+(activeTab==='memberdetail'?' active':'')" @click="activeTab='memberdetail'">
         <i :class="memberTab.tab==='calendar'?'fa fa-calendar-days':'fa fa-inbox'"></i> {{ memberTab.member.name }}
       </button>
     </div>
 
     <!-- Members tab -->
     <div v-if="activeTab==='members'" style="margin-top:16px;">
-      <div v-if="isOwner && studio.members.length < 5" class="card" style="padding:14px 16px;margin-bottom:16px;">
+      <div v-if="isOwner && studio.members.length < 5" class="card" style="padding:14px 16px;margin-bottom:20px;">
         <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;">
           <div class="form-group" style="flex:1;margin:0;min-width:200px;">
             <label class="label">Запросити за email</label>
@@ -3435,7 +3435,7 @@ const StudioPage = {
         <p v-if="inviteError" style="color:var(--cancelled);font-size:12px;margin:6px 0 0;">{{ inviteError }}</p>
         <p style="font-size:11px;color:var(--text-muted);margin:6px 0 0;">Учасник отримає лист з посиланням. Максимум 5 учасників.</p>
       </div>
-      <div v-else-if="isOwner" class="notice" style="margin-bottom:16px;font-size:13px;"><i class="fa fa-circle-info"></i> Досягнуто максимум учасників (5).</div>
+      <div v-else-if="isOwner" style="margin-bottom:16px;padding:10px 14px;background:var(--bg-page);border:1px solid var(--border);border-radius:var(--r-md);font-size:13px;color:var(--text-muted);"><i class="fa fa-circle-info"></i> Досягнуто максимум учасників (5).</div>
 
       <div v-if="!studio.members.length" class="empty-state" style="padding:40px 0;">
         <div class="empty-state-icon"><i class="fa fa-user-plus"></i></div>
@@ -3443,18 +3443,40 @@ const StudioPage = {
         <p class="empty-state-sub">Запросіть майстрів за email</p>
       </div>
 
-      <div v-for="m in studio.members" :key="m.id" class="card" style="padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
-        <div style="width:36px;height:36px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;flex-shrink:0;">{{ (m.name||m.email).charAt(0).toUpperCase() }}</div>
-        <div style="flex:1;min-width:0;">
-          <div style="font-size:14px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ m.name || m.email }}</div>
-          <div style="font-size:12px;color:var(--text-muted);">{{ m.email }} &bull; <span :style="{color:m.status==='active'?'var(--completed)':'var(--text-sub)'}">{{ m.status==='active'?'Активний':'Очікує підтвердження' }}</span><span v-if="m.role==='owner'"> &bull; Власник</span></div>
-        </div>
-        <div v-if="isOwner && m.role!=='owner' && m.status==='active'" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-          <button :class="'btn btn-xs '+(m.can_view_calendar?'btn-primary':'btn-ghost')" :title="'Календар: '+(m.can_view_calendar?'видно':'приховано')" @click="togglePermission(m,'can_view_calendar')"><i class="fa fa-calendar-days"></i></button>
-          <button :class="'btn btn-xs '+(m.can_view_requests?'btn-primary':'btn-ghost')" :title="'Запити: '+(m.can_view_requests?'видно':'приховано')" @click="togglePermission(m,'can_view_requests')"><i class="fa fa-inbox"></i></button>
-          <button v-if="m.can_view_calendar" class="btn btn-ghost btn-xs" title="Переглянути календар" @click="openMemberTab(m,'calendar');activeTab='memberdetail'"><i class="fa fa-eye"></i></button>
-          <button v-if="m.can_view_requests" class="btn btn-ghost btn-xs" title="Переглянути запити" @click="openMemberTab(m,'requests');activeTab='memberdetail'"><i class="fa fa-list"></i></button>
-          <button class="btn btn-ghost btn-xs" style="color:var(--cancelled);" title="Видалити" @click="removeMember(m.user_id)"><i class="fa fa-user-xmark"></i></button>
+      <!-- Members as cards grid -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;">
+        <div v-for="m in studio.members" :key="m.id" class="card" style="padding:20px 16px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:10px;">
+          <!-- Avatar -->
+          <div style="position:relative;">
+            <img v-if="m.avatar_url" :src="m.avatar_url" style="width:56px;height:56px;border-radius:50%;object-fit:cover;border:2px solid var(--border);" :alt="m.name">
+            <div v-else style="width:56px;height:56px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:#fff;">{{ (m.name||m.email).charAt(0).toUpperCase() }}</div>
+            <span v-if="m.role==='owner'" style="position:absolute;bottom:-2px;right:-2px;background:var(--accent);color:#fff;border-radius:50%;width:16px;height:16px;display:flex;align-items:center;justify-content:center;font-size:8px;" title="Власник"><i class="fa fa-crown"></i></span>
+          </div>
+          <!-- Name + status -->
+          <div style="width:100%;">
+            <div style="font-size:14px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ m.name || m.email }}</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ m.email }}</div>
+            <div style="margin-top:6px;">
+              <span :style="{display:'inline-block',padding:'2px 8px',borderRadius:'20px',fontSize:'11px',fontWeight:600,background:m.status==='active'?'rgba(34,197,94,.12)':'rgba(100,116,139,.1)',color:m.status==='active'?'var(--completed)':'var(--text-sub)'}">
+                {{ m.status==='active' ? 'Активний' : 'Запрошений' }}
+              </span>
+            </div>
+          </div>
+          <!-- Permission badges (owner view) -->
+          <div v-if="isOwner && m.role!=='owner'" style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap;">
+            <button :class="'btn btn-sm '+(m.can_view_calendar?'btn-primary':'btn-ghost')" style="padding:4px 8px;font-size:11px;" :title="'Календар: '+(m.can_view_calendar?'видно':'приховано')" @click="togglePermission(m,'can_view_calendar')">
+              <i class="fa fa-calendar-days"></i> Кал.
+            </button>
+            <button :class="'btn btn-sm '+(m.can_view_requests?'btn-primary':'btn-ghost')" style="padding:4px 8px;font-size:11px;" :title="'Запити: '+(m.can_view_requests?'видно':'приховано')" @click="togglePermission(m,'can_view_requests')">
+              <i class="fa fa-inbox"></i> Запити
+            </button>
+          </div>
+          <!-- Actions (owner, active non-owner members) -->
+          <div v-if="isOwner && m.role!=='owner' && m.status==='active'" style="display:flex;gap:6px;width:100%;">
+            <button class="btn btn-ghost btn-sm btn-icon" style="flex:1;" title="Календар" @click="openMemberTab(m,'calendar');activeTab='memberdetail'"><i class="fa fa-calendar-days"></i></button>
+            <button class="btn btn-ghost btn-sm btn-icon" style="flex:1;" title="Запити" @click="openMemberTab(m,'requests');activeTab='memberdetail'"><i class="fa fa-inbox"></i></button>
+            <button class="btn btn-ghost btn-sm btn-icon" style="flex:1;color:var(--cancelled);" title="Видалити" @click="removeMember(m.user_id)"><i class="fa fa-user-xmark"></i></button>
+          </div>
         </div>
       </div>
     </div>

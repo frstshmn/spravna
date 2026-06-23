@@ -49,12 +49,17 @@
 <div id="studio-app">
   <div class="stu-page">
 
-    <!-- Studio hero -->
+    <!-- Studio hero — rendered from PHP, no Vue needed here -->
     <div class="stu-hero">
-        <img v-if="studioData && studioData.studio.photo_url" :src="studioData.studio.photo_url" class="stu-logo" alt="Studio">
-        <div v-else class="stu-logo-placeholder"><i class="fa fa-store"></i></div>
-        <h1 class="stu-name">{{ studioData ? studioData.studio.name : '...' }}</h1>
-        <p v-if="studioData && studioData.studio.description" class="stu-desc">{{ studioData.studio.description }}</p>
+        @if($studio->photo)
+            <img src="/storage/{{ $studio->photo }}" class="stu-logo" alt="{{ $studio->name }}">
+        @else
+            <div class="stu-logo-placeholder"><i class="fa fa-store"></i></div>
+        @endif
+        <h1 class="stu-name">{{ $studio->name }}</h1>
+        @if($studio->description)
+            <p class="stu-desc">{{ $studio->description }}</p>
+        @endif
     </div>
 
     <div v-if="loading" style="text-align:center;padding:40px 0;color:var(--text-muted);">
