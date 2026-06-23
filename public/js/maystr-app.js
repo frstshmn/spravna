@@ -7,7 +7,7 @@
 (function () {
     const { createApp, ref, computed } = Vue;
     const { MModal, MBadge, MAvatar, AppointmentFormBody, OnboardingWizard } = SpravnaComponents;
-    const { DashboardPage, SchedulePage, RequestsPage, ArchivePage, ClientsPage, SettingsPage, FinancesPage, AnalyticsPage } = SpravnaPages;
+    const { DashboardPage, SchedulePage, RequestsPage, ArchivePage, ClientsPage, SettingsPage, FinancesPage, AnalyticsPage, StudioPage } = SpravnaPages;
 
     /* ── Guard: redirect to login if no token ── */
     const token = getToken();
@@ -19,7 +19,7 @@
     const api = makeAPI(token);
 
     /* ── History API routing ── */
-    const VALID_PAGES = ['dashboard', 'schedule', 'requests', 'clients', 'finances', 'analytics', 'settings'];
+    const VALID_PAGES = ['dashboard', 'schedule', 'requests', 'clients', 'finances', 'analytics', 'settings', 'studio'];
 
     function getPageFromPath() {
         const segment = window.location.pathname.replace(/^\/app\/?/, '').split('/')[0];
@@ -31,7 +31,7 @@
         name: 'PageView',
         props: ['page', 'api', 'user'],
         emits: ['navigate', 'count', 'user-updated', 'restart-onboarding'],
-        components: { DashboardPage, SchedulePage, RequestsPage, ArchivePage, ClientsPage, SettingsPage, FinancesPage, AnalyticsPage },
+        components: { DashboardPage, SchedulePage, RequestsPage, ArchivePage, ClientsPage, SettingsPage, FinancesPage, AnalyticsPage, StudioPage },
         template: [
             '<dashboard-page       v-if="page===\'dashboard\'"  :api="api" :user="user" @navigate="$emit(\'navigate\',$event)"></dashboard-page>',
             '<schedule-page        v-else-if="page===\'schedule\'" :api="api"></schedule-page>',
@@ -40,6 +40,7 @@
             '<finances-page        v-else-if="page===\'finances\'"  :api="api"></finances-page>',
             '<analytics-page       v-else-if="page===\'analytics\'" :api="api"></analytics-page>',
             '<settings-page        v-else-if="page===\'settings\'" :api="api" :user="user" @user-updated="$emit(\'user-updated\')" @restart-onboarding="$emit(\'restart-onboarding\')"></settings-page>',
+            '<studio-page          v-else-if="page===\'studio\'" :api="api" :user="user"></studio-page>',
         ].join('')
     };
 
@@ -47,7 +48,7 @@
     const app = createApp({
         components: {
             MModal, MBadge, MAvatar, AppointmentFormBody, OnboardingWizard, PageView,
-            DashboardPage, SchedulePage, RequestsPage, ArchivePage, ClientsPage, SettingsPage, FinancesPage, AnalyticsPage
+            DashboardPage, SchedulePage, RequestsPage, ArchivePage, ClientsPage, SettingsPage, FinancesPage, AnalyticsPage, StudioPage
         },
         setup() {
             const page         = ref(getPageFromPath());
@@ -62,6 +63,7 @@
                 { id: 'clients',   label: 'Клієнти',           icon: 'fa-users' },
                 { id: 'finances',  label: 'Фінанси',           icon: 'fa-wallet' },
                 { id: 'analytics', label: 'Аналітика',         icon: 'fa-chart-line' },
+                { id: 'studio',    label: 'Студія',             icon: 'fa-store' },
                 { id: 'settings',  label: 'Налаштування',      icon: 'fa-gear' },
             ];
 
@@ -72,6 +74,7 @@
                 clients:   { title: 'Клієнти',           sub: () => 'База клієнтів та історія' },
                 finances:  { title: 'Фінанси',           sub: () => 'Доходи та витрати' },
                 analytics: { title: 'Аналітика',         sub: () => 'Аналіз роботи та фінансів' },
+                studio:    { title: 'Студія',             sub: () => 'Управління студією майстрів' },
                 settings:  { title: 'Налаштування',      sub: () => 'Акаунт та параметри' },
             };
 

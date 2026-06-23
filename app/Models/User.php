@@ -6,6 +6,8 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use App\Models\Studio;
+use App\Models\StudioMember;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
@@ -76,6 +78,16 @@ class User extends Authenticatable
     public function expenses(): HasMany
     {
         return $this->hasMany(\App\Models\Expense::class);
+    }
+
+    public function ownedStudio(): HasOne
+    {
+        return $this->hasOne(Studio::class, 'owner_id');
+    }
+
+    public function studioMembership(): HasOne
+    {
+        return $this->hasOne(StudioMember::class)->where('status', 'active');
     }
 
     public function isMaster(): bool

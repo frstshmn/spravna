@@ -3198,5 +3198,299 @@ const AnalyticsPage = {
 </div>`
 };
 
+/* =====================================================================
+   STUDIO PAGE
+   ===================================================================== */
+const StudioPage = {
+    props: ['api', 'user'],
+    setup(props) {
+        const loading       = ref(true);
+        const saving        = ref(false);
+        const studio        = ref(null);
+        const membership    = ref(null);
+        const errorMsg      = ref('');
+        const successMsg    = ref('');
+        const inviteEmail   = ref('');
+        const inviting      = ref(false);
+        const inviteError   = ref('');
+        const photoUploading = ref(false);
+        const activeTab     = ref('members');
+        const memberTab     = ref(null);
+        const memberTabData = ref(null);
+        const memberTabLoading = ref(false);
+        const editForm      = reactive({ name: '', slug: '', description: '' });
+        const editMode      = ref(false);
+
+        async function load() {
+            loading.value = true;
+            try {
+                const { data } = await props.api.get('/studio');
+                studio.value = data.studio;
+                membership.value = data.membership;
+                if (data.studio) {
+                    editForm.name = data.studio.name;
+                    editForm.slug = data.studio.slug;
+                    editForm.description = data.studio.description || '';
+                }
+            } catch(e) {
+                if (e.response?.status !== 404) errorMsg.value = 'Не вдалося завантажити дані студії';
+            }
+            loading.value = false;
+        }
+
+        async function createStudio() {
+            saving.value = true; errorMsg.value = '';
+            try {
+                const { data } = await props.api.post('/studio', {
+                    name: props.user?.name ? props.user.name + ' Studio' : 'Моя студія',
+                    slug: (props.user?.slug || ('studio-' + Date.now())),
+                    description: '',
+                });
+                studio.value = data.studio;
+                membership.value = data.membership;
+                editForm.name = data.studio.name;
+                editForm.slug = data.studio.slug;
+            } catch(e) {
+                errorMsg.value = e.response?.data?.error || 'Не вдалося створити студію';
+            }
+            saving.value = false;
+        }
+
+        async function saveEdit() {
+            saving.value = true; errorMsg.value = ''; successMsg.value = '';
+            try {
+                const { data } = await props.api.put('/studio', editForm);
+                studio.value = data.studio;
+                editMode.value = false;
+                successMsg.value = 'Збережено';
+                setTimeout(() => successMsg.value = '', 2500);
+            } catch(e) {
+                const errs = e.response?.data?.errors;
+                errorMsg.value = errs ? Object.values(errs)[0][0] : (e.response?.data?.error || 'Помилка збереження');
+            }
+            saving.value = false;
+        }
+
+        async function uploadPhoto(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            photoUploading.value = true;
+            const fd = new FormData(); fd.append('photo', file);
+            try {
+                const { data } = await props.api.post('/studio/photo', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+                studio.value.photo_url = data.photo_url;
+            } catch { errorMsg.value = 'Не вдалося завантажити фото'; }
+            photoUploading.value = false;
+        }
+
+        async function invite() {
+            if (!inviteEmail.value.trim()) return;
+            inviting.value = true; inviteError.value = '';
+            try {
+                const { data } = await props.api.post('/studio/invite', { email: inviteEmail.value });
+                studio.value = data.studio;
+                inviteEmail.value = '';
+            } catch(e) {
+                inviteError.value = e.response?.data?.error || 'Не вдалося відправити запрошення';
+            }
+            inviting.value = false;
+        }
+
+        async function removeMember(userId) {
+            if (!confirm('Видалити цього учасника зі студії?')) return;
+            try {
+                const { data } = await props.api.delete('/studio/members/' + userId);
+                studio.value = data.studio;
+            } catch(e) { errorMsg.value = e.response?.data?.error || 'Помилка'; }
+        }
+
+        async function togglePermission(member, field) {
+            const patch = {};
+            patch[field] = !member[field];
+            try {
+                const { data } = await props.api.put('/studio/members/' + member.user_id, patch);
+                const idx = studio.value.members.findIndex(m => m.user_id === member.user_id);
+                if (idx >= 0) studio.value.members[idx] = data.member;
+            } catch { errorMsg.value = 'Не вдалося оновити дозволи'; }
+        }
+
+        async function openMemberTab(member, tab) {
+            memberTab.value = { member, tab };
+            memberTabData.value = null;
+            memberTabLoading.value = true;
+            try {
+                const endpoint = tab === 'calendar'
+                    ? '/studio/members/' + member.user_id + '/calendar'
+                    : '/studio/members/' + member.user_id + '/requests';
+                const { data } = await props.api.get(endpoint);
+                memberTabData.value = data;
+            } catch { memberTabData.value = { error: true }; }
+            memberTabLoading.value = false;
+        }
+
+        const isOwner = computed(() => membership.value?.role === 'owner');
+
+        load();
+        return {
+            loading, saving, studio, membership, errorMsg, successMsg,
+            inviteEmail, inviting, inviteError, photoUploading,
+            activeTab, memberTab, memberTabData, memberTabLoading,
+            editForm, editMode, isOwner,
+            createStudio, saveEdit, uploadPhoto, invite, removeMember, togglePermission, openMemberTab,
+        };
+    },
+    template: `
+<div class="page-inner">
+  <div v-if="loading" class="page-loading"><div class="loader-spinner"></div></div>
+
+  <!-- No studio yet (owner) -->
+  <template v-else-if="!studio">
+    <div class="page-header-row">
+      <div>
+        <h1 class="page-title">Студія</h1>
+        <p class="page-sub">Об'єднайте майстрів в одну студію</p>
+      </div>
+    </div>
+    <div class="empty-state" style="margin-top:40px;">
+      <div class="empty-state-icon"><i class="fa fa-store"></i></div>
+      <p class="empty-state-title">У вас ще немає студії</p>
+      <p class="empty-state-sub">Створіть студію, щоб запрошувати інших майстрів та вести спільне розкладування</p>
+      <p v-if="errorMsg" class="text-error" style="margin-bottom:8px;">{{ errorMsg }}</p>
+      <button class="btn btn-primary" :disabled="saving" @click="createStudio">
+        <i class="fa fa-plus"></i> Створити студію
+      </button>
+    </div>
+  </template>
+
+  <!-- Studio exists -->
+  <template v-else>
+    <div class="page-header-row" style="flex-wrap:wrap;gap:12px;">
+      <div style="display:flex;align-items:center;gap:14px;">
+        <div style="position:relative;">
+          <img v-if="studio.photo_url" :src="studio.photo_url" style="width:56px;height:56px;border-radius:14px;object-fit:cover;border:2px solid var(--border);">
+          <div v-else style="width:56px;height:56px;border-radius:14px;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:22px;color:#fff;"><i class="fa fa-store"></i></div>
+          <label v-if="isOwner" style="position:absolute;bottom:-4px;right:-4px;background:var(--card);border:1px solid var(--border);border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:10px;" :title="photoUploading?'Завантаження…':'Змінити фото'">
+            <i :class="photoUploading ? 'fa fa-spinner fa-spin' : 'fa fa-camera'" style="color:var(--text-sub);"></i>
+            <input type="file" accept="image/*" style="display:none;" @change="uploadPhoto">
+          </label>
+        </div>
+        <div>
+          <h1 class="page-title" style="margin:0 0 2px;">{{ studio.name }}</h1>
+          <a :href="'/studio/' + studio.slug" target="_blank" style="font-size:12px;color:var(--accent);text-decoration:none;"><i class="fa fa-arrow-up-right-from-square"></i> Публічна сторінка</a>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;margin-left:auto;" v-if="isOwner">
+        <button class="btn btn-ghost btn-sm" @click="editMode=!editMode"><i :class="editMode?'fa fa-xmark':'fa fa-pen'"></i> {{ editMode ? 'Скасувати' : 'Редагувати' }}</button>
+      </div>
+    </div>
+
+    <p v-if="successMsg" style="color:var(--completed);font-size:13px;margin:8px 0 0;">{{ successMsg }}</p>
+    <p v-if="errorMsg" style="color:var(--cancelled);font-size:13px;margin:8px 0 0;">{{ errorMsg }}</p>
+
+    <!-- Edit form -->
+    <div v-if="editMode" class="card" style="margin-top:16px;padding:20px;display:grid;gap:12px;">
+      <div class="form-group"><label class="label">Назва студії</label><input v-model="editForm.name" class="input"></div>
+      <div class="form-group"><label class="label">URL-слаг</label><div class="input-with-prefix"><span class="input-prefix">spravna.ua/studio/</span><input v-model="editForm.slug" class="input"></div></div>
+      <div class="form-group"><label class="label">Опис</label><textarea v-model="editForm.description" class="textarea" rows="3"></textarea></div>
+      <button class="btn btn-primary btn-sm" :disabled="saving" @click="saveEdit"><i class="fa fa-floppy-disk"></i> Зберегти</button>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs" style="margin-top:20px;">
+      <button :class="'tab-btn'+(activeTab==='members'?' active':'')" @click="activeTab='members'"><i class="fa fa-users"></i> Учасники</button>
+      <button v-if="memberTab" :class="'tab-btn'+(activeTab==='memberdetail'?' active':'')" @click="activeTab='memberdetail'">
+        <i :class="memberTab.tab==='calendar'?'fa fa-calendar-days':'fa fa-inbox'"></i> {{ memberTab.member.name }}
+      </button>
+    </div>
+
+    <!-- Members tab -->
+    <div v-if="activeTab==='members'" style="margin-top:16px;">
+      <!-- Invite form (owner only) -->
+      <div v-if="isOwner && studio.members.length < 5" class="card" style="padding:14px 16px;margin-bottom:16px;">
+        <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;">
+          <div class="form-group" style="flex:1;margin:0;min-width:200px;">
+            <label class="label">Запросити за email</label>
+            <input v-model="inviteEmail" class="input" type="email" placeholder="master@example.com" @keyup.enter="invite">
+          </div>
+          <button class="btn btn-primary btn-sm" :disabled="inviting || !inviteEmail.trim()" @click="invite">
+            <i :class="inviting?'fa fa-spinner fa-spin':'fa fa-paper-plane'"></i> Запросити
+          </button>
+        </div>
+        <p v-if="inviteError" style="color:var(--cancelled);font-size:12px;margin:6px 0 0;">{{ inviteError }}</p>
+        <p style="font-size:11px;color:var(--text-muted);margin:6px 0 0;">Учасник отримає лист з посиланням для підтвердження. Максимум 5 учасників.</p>
+      </div>
+      <div v-else-if="isOwner" class="notice" style="margin-bottom:16px;font-size:13px;"><i class="fa fa-circle-info"></i> Досягнуто максимум учасників (5).</div>
+
+      <!-- Members list -->
+      <div v-if="!studio.members.length" class="empty-state" style="padding:40px 0;">
+        <div class="empty-state-icon"><i class="fa fa-user-plus"></i></div>
+        <p class="empty-state-title">Учасників ще немає</p>
+        <p class="empty-state-sub">Запросіть майстрів за email</p>
+      </div>
+
+      <div v-for="m in studio.members" :key="m.id" class="card" style="padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+        <div style="width:36px;height:36px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;flex-shrink:0;">{{ (m.name||m.email).charAt(0).toUpperCase() }}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:14px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ m.name || m.email }}</div>
+          <div style="font-size:12px;color:var(--text-muted);">{{ m.email }} &bull; <span :style="{color: m.status==='active' ? 'var(--completed)' : 'var(--text-sub)'}">{{ m.status==='active' ? 'Активний' : 'Очікує підтвердження' }}</span><span v-if="m.role==='owner'"> &bull; Власник</span></div>
+        </div>
+        <!-- Permissions (owner managing others) -->
+        <div v-if="isOwner && m.role !== 'owner' && m.status === 'active'" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <button :class="'btn btn-xs '+(m.can_view_calendar?'btn-primary':'btn-ghost')" :title="'Календар: '+(m.can_view_calendar?'видно':'приховано')" @click="togglePermission(m,'can_view_calendar')">
+            <i class="fa fa-calendar-days"></i>
+          </button>
+          <button :class="'btn btn-xs '+(m.can_view_requests?'btn-primary':'btn-ghost')" :title="'Запити: '+(m.can_view_requests?'видно':'приховано')" @click="togglePermission(m,'can_view_requests')">
+            <i class="fa fa-inbox"></i>
+          </button>
+          <button v-if="m.can_view_calendar" class="btn btn-ghost btn-xs" title="Переглянути календар" @click="openMemberTab(m,'calendar');activeTab='memberdetail'"><i class="fa fa-eye"></i></button>
+          <button v-if="m.can_view_requests" class="btn btn-ghost btn-xs" title="Переглянути запити" @click="openMemberTab(m,'requests');activeTab='memberdetail'"><i class="fa fa-inbox"></i></button>
+          <button class="btn btn-ghost btn-xs" style="color:var(--cancelled);" title="Видалити" @click="removeMember(m.user_id)"><i class="fa fa-user-xmark"></i></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Member detail tab (calendar / requests) -->
+    <div v-if="activeTab==='memberdetail' && memberTab" style="margin-top:16px;">
+      <div v-if="memberTabLoading" class="page-loading" style="padding:40px 0;"><div class="loader-spinner"></div></div>
+      <div v-else-if="!memberTabData || memberTabData.error" class="empty-state" style="padding:40px 0;">
+        <p class="empty-state-title">Не вдалося завантажити</p>
+      </div>
+
+      <!-- Calendar view -->
+      <template v-else-if="memberTab.tab==='calendar'">
+        <div v-if="!memberTabData.appointments?.length" class="empty-state" style="padding:40px 0;">
+          <div class="empty-state-icon"><i class="fa fa-calendar-days"></i></div>
+          <p class="empty-state-title">Немає записів</p>
+        </div>
+        <div v-for="a in memberTabData.appointments" :key="a.id" class="card appt-card" style="margin-bottom:10px;">
+          <div class="appt-left"><span :class="'appt-dot status-'+a.status"></span></div>
+          <div class="appt-body">
+            <div class="appt-title">{{ a.client_name }}</div>
+            <div class="appt-meta">{{ a.scheduled_at ? new Date(a.scheduled_at).toLocaleString('uk') : '—' }} &bull; {{ a.service_name || 'Без послуги' }}</div>
+          </div>
+          <div class="appt-right">
+            <span :class="'badge status-'+a.status">{{ a.status }}</span>
+          </div>
+        </div>
+      </template>
+
+      <!-- Requests view -->
+      <template v-else-if="memberTab.tab==='requests'">
+        <div v-if="!memberTabData.requests?.length" class="empty-state" style="padding:40px 0;">
+          <div class="empty-state-icon"><i class="fa fa-inbox"></i></div>
+          <p class="empty-state-title">Немає запитів</p>
+        </div>
+        <div v-for="r in memberTabData.requests" :key="r.id" class="card" style="margin-bottom:10px;padding:14px 16px;">
+          <div style="font-size:14px;font-weight:600;">{{ r.client_name }}</div>
+          <div style="font-size:12px;color:var(--text-muted);">{{ r.client_phone || r.client_email }} &bull; <span :style="{color:r.status==='pending'?'var(--accent)':r.status==='confirmed'?'var(--completed)':'var(--cancelled)'}">{{ r.status }}</span></div>
+          <div v-if="r.message" style="font-size:12px;color:var(--text-sub);margin-top:4px;">{{ r.message }}</div>
+        </div>
+      </template>
+    </div>
+
+  </template>
+</div>`,
+};
+
 /* Export all pages */
-window.SpravnaPages = { DashboardPage, SchedulePage, RequestsPage, ArchivePage, ClientsPage, SettingsPage, FinancesPage, AnalyticsPage };
+window.SpravnaPages = { DashboardPage, SchedulePage, RequestsPage, ArchivePage, ClientsPage, SettingsPage, FinancesPage, AnalyticsPage, StudioPage };
