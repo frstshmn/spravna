@@ -62,6 +62,7 @@
         @endif
     </div>
 
+    @verbatim
     <div v-if="loading" style="text-align:center;padding:40px 0;color:var(--text-muted);">
         <i class="fa fa-spinner fa-spin fa-2x"></i>
     </div>
@@ -119,6 +120,7 @@
             </div>
         </div>
     </template>
+    @endverbatim
 
   </div>
 </div>

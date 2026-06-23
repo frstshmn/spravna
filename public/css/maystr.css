@@ -3202,3 +3202,16 @@ body:has(.pub-page)::after { display: none !important; }
   .fin-month-label { flex: 1; text-align: center; }
   .modal-box.modal-sm { max-width: 100%; margin: 0 12px; }
 }
+
+/* =====================================================================
+   SHARED PAGE UTILITIES (Studio page and future pages)
+   ===================================================================== */
+.page-inner { padding: 0 0 40px; }
+.page-header-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 8px; }
+.page-title { font-size: 20px; font-weight: 800; margin: 0 0 2px; color: var(--text); }
+.page-sub { font-size: 13px; color: var(--text-muted); margin: 0; }
+.page-loading { display: flex; align-items: center; justify-content: center; padding: 60px 0; }
+.empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 48px 24px; }
+.empty-state-icon { font-size: 32px; color: var(--text-muted); opacity: .4; margin-bottom: 16px; }
+.empty-state-title { font-size: 15px; font-weight: 700; color: var(--text); margin: 0 0 6px; }
+.empty-state-sub { font-size: 13px; color: var(--text-muted); margin: 0 0 20px; max-width: 320px; line-height: 1.5; }
