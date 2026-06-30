@@ -113,37 +113,86 @@ const DashboardPage = {
         });
 
         function openAppt(a) { editingAppt.value = a; showApptModal.value = true; }
-        function newAppt() { editingAppt.value = null; showApptModal.value = true; }
+        function newAppt() { editingAppt.value = null; gapFillDate.value = ''; showApptModal.value = true; }
         function onApptSaved() { showApptModal.value = false; load(); }
 
         function newClient() { showClientModal.value = true; }
         function onClientSaved() { showClientModal.value = false; load(); }
 
-        /* ── Public page widget ── */
-        const pubSettings = reactive({ is_public: true, is_accepting_bookings: true });
-        const pubLinkCopied = ref(false);
+        /* ── Today's schedule gap widget ── */
+        const workingHours = ref([]);
+        const gapShared = ref(false);
+        const gapFillDate = ref('');
+        const gapFillHour = ref(10);
+        const gapFillMinute = ref(0);
 
-        watch(() => props.user?.profile, (profile) => {
-            if (!profile) return;
-            pubSettings.is_public = !!profile.is_public;
-            pubSettings.is_accepting_bookings = !!profile.is_accepting_bookings;
-        }, { immediate: true });
+        const todayGap = computed(() => {
+            const now = new Date();
+            const todayWH = workingHours.value.find(h => h.day_of_week === now.getDay());
+            if (!todayWH || !todayWH.is_working) return null;
 
-        function copyPublicLink() {
+            const [startH, startM] = todayWH.start_time.split(':').map(Number);
+            const [endH, endM] = todayWH.end_time.split(':').map(Number);
+            const workStart = new Date(now); workStart.setHours(startH, startM, 0, 0);
+            const workEnd = new Date(now); workEnd.setHours(endH, endM, 0, 0);
+            if (workEnd <= workStart) return null;
+
+            const searchStart = now > workStart ? now : workStart;
+            if (searchStart >= workEnd) return null;
+
+            const busy = todayAppts.value
+                .filter(a => a.scheduled_at && !['cancelled', 'no_show'].includes(a.status))
+                .map(a => {
+                    const s = new Date(a.scheduled_at);
+                    return { start: s, end: new Date(s.getTime() + (a.duration || 60) * 60000) };
+                })
+                .filter(b => b.end > searchStart && b.start < workEnd)
+                .sort((x, y) => x.start - y.start);
+
+            const MIN_GAP_MIN = 30;
+            let cursor = searchStart;
+            let best = null;
+            for (const b of busy) {
+                if (b.start > cursor) {
+                    const mins = (b.start - cursor) / 60000;
+                    if (mins >= MIN_GAP_MIN && (!best || mins > best.minutes)) {
+                        best = { start: new Date(cursor), end: new Date(b.start), minutes: mins };
+                    }
+                }
+                if (b.end > cursor) cursor = b.end;
+            }
+            if (workEnd > cursor) {
+                const mins = (workEnd - cursor) / 60000;
+                if (mins >= MIN_GAP_MIN && (!best || mins > best.minutes)) {
+                    best = { start: new Date(cursor), end: new Date(workEnd), minutes: mins };
+                }
+            }
+            return best;
+        });
+
+        function shareGap() {
+            const gap = todayGap.value;
+            if (!gap) return;
             const slug = props.user?.profile?.slug || '';
             const url = window.location.origin + '/master/' + slug;
-            navigator.clipboard?.writeText(url);
-            pubLinkCopied.value = true;
-            setTimeout(() => pubLinkCopied.value = false, 2000);
+            const text = `Сьогодні є вільний час з ${M.fmtTime(gap.start)} до ${M.fmtTime(gap.end)}! Записуйтесь: ${url}`;
+            if (navigator.share) {
+                navigator.share({ text }).catch(() => {});
+            } else {
+                navigator.clipboard?.writeText(text);
+                gapShared.value = true;
+                setTimeout(() => gapShared.value = false, 2000);
+            }
         }
 
-        async function togglePubSetting(key) {
-            pubSettings[key] = !pubSettings[key];
-            try {
-                await props.api.put('/profile', { [key]: pubSettings[key] });
-            } catch (e) {
-                pubSettings[key] = !pubSettings[key];
-            }
+        function fillGap() {
+            const gap = todayGap.value;
+            if (!gap) return;
+            gapFillDate.value = M.localDateStr(gap.start);
+            gapFillHour.value = gap.start.getHours();
+            gapFillMinute.value = gap.start.getMinutes();
+            editingAppt.value = null;
+            showApptModal.value = true;
         }
 
         /* chart */
@@ -187,9 +236,10 @@ const DashboardPage = {
                 const now2 = new Date();
                 const expFrom = new Date(now2.getFullYear(), now2.getMonth(), 1).toISOString().split('T')[0];
                 const expTo = new Date(now2.getFullYear(), now2.getMonth() + 1, 0).toISOString().split('T')[0];
-                const [dash, exp] = await Promise.all([
+                const [dash, exp, wh] = await Promise.all([
                     props.api.get('/dashboard'),
                     props.api.get('/expenses', { params: { from: expFrom, to: expTo, type: 'expense' } }).catch(() => ({ data: [] })),
+                    props.api.get('/schedule/working-hours').catch(() => ({ data: [] })),
                 ]);
                 stats.value = dash.data.stats;
                 todayAppts.value = dash.data.today_appointments;
@@ -197,6 +247,7 @@ const DashboardPage = {
                 topServices.value = dash.data.top_services || [];
                 chart.value = dash.data.revenue_chart;
                 dashExpenses.value = exp.data.slice(0, 5);
+                workingHours.value = wh.data;
                 nextTick(drawChart);
             } catch(e) {}
             loading.value = false;
@@ -216,7 +267,7 @@ const DashboardPage = {
             showApptModal, editingAppt, openAppt, newAppt, onApptSaved,
             showClientModal, newClient, onClientSaved,
             timelineRange, timelineHours, timeline, tickPos, trackHeight, nowPos, nowLabel, apptTimeLabel,
-            pubSettings, pubLinkCopied, copyPublicLink, togglePubSetting,
+            todayGap, gapShared, shareGap, fillGap, gapFillDate, gapFillHour, gapFillMinute, workingHours, M,
             dashView, dashExpenses, load,
         };
     },
@@ -368,28 +419,36 @@ const DashboardPage = {
         </div>
       </div>
 
-      <!-- Public page -->
-      <div class="stat-card dash-pubpage flex-1">
-        <div class="dash-pubpage-head">
-          <div class="stat-label">Публічна сторінка</div>
-          <div class="stat-icon-wrap" style="background:var(--accent-soft);color:var(--accent);">
-            <i class="fa fa-globe"></i>
+      <!-- Today's schedule gap -->
+      <div class="stat-card dash-gap flex-1">
+        <template v-if="todayGap">
+          <div class="dash-gap-head">
+            <div class="stat-label">Вільне вікно сьогодні</div>
+            <div class="stat-icon-wrap" style="background:var(--accent-soft);color:var(--accent);">
+              <i class="fa fa-bolt"></i>
+            </div>
           </div>
-        </div>
-        <button class="dash-pubpage-copy" @click="copyPublicLink">
-          <i :class="pubLinkCopied ? 'fa fa-check' : 'fa fa-link'"></i>
-          {{ pubLinkCopied ? 'Скопійовано!' : 'Копіювати посилання' }}
-        </button>
-        <div class="dash-pubpage-toggles">
-          <div class="toggle-wrap">
-            <button :class="'toggle' + (pubSettings.is_public ? ' on' : '')" @click="togglePubSetting('is_public')"></button>
-            <span>Сторінка {{ pubSettings.is_public ? 'активна' : 'прихована' }}</span>
+          <div class="dash-gap-range">{{ M.fmtTime(todayGap.start) }}–{{ M.fmtTime(todayGap.end) }}</div>
+          <p class="dash-gap-sub">У вас вільний слот — перетворіть його на запис</p>
+          <div class="dash-gap-actions">
+            <button class="dash-gap-btn dash-gap-btn-primary" @click="fillGap">
+              <i class="fa fa-calendar-plus"></i> Заповнити
+            </button>
+            <button class="dash-gap-btn" @click="shareGap">
+              <i :class="gapShared ? 'fa fa-check' : 'fa fa-share-nodes'"></i>
+              {{ gapShared ? 'Скопійовано!' : 'Поділитися' }}
+            </button>
           </div>
-          <div class="toggle-wrap">
-            <button :class="'toggle' + (pubSettings.is_accepting_bookings ? ' on' : '')" @click="togglePubSetting('is_accepting_bookings')"></button>
-            <span>{{ pubSettings.is_accepting_bookings ? 'Приймає' : 'Не приймає' }} запити</span>
+        </template>
+        <template v-else>
+          <div class="dash-gap-head">
+            <div class="stat-label">Вільне вікно сьогодні</div>
+            <div class="stat-icon-wrap" style="background:var(--accent-soft);color:var(--accent);">
+              <i class="fa fa-bolt"></i>
+            </div>
           </div>
-        </div>
+          <p class="dash-gap-empty"><i class="fa fa-circle-check"></i> {{ workingHours.length ? 'На сьогодні вільних вікон немає' : 'Розклад ще завантажується' }}</p>
+        </template>
       </div>
     </div>
 
@@ -440,7 +499,7 @@ const DashboardPage = {
 
   <!-- Appointment modal -->
   <m-modal :show="showApptModal" :title="editingAppt ? 'Запис: ' + (editingAppt.client?.name || '') : 'Новий сеанс'" :subtitle="editingAppt ? 'Редагування запису' : 'Заплануйте новий запис для клієнта'" icon="calendar-plus" size="lg" @close="showApptModal=false">
-    <appointment-form-body :api="api" :existing="editingAppt" @saved="onApptSaved" @cancel="showApptModal=false"></appointment-form-body>
+    <appointment-form-body :api="api" :existing="editingAppt" :initial-date="gapFillDate" :initial-hour="gapFillHour" :initial-minute="gapFillMinute" @saved="onApptSaved" @cancel="showApptModal=false"></appointment-form-body>
   </m-modal>
 
   <!-- New client modal -->
