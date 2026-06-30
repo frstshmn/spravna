@@ -11,8 +11,9 @@
 const DashboardPage = {
     props: ['api', 'user'],
     emits: ['navigate'],
-    components: { MModal, MBadge, AppointmentFormBody, ClientFormBody },
+    components: { MModal, MBadge, AppointmentFormBody, ClientFormBody, PageSkeleton },
     setup(props) {
+        const loading = ref(true);
         const stats = ref({});
         const todayAppts = ref([]);
         const upcoming = ref([]);
@@ -198,6 +199,7 @@ const DashboardPage = {
                 dashExpenses.value = exp.data.slice(0, 5);
                 nextTick(drawChart);
             } catch(e) {}
+            loading.value = false;
         }
 
         onMounted(() => {
@@ -210,7 +212,7 @@ const DashboardPage = {
         const dashView = ref('today');
 
         return {
-            stats, todayAppts, upcoming, upcomingList, topServices, chart,
+            loading, stats, todayAppts, upcoming, upcomingList, topServices, chart,
             showApptModal, editingAppt, openAppt, newAppt, onApptSaved,
             showClientModal, newClient, onClientSaved,
             timelineRange, timelineHours, timeline, tickPos, trackHeight, nowPos, nowLabel, apptTimeLabel,
@@ -220,6 +222,8 @@ const DashboardPage = {
     },
     template: `
 <div>
+  <page-skeleton v-if="loading" type="dashboard"></page-skeleton>
+  <template v-else>
   <!-- Top row: combined today/upcoming card + key counters -->
   <div class="dash-top-row">
     <!-- Combined today timeline / upcoming sessions card -->
@@ -443,6 +447,7 @@ const DashboardPage = {
   <m-modal :show="showClientModal" title="Новий клієнт" subtitle="Створіть картку клієнта з повною інформацією" icon="user-plus" size="sm" @close="showClientModal=false">
     <client-form-body :api="api" @saved="onClientSaved" @cancel="showClientModal=false"></client-form-body>
   </m-modal>
+  </template>
 </div>`,
 };
 
@@ -453,8 +458,9 @@ const PX_PER_MIN = 0.8; // 24px per 30-minute slot
 
 const SchedulePage = {
     props: ['api'],
-    components: { MModal, MBadge, AppointmentFormBody, RespondFormBody },
+    components: { MModal, MBadge, AppointmentFormBody, RespondFormBody, PageSkeleton },
     setup(props) {
+        const loading = ref(true);
         const view = ref('week');
         const currentDate = ref(new Date());
         const appointments = ref([]);
@@ -826,15 +832,18 @@ const SchedulePage = {
         }
 
         onMounted(async () => {
-            loadAppointments();
-            loadBookingRequests();
-            try { const { data } = await props.api.get('/schedule/working-hours'); workingHours.value = data; } catch(e) {}
+            await Promise.all([
+                loadAppointments(),
+                loadBookingRequests(),
+                props.api.get('/schedule/working-hours').then(({ data }) => { workingHours.value = data; }).catch(() => {}),
+            ]);
+            loading.value = false;
         });
 
         watch(view, loadAppointments);
 
         return {
-            M, view, currentDate, weekDays, weekLabel, monthLabel, monthDays, appointments, hours, halfSlots, gridHeight,
+            loading, M, view, currentDate, weekDays, weekLabel, monthLabel, monthDays, appointments, hours, halfSlots, gridHeight,
             showModal, modalTitle, editingAppt, newApptDate, newApptHour, newApptMinute,
             prevWeek, nextWeek, prevMonth, nextMonth, dayAppts, monthAppts, apptStyle, apptTimeRange, apptTypeLabel, apptOverlaps,
             openNew, openEdit, onSaved, isOffHours, showRequests, dayRequests, requestStyle, localDateStr,
@@ -847,6 +856,8 @@ const SchedulePage = {
     },
     template: `
 <div>
+  <page-skeleton v-if="loading" type="calendar"></page-skeleton>
+  <template v-else>
   <!-- Controls -->
   <div class="sched-controls">
     <div class="view-toggle">
@@ -1033,6 +1044,7 @@ const SchedulePage = {
       </div>
     </div>
   </m-modal>
+  </template>
 </div>`
 };
 
@@ -1042,13 +1054,13 @@ const SchedulePage = {
    ===================================================================== */
 const ArchivePage = {
     props: ['api'],
-    components: { MModal, MBadge, AppointmentFormBody },
+    components: { MModal, MBadge, AppointmentFormBody, PageSkeleton },
     setup(props) {
         const appointments = ref([]);
         const meta = ref({ current_page: 1, last_page: 1, total: 0 });
         const statusFilter = ref('');
         const search = ref('');
-        const loading = ref(false);
+        const loading = ref(true);
         const viewingAppt = ref(null);
         const showModal = ref(false);
 
@@ -1087,9 +1099,9 @@ const ArchivePage = {
     </div>
   </div>
 
-  <div class="card">
-    <div v-if="loading" class="empty"><i class="fa fa-spinner fa-spin"></i><p>Завантаження…</p></div>
-    <div v-else class="table-wrap">
+  <page-skeleton v-if="loading" type="table" :rows="8"></page-skeleton>
+  <div v-else class="card">
+    <div class="table-wrap">
       <table>
         <thead>
           <tr>
@@ -1142,12 +1154,12 @@ const ArchivePage = {
 const RequestsPage = {
     props: ['api'],
     emits: ['count'],
-    components: { MModal, MBadge, MAvatar, RespondFormBody, ArchivePage },
+    components: { MModal, MBadge, MAvatar, RespondFormBody, ArchivePage, PageSkeleton },
     setup(props, { emit }) {
         const subTab = ref('requests');
         const requests = ref([]);
         const filter = ref('pending');
-        const loading = ref(false);
+        const loading = ref(true);
         const showRespond = ref(false);
         const selectedReq = ref(null);
 
@@ -1189,7 +1201,7 @@ const RequestsPage = {
       <button :class="'chip' + (filter==='declined' ? ' active' : '')" @click="filter='declined'">Відхилені</button>
       <button :class="'chip' + (filter==='' ? ' active' : '')" @click="filter=''">Всі</button>
     </div>
-    <div v-if="loading" class="empty"><i class="fa fa-spinner fa-spin"></i><p>Завантаження…</p></div>
+    <page-skeleton v-if="loading" type="list" :rows="4"></page-skeleton>
     <div v-else-if="!requests.length" class="empty"><i class="fa fa-inbox"></i><p>Запитів немає</p></div>
     <div v-else style="display:flex;flex-direction:column;gap:10px;">
       <div v-for="r in requests" :key="r.id" class="req-card" @click="openRespond(r)">
@@ -1231,11 +1243,11 @@ const RequestsPage = {
    ===================================================================== */
 const ClientsPage = {
     props: ['api'],
-    components: { MModal, MBadge, MAvatar, ClientFormBody },
+    components: { MModal, MBadge, MAvatar, ClientFormBody, PageSkeleton },
     setup(props) {
         const clients = ref([]);
         const meta = ref({ current_page: 1, last_page: 1, total: 0 });
-        const loading = ref(false);
+        const loading = ref(true);
         const search = ref('');
         const vipOnly = ref(false);
         const viewMode = ref('cards');
@@ -1410,7 +1422,7 @@ const ClientsPage = {
     <button class="btn btn-primary" @click="openNew" style="margin-left:auto;"><i class="fa fa-plus"></i> Новий клієнт</button>
   </div>
 
-  <div v-if="loading" class="empty"><i class="fa fa-spinner fa-spin"></i><p>Завантаження…</p></div>
+  <page-skeleton v-if="loading" type="cards" :rows="9"></page-skeleton>
 
   <div v-else-if="!clients.length" class="empty">
     <i class="fa fa-users"></i>
@@ -1756,8 +1768,9 @@ const MAvatarCropper = {
 const SettingsPage = {
     props: ['api', 'user'],
     emits: ['user-updated', 'restart-onboarding'],
-    components: { MModal, MBadge, MTimePicker, ServiceFormBody, MAvatarCropper },
+    components: { MModal, MBadge, MTimePicker, ServiceFormBody, MAvatarCropper, PageSkeleton },
     setup(props, { emit }) {
+        const pageLoading = ref(true);
         const tab = ref('profile');
         const workingHours = ref([]);
         const services = ref([]);
@@ -1944,10 +1957,13 @@ const SettingsPage = {
             return '—';
         }
 
-        onMounted(() => { load(); loadHours(); loadServices(); });
+        onMounted(async () => {
+            await Promise.all([load(), loadHours(), loadServices()]);
+            pageLoading.value = false;
+        });
 
         return {
-            M, tab, workingHours, services, form, profile, user,
+            pageLoading, M, tab, workingHours, services, form, profile, user,
             savingProfile, savedProfile, savingPublic, savedPublic, savingHours, savedHours,
             profileDirty, hoursDirty, savedAll, saveAll,
             showSvcModal, editingSvc, copied, publicUrl,
@@ -1963,7 +1979,9 @@ const SettingsPage = {
 
   <h1 class="mb-16">Налаштування</h1>
 
-  <div class="settings-layout">
+  <page-skeleton v-if="pageLoading" type="settings"></page-skeleton>
+
+  <div v-else class="settings-layout">
     <!-- Nav -->
     <div class="settings-nav">
       <button :class="'settings-nav-item' + (tab==='profile' ? ' active' : '')" @click="tab='profile'">
@@ -2471,12 +2489,12 @@ const SettingsPage = {
    ===================================================================== */
 const FinancesPage = {
     props: ['api'],
-    components: { MModal },
+    components: { MModal, PageSkeleton },
     setup(props) {
         const expenses = ref([]);
         const income = ref([]);
         const manualIncome = ref([]);
-        const loading = ref(false);
+        const loading = ref(true);
         const tab = ref('expenses');
         const year = ref(new Date().getFullYear());
         const month = ref(new Date().getMonth() + 1);
@@ -2627,7 +2645,7 @@ const FinancesPage = {
       <span class="fin-count-label">{{ expenses.length }} записів</span>
       <button class="btn btn-primary btn-sm" @click="openAdd"><i class="fa fa-plus"></i> Додати витрату</button>
     </div>
-    <div v-if="loading" class="empty" style="padding:32px 0;"><i class="fa fa-spinner fa-spin"></i></div>
+    <page-skeleton v-if="loading" type="finances" :rows="5"></page-skeleton>
     <div v-else-if="!expenses.length" class="empty">
       <i class="fa fa-receipt"></i><p>Витрат за цей місяць немає</p>
     </div>
@@ -2652,7 +2670,7 @@ const FinancesPage = {
       <span class="fin-count-label">{{ income.length + manualIncome.length }} записів</span>
       <button class="btn btn-primary btn-sm" @click="openAddIncome"><i class="fa fa-plus"></i> Додати дохід</button>
     </div>
-    <div v-if="loading" class="empty" style="padding:32px 0;"><i class="fa fa-spinner fa-spin"></i></div>
+    <page-skeleton v-if="loading" type="finances" :rows="5"></page-skeleton>
     <div v-else-if="!income.length && !manualIncome.length" class="empty">
       <i class="fa fa-coins"></i><p>Доходів за цей місяць немає</p>
     </div>
@@ -2757,9 +2775,10 @@ const FinancesPage = {
    ===================================================================== */
 const AnalyticsPage = {
     props: ['api'],
+    components: { PageSkeleton },
     setup(props) {
         const data = ref(null);
-        const loading = ref(false);
+        const loading = ref(true);
         const period = ref('month');
         const from = ref('');
         const to = ref('');
@@ -3052,7 +3071,7 @@ const AnalyticsPage = {
     </div>
   </div>
 
-  <div v-if="loading && !data" class="empty" style="padding:60px 0;"><i class="fa fa-spinner fa-spin fa-2x"></i></div>
+  <page-skeleton v-if="loading && !data" type="analytics"></page-skeleton>
 
   <template v-if="data">
     <!-- KPI row -->
@@ -3203,6 +3222,7 @@ const AnalyticsPage = {
    ===================================================================== */
 const StudioPage = {
     props: ['api', 'user'],
+    components: { PageSkeleton },
     setup(props) {
         const loading        = ref(true);
         const saving         = ref(false);
@@ -3344,7 +3364,7 @@ const StudioPage = {
     },
     template: `
 <div class="page-inner">
-  <div v-if="loading" class="page-loading"><div class="loader-spinner"></div></div>
+  <page-skeleton v-if="loading" type="studio"></page-skeleton>
 
   <!-- No studio yet -->
   <template v-else-if="!studio">

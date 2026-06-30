@@ -125,6 +125,206 @@ const MModal = {
 </teleport>`
 };
 
+/* ── PageSkeleton — shimmering placeholder shown while a page's data loads ── */
+const PageSkeleton = {
+    props: { type: { type: String, default: 'list' }, rows: { type: Number, default: 5 } },
+    computed: {
+        rowList() { return Array.from({ length: this.rows }, (_, i) => i); },
+    },
+    template: `
+<div class="skel-wrap">
+
+  <!-- Dashboard: timeline card + counters column + expenses + top services -->
+  <template v-if="type==='dashboard'">
+    <div class="dash-top-row">
+      <div class="card">
+        <div class="card-header">
+          <div class="skel" style="width:170px;height:26px;border-radius:var(--r-md);"></div>
+          <div class="skel skel-circle" style="width:32px;height:32px;"></div>
+        </div>
+        <div class="card-body skel-card-row">
+          <div class="skel" style="height:58px;border-radius:var(--r-md);" v-for="n in 3" :key="n"></div>
+        </div>
+      </div>
+      <div class="flex flex-col gap-16">
+        <div class="dash-create-row flex-1">
+          <div class="skel" style="height:64px;flex:1;border-radius:var(--r-lg);"></div>
+          <div class="skel" style="height:64px;flex:1;border-radius:var(--r-lg);"></div>
+        </div>
+        <div class="stat-card flex-1 skel-stack">
+          <div class="skel" style="width:60%;height:12px;"></div>
+          <div class="skel" style="width:35%;height:24px;"></div>
+        </div>
+        <div class="stat-card flex-1 skel-stack">
+          <div class="skel" style="width:60%;height:12px;"></div>
+          <div class="skel" style="width:35%;height:24px;"></div>
+        </div>
+        <div class="stat-card flex-1 skel-stack">
+          <div class="skel" style="width:60%;height:12px;"></div>
+          <div class="skel" style="width:35%;height:24px;"></div>
+        </div>
+      </div>
+      <div class="card dash-expenses-card">
+        <div class="card-header"><div class="skel" style="width:150px;height:16px;"></div></div>
+        <div class="card-body skel-stack">
+          <div class="skel-row" v-for="n in 4" :key="n">
+            <div class="skel skel-circle" style="width:8px;height:8px;"></div>
+            <div class="skel" style="flex:1;height:11px;"></div>
+            <div class="skel" style="width:46px;height:11px;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="skel" style="width:180px;height:16px;"></div></div>
+      <div class="card-body skel-stack">
+        <div class="skel" style="height:20px;" v-for="n in 3" :key="n"></div>
+      </div>
+    </div>
+  </template>
+
+  <!-- Calendar (Schedule): toolbar + week grid of bars -->
+  <template v-else-if="type==='calendar'">
+    <div class="skel-row" style="justify-content:space-between;margin-bottom:16px;">
+      <div class="skel" style="width:130px;height:32px;border-radius:var(--r-md);"></div>
+      <div class="skel" style="width:200px;height:32px;border-radius:var(--r-md);"></div>
+    </div>
+    <div class="card" style="padding:16px;display:grid;grid-template-columns:repeat(7,1fr);gap:8px;">
+      <div v-for="n in 7" :key="n" class="skel-stack">
+        <div class="skel" style="height:14px;width:60%;margin:0 auto 6px;"></div>
+        <div class="skel" :style="{height: (90 + (n*23)%140) + 'px', borderRadius:'var(--r-md)'}"></div>
+        <div class="skel" style="height:40px;border-radius:var(--r-md);" v-if="n % 2 === 0"></div>
+      </div>
+    </div>
+  </template>
+
+  <!-- Generic list: avatar/dot + two lines + trailing badge -->
+  <template v-else-if="type==='list'">
+    <div class="card skel-stack" style="padding:6px;">
+      <div class="skel-row" v-for="n in rowList" :key="n" style="padding:12px 10px;">
+        <div class="skel skel-circle" style="width:38px;height:38px;"></div>
+        <div class="skel-stack" style="flex:1;">
+          <div class="skel" :style="{height:'13px', width: (40 + (n*17)%35) + '%'}"></div>
+          <div class="skel" :style="{height:'11px', width: (20 + (n*11)%25) + '%'}"></div>
+        </div>
+        <div class="skel" style="width:64px;height:22px;border-radius:var(--r-full);"></div>
+      </div>
+    </div>
+  </template>
+
+  <!-- Table (Archive): header row + striped rows -->
+  <template v-else-if="type==='table'">
+    <div class="card" style="padding:14px;">
+      <div class="skel-row" style="margin-bottom:14px;">
+        <div class="skel" style="width:90px;height:11px;" v-for="n in 6" :key="n"></div>
+      </div>
+      <div class="skel-stack">
+        <div class="skel-row" v-for="n in rowList" :key="n" style="padding:8px 0;border-top:1px solid var(--border);">
+          <div class="skel" style="width:90px;height:13px;" v-for="c in 6" :key="c"></div>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <!-- Cards grid (Clients): avatar + 2 lines per tile -->
+  <template v-else-if="type==='cards'">
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;">
+      <div class="card skel-row" v-for="n in rowList" :key="n" style="padding:16px;">
+        <div class="skel skel-circle" style="width:44px;height:44px;"></div>
+        <div class="skel-stack" style="flex:1;">
+          <div class="skel" style="height:13px;width:70%;"></div>
+          <div class="skel" style="height:11px;width:45%;"></div>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <!-- Finances: tab bar + summary row + list -->
+  <template v-else-if="type==='finances'">
+    <div class="skel-row" style="margin-bottom:16px;">
+      <div class="skel" style="width:90px;height:28px;border-radius:var(--r-md);"></div>
+      <div class="skel" style="width:90px;height:28px;border-radius:var(--r-md);"></div>
+    </div>
+    <div class="card skel-stack" style="padding:6px;">
+      <div class="skel-row" v-for="n in rowList" :key="n" style="padding:12px 10px;">
+        <div class="skel skel-circle" style="width:34px;height:34px;"></div>
+        <div class="skel-stack" style="flex:1;">
+          <div class="skel" :style="{height:'13px', width: (35 + (n*13)%30) + '%'}"></div>
+          <div class="skel" style="height:11px;width:25%;"></div>
+        </div>
+        <div class="skel" style="width:70px;height:14px;"></div>
+      </div>
+    </div>
+  </template>
+
+  <!-- Analytics: KPI row + two-column panel -->
+  <template v-else-if="type==='analytics'">
+    <div class="skel-row" style="margin-bottom:16px;flex-wrap:wrap;">
+      <div class="skel" style="flex:1;min-width:120px;height:70px;border-radius:var(--r-lg);" v-for="n in 6" :key="n"></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+      <div class="card skel-stack" style="padding:16px;">
+        <div class="skel" style="width:140px;height:14px;margin-bottom:6px;"></div>
+        <div class="skel" style="height:16px;" v-for="n in 4" :key="n"></div>
+      </div>
+      <div class="card skel-stack" style="padding:16px;">
+        <div class="skel" style="width:140px;height:14px;margin-bottom:6px;"></div>
+        <div class="skel" style="height:16px;" v-for="n in 4" :key="n"></div>
+      </div>
+    </div>
+  </template>
+
+  <!-- Settings: three profile/hours/services tiles -->
+  <template v-else-if="type==='settings'">
+    <div class="settings-tiles">
+      <div class="card skel-stack" style="padding:18px;">
+        <div class="skel-row" style="margin-bottom:8px;">
+          <div class="skel skel-circle" style="width:56px;height:56px;"></div>
+          <div class="skel-stack" style="flex:1;">
+            <div class="skel" style="height:13px;width:60%;"></div>
+            <div class="skel" style="height:11px;width:40%;"></div>
+          </div>
+        </div>
+        <div class="skel" style="height:34px;" v-for="n in 3" :key="n"></div>
+      </div>
+      <div class="card skel-stack" style="padding:18px;">
+        <div class="skel" style="height:13px;width:50%;margin-bottom:6px;"></div>
+        <div class="skel" style="height:26px;" v-for="n in 5" :key="n"></div>
+      </div>
+      <div class="card skel-stack" style="padding:18px;">
+        <div class="skel" style="height:13px;width:50%;margin-bottom:6px;"></div>
+        <div class="skel-row" v-for="n in 3" :key="n">
+          <div class="skel skel-circle" style="width:8px;height:8px;"></div>
+          <div class="skel" style="flex:1;height:14px;"></div>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <!-- Studio: header row + tab bar + member card grid -->
+  <template v-else-if="type==='studio'">
+    <div class="skel-row" style="margin-bottom:20px;">
+      <div class="skel skel-circle" style="width:56px;height:56px;"></div>
+      <div class="skel-stack" style="flex:1;">
+        <div class="skel" style="height:18px;width:35%;"></div>
+        <div class="skel" style="height:12px;width:20%;"></div>
+      </div>
+    </div>
+    <div class="skel-row" style="margin-bottom:20px;">
+      <div class="skel" style="width:100px;height:24px;border-radius:var(--r-md);"></div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;">
+      <div class="card skel-stack" v-for="n in 3" :key="n" style="padding:20px 16px;align-items:center;">
+        <div class="skel skel-circle" style="width:56px;height:56px;"></div>
+        <div class="skel" style="height:13px;width:70%;"></div>
+        <div class="skel" style="height:11px;width:50%;"></div>
+      </div>
+    </div>
+  </template>
+
+</div>`
+};
+
 /* ── MBadge ── */
 const MBadge = {
     props: ['status'],
@@ -1131,6 +1331,6 @@ const OnboardingWizard = {
 
 /* Export all shared components */
 window.SpravnaComponents = {
-    MModal, MBadge, MAvatar, MDateTimePicker, MTimePicker, OnboardingWizard,
+    MModal, MBadge, MAvatar, MDateTimePicker, MTimePicker, OnboardingWizard, PageSkeleton,
     AppointmentFormBody, ClientFormBody, ServiceFormBody, RespondFormBody
 };
