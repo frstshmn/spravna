@@ -374,6 +374,38 @@ const DashboardPage = {
 
     <!-- Counters column -->
     <div class="flex flex-col gap-16">
+      <!-- Today's schedule gap -->
+      <div class="stat-card dash-gap flex-1">
+        <template v-if="todayGap">
+          <div class="dash-gap-head">
+            <div class="stat-label">Вільне вікно сьогодні</div>
+            <div class="stat-icon-wrap" style="background:var(--accent-soft);color:var(--accent);">
+              <i class="fa fa-bolt"></i>
+            </div>
+          </div>
+          <div class="dash-gap-range">{{ M.fmtTime(todayGap.start) }}–{{ M.fmtTime(todayGap.end) }}</div>
+          <p class="dash-gap-sub">У вас вільний слот — перетворіть його на запис</p>
+          <div class="dash-gap-actions">
+            <button class="dash-gap-btn dash-gap-btn-primary" @click="fillGap">
+              <i class="fa fa-calendar-plus"></i> Заповнити
+            </button>
+            <button class="dash-gap-btn" @click="shareGap">
+              <i :class="gapShared ? 'fa fa-check' : 'fa fa-share-nodes'"></i>
+              {{ gapShared ? 'Скопійовано!' : 'Поділитися' }}
+            </button>
+          </div>
+        </template>
+        <template v-else>
+          <div class="dash-gap-head">
+            <div class="stat-label">Вільне вікно сьогодні</div>
+            <div class="stat-icon-wrap" style="background:var(--accent-soft);color:var(--accent);">
+              <i class="fa fa-bolt"></i>
+            </div>
+          </div>
+          <p class="dash-gap-empty"><i class="fa fa-circle-check"></i> {{ workingHours.length ? 'На сьогодні вільних вікон немає' : 'Розклад ще завантажується' }}</p>
+        </template>
+      </div>
+
       <div class="dash-create-row flex-1">
         <button class="dash-create-btn dash-create-btn-primary" @click="newAppt">
           <span class="dcb-icon"><i class="fa fa-feather-pointed"></i></span>
@@ -417,38 +449,6 @@ const DashboardPage = {
             <i class="fa fa-bell"></i>
           </div>
         </div>
-      </div>
-
-      <!-- Today's schedule gap -->
-      <div class="stat-card dash-gap flex-1">
-        <template v-if="todayGap">
-          <div class="dash-gap-head">
-            <div class="stat-label">Вільне вікно сьогодні</div>
-            <div class="stat-icon-wrap" style="background:var(--accent-soft);color:var(--accent);">
-              <i class="fa fa-bolt"></i>
-            </div>
-          </div>
-          <div class="dash-gap-range">{{ M.fmtTime(todayGap.start) }}–{{ M.fmtTime(todayGap.end) }}</div>
-          <p class="dash-gap-sub">У вас вільний слот — перетворіть його на запис</p>
-          <div class="dash-gap-actions">
-            <button class="dash-gap-btn dash-gap-btn-primary" @click="fillGap">
-              <i class="fa fa-calendar-plus"></i> Заповнити
-            </button>
-            <button class="dash-gap-btn" @click="shareGap">
-              <i :class="gapShared ? 'fa fa-check' : 'fa fa-share-nodes'"></i>
-              {{ gapShared ? 'Скопійовано!' : 'Поділитися' }}
-            </button>
-          </div>
-        </template>
-        <template v-else>
-          <div class="dash-gap-head">
-            <div class="stat-label">Вільне вікно сьогодні</div>
-            <div class="stat-icon-wrap" style="background:var(--accent-soft);color:var(--accent);">
-              <i class="fa fa-bolt"></i>
-            </div>
-          </div>
-          <p class="dash-gap-empty"><i class="fa fa-circle-check"></i> {{ workingHours.length ? 'На сьогодні вільних вікон немає' : 'Розклад ще завантажується' }}</p>
-        </template>
       </div>
     </div>
 
