@@ -99,7 +99,31 @@ class AuthController extends Controller
 
     public function me(Request $request): JsonResponse
     {
-        return response()->json($request->user()->load('profile'));
+        $user = $request->user()->load('profile');
+
+        $data = $user->toArray();
+        $data['profile_completion'] = $this->computeProfileCompletion($user);
+
+        return response()->json($data);
+    }
+
+    private function computeProfileCompletion(User $user): array
+    {
+        $profile = $user->profile;
+
+        $sections = [
+            'general'       => (bool) ($user->name && $profile && $profile->specialty && $profile->phone),
+            'public_page'   => (bool) ($profile && $profile->slug && $profile->is_public),
+            'services'      => $user->services()->where('is_active', true)->exists(),
+            'working_hours' => $user->workingHours()->where('is_working', true)->exists(),
+        ];
+
+        $completed = count(array_filter($sections));
+
+        return [
+            'sections' => $sections,
+            'percent'  => (int) round($completed / count($sections) * 100),
+        ];
     }
 
     public function changePassword(Request $request): JsonResponse

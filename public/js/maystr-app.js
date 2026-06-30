@@ -116,11 +116,27 @@
 
             const avatarSrc = computed(() => M.avatarSrc(user.value?.profile));
 
+            const RING_CIRC = 2 * Math.PI * 15.5;
+            const profileCompletion = computed(() => user.value?.profile_completion || { percent: 0, sections: {} });
+            const completionItems = computed(() => {
+                const s = profileCompletion.value.sections || {};
+                return [
+                    { key: 'general',       label: 'Загальні дані',     done: !!s.general },
+                    { key: 'public_page',   label: 'Публічна сторінка', done: !!s.public_page },
+                    { key: 'services',      label: 'Послуги',           done: !!s.services },
+                    { key: 'working_hours', label: 'Робочі години',     done: !!s.working_hours },
+                ];
+            });
+            const completionRingStyle = computed(() => ({
+                strokeDasharray: RING_CIRC,
+                strokeDashoffset: RING_CIRC * (1 - profileCompletion.value.percent / 100),
+            }));
+
             window.addEventListener('popstate', () => { page.value = getPageFromPath(); });
 
             init();
 
-            return { page, user, pendingCount, loading, pages, pageMeta, navigate, logout, onUserUpdated, onOnboardingDone, restartOnboarding, avatarSrc, api };
+            return { page, user, pendingCount, loading, pages, pageMeta, navigate, logout, onUserUpdated, onOnboardingDone, restartOnboarding, avatarSrc, api, profileCompletion, completionItems, completionRingStyle };
         },
 
         /* ── Full app shell — Vue string template (single root) ── */
@@ -162,6 +178,23 @@
         <div class="topbar-greeting-sub">{{ pageMeta[page]?.sub() }}</div>
       </div>
       <div class="topbar-actions">
+        <div class="topbar-completion-wrap">
+          <button class="topbar-btn topbar-completion" @click="navigate('settings')" title="Заповненість профілю">
+            <svg class="completion-ring-svg" viewBox="0 0 36 36">
+              <circle class="completion-ring-bg" cx="18" cy="18" r="15.5"></circle>
+              <circle class="completion-ring-fg" cx="18" cy="18" r="15.5" :style="completionRingStyle"></circle>
+            </svg>
+            <span class="completion-pct">{{ profileCompletion.percent }}%</span>
+          </button>
+          <div class="completion-panel">
+            <div class="completion-panel-title">Заповненість профілю — {{ profileCompletion.percent }}%</div>
+            <div v-for="item in completionItems" :key="item.key" class="completion-panel-item">
+              <i :class="'fa ' + (item.done ? 'fa-circle-check' : 'fa-circle')" :style="{color: item.done ? 'var(--completed)' : 'var(--border-2)'}"></i>
+              <span>{{ item.label }}</span>
+            </div>
+            <div class="completion-panel-hint">Натисніть, щоб перейти в Налаштування</div>
+          </div>
+        </div>
         <button class="topbar-btn" @click="navigate('requests')" title="Запити">
           <i class="fa fa-bell"></i>
           <span v-if="pendingCount > 0" class="topbar-btn-dot"></span>
