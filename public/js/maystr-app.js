@@ -7,7 +7,7 @@
 (function () {
     const { createApp, ref, computed } = Vue;
     const { MModal, MBadge, MAvatar, AppointmentFormBody, OnboardingWizard } = SpravnaComponents;
-    const { DashboardPage, SchedulePage, RequestsPage, ArchivePage, ClientsPage, SettingsPage, FinancesPage, AnalyticsPage, StudioPage } = SpravnaPages;
+    const { DashboardPage, SchedulePage, RequestsPage, ArchivePage, ClientsPage, SettingsPage, FinancesPage, AnalyticsPage, StudioPage, SessionDetailPage } = SpravnaPages;
 
     /* ── Guard: redirect to login if no token ── */
     const token = getToken();
@@ -19,19 +19,26 @@
     const api = makeAPI(token);
 
     /* ── History API routing ── */
-    const VALID_PAGES = ['dashboard', 'schedule', 'requests', 'clients', 'finances', 'analytics', 'settings', 'studio'];
+    const VALID_PAGES = ['dashboard', 'schedule', 'requests', 'clients', 'finances', 'analytics', 'settings', 'studio', 'sessions'];
 
-    function getPageFromPath() {
-        const segment = window.location.pathname.replace(/^\/app\/?/, '').split('/')[0];
-        return VALID_PAGES.includes(segment) ? segment : 'dashboard';
+    function parsePath() {
+        const parts = window.location.pathname.replace(/^\/app\/?/, '').split('/').filter(Boolean);
+        const pageSeg = parts[0] || 'dashboard';
+        return {
+            page:  VALID_PAGES.includes(pageSeg) ? pageSeg : 'dashboard',
+            param: parts[1] || null,
+        };
     }
+
+    function getPageFromPath()  { return parsePath().page; }
+    function getParamFromPath() { return parsePath().param; }
 
     /* ── PageView: string-template router component ── */
     const PageView = {
         name: 'PageView',
-        props: ['page', 'api', 'user'],
+        props: ['page', 'param', 'api', 'user'],
         emits: ['navigate', 'count', 'user-updated', 'restart-onboarding'],
-        components: { DashboardPage, SchedulePage, RequestsPage, ArchivePage, ClientsPage, SettingsPage, FinancesPage, AnalyticsPage, StudioPage },
+        components: { DashboardPage, SchedulePage, RequestsPage, ArchivePage, ClientsPage, SettingsPage, FinancesPage, AnalyticsPage, StudioPage, SessionDetailPage },
         template: [
             '<dashboard-page       v-if="page===\'dashboard\'"  :api="api" :user="user" @navigate="$emit(\'navigate\',$event)"></dashboard-page>',
             '<schedule-page        v-else-if="page===\'schedule\'" :api="api"></schedule-page>',
@@ -41,6 +48,7 @@
             '<analytics-page       v-else-if="page===\'analytics\'" :api="api"></analytics-page>',
             '<settings-page        v-else-if="page===\'settings\'" :api="api" :user="user" @user-updated="$emit(\'user-updated\')" @restart-onboarding="$emit(\'restart-onboarding\')"></settings-page>',
             '<studio-page          v-else-if="page===\'studio\'" :api="api" :user="user"></studio-page>',
+            '<session-detail-page  v-else-if="page===\'sessions\'" :api="api" :session-id="param"></session-detail-page>',
         ].join('')
     };
 
@@ -48,10 +56,11 @@
     const app = createApp({
         components: {
             MModal, MBadge, MAvatar, AppointmentFormBody, OnboardingWizard, PageView,
-            DashboardPage, SchedulePage, RequestsPage, ArchivePage, ClientsPage, SettingsPage, FinancesPage, AnalyticsPage, StudioPage
+            DashboardPage, SchedulePage, RequestsPage, ArchivePage, ClientsPage, SettingsPage, FinancesPage, AnalyticsPage, StudioPage, SessionDetailPage
         },
         setup() {
             const page         = ref(getPageFromPath());
+            const routeParam   = ref(getParamFromPath());
             const user         = ref(null);
             const pendingCount = ref(0);
             const loading      = ref(true);
@@ -76,6 +85,7 @@
                 analytics: { title: 'Аналітика',         sub: () => 'Аналіз роботи та фінансів' },
                 studio:    { title: 'Студія',             sub: () => 'Управління студією майстрів' },
                 settings:  { title: 'Налаштування',      sub: () => 'Акаунт та параметри' },
+                sessions:  { title: 'Сесія',              sub: () => '' },
             };
 
             async function init() {
@@ -92,11 +102,14 @@
                 loading.value = false;
             }
 
-            function navigate(p) {
+            function navigate(p, param) {
                 if (!VALID_PAGES.includes(p)) return;
                 page.value = p;
-                history.pushState({ page: p }, '', '/app/' + p);
+                routeParam.value = param || null;
+                const path = param ? '/app/' + p + '/' + param : '/app/' + p;
+                history.pushState({ page: p, param: param || null }, '', path);
             }
+            window.navigate = navigate;
 
             function logout() {
                 api.post('/auth/logout').catch(() => {});
@@ -132,11 +145,15 @@
                 strokeDashoffset: RING_CIRC * (1 - profileCompletion.value.percent / 100),
             }));
 
-            window.addEventListener('popstate', () => { page.value = getPageFromPath(); });
+            window.addEventListener('popstate', () => {
+                const p = parsePath();
+                page.value = p.page;
+                routeParam.value = p.param;
+            });
 
             init();
 
-            return { page, user, pendingCount, loading, pages, pageMeta, navigate, logout, onUserUpdated, onOnboardingDone, restartOnboarding, avatarSrc, api, profileCompletion, completionItems, completionRingStyle };
+            return { page, routeParam, user, pendingCount, loading, pages, pageMeta, navigate, logout, onUserUpdated, onOnboardingDone, restartOnboarding, avatarSrc, api, profileCompletion, completionItems, completionRingStyle };
         },
 
         /* ── Full app shell — Vue string template (single root) ── */
@@ -212,6 +229,7 @@
     <div class="page-content">
       <page-view
         :page="page"
+        :param="routeParam"
         :api="api"
         :user="user"
         @navigate="navigate"

@@ -3263,6 +3263,44 @@ body:has(.pub-page)::after { display: none !important; }
 .empty-state-sub { font-size: 13px; color: var(--text-muted); margin: 0 0 20px; max-width: 320px; line-height: 1.5; }
 
 /* =====================================================================
+   SESSION DETAIL PAGE
+   ===================================================================== */
+.sess-wrap { padding-bottom: 60px; }
+.sess-header { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+.sess-back { flex-shrink: 0; }
+.sess-header-info { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
+.sess-header-title { font-size: 18px; font-weight: 800; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sess-header-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+.sess-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 760px) { .sess-grid { grid-template-columns: 1fr; } }
+.sess-col { display: flex; flex-direction: column; gap: 16px; }
+.sess-card { padding: 18px 20px; }
+.sess-card-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); margin-bottom: 14px; display: flex; align-items: center; gap: 6px; }
+.sess-field-list { display: flex; flex-direction: column; gap: 10px; }
+.sess-field { display: flex; align-items: flex-start; gap: 12px; }
+.sess-field-label { font-size: 12px; color: var(--text-muted); width: 90px; flex-shrink: 0; padding-top: 1px; }
+.sess-field-value { font-size: 13px; font-weight: 500; color: var(--text); flex: 1; }
+
+/* Payment confirmation block */
+.sess-pay-confirm { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; border-radius: var(--r-md); background: var(--bg); border: 1.5px solid var(--border); transition: var(--t); }
+.sess-pay-done { background: rgba(22,163,74,.07); border-color: rgba(22,163,74,.3); }
+.sess-pay-confirm-body { display: flex; align-items: center; gap: 10px; }
+.btn-xs { padding: 3px 8px; font-size: 11px; border-radius: var(--r-full); }
+
+/* Client stats */
+.sess-client-stats { display: flex; gap: 16px; margin: 16px 0 0; padding-top: 16px; border-top: 1px solid var(--border); }
+.sess-stat { flex: 1; text-align: center; }
+.sess-stat-val { font-size: 18px; font-weight: 800; color: var(--text); }
+.sess-stat-lbl { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+.sess-client-note { display: flex; gap: 8px; font-size: 12px; color: var(--text-sub); background: rgba(245,158,11,.07); border: 1px solid rgba(245,158,11,.2); border-radius: var(--r-md); padding: 10px 12px; margin-top: 10px; line-height: 1.5; }
+
+/* History list */
+.sess-hist-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); cursor: pointer; transition: var(--t); border-radius: var(--r-sm); }
+.sess-hist-row:last-child { border-bottom: none; }
+.sess-hist-row:hover:not(.sess-hist-current) { background: rgba(0,0,0,.03); padding: 10px 6px; }
+.sess-hist-current { opacity: .5; cursor: default; }
+
+/* =====================================================================
    SKELETON LOADERS (shimmer placeholders shown while pages load)
    ===================================================================== */
 @keyframes skel-shimmer {

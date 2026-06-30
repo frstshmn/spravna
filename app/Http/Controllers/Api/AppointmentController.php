@@ -107,6 +107,7 @@ class AppointmentController extends Controller
             'price'          => 'nullable|numeric|min:0',
             'deposit'        => 'nullable|numeric|min:0',
             'deposit_paid'   => 'boolean',
+            'is_paid'        => 'boolean',
             'notes'          => 'nullable|string',
             'internal_notes' => 'nullable|string',
             'color'          => 'nullable|string|max:7',
@@ -115,6 +116,15 @@ class AppointmentController extends Controller
         if (($data['type'] ?? $appointment->type) === 'block') {
             $data['client_id'] = null;
             $data['service_id'] = null;
+        }
+
+        // Auto-set paid_at timestamp when marking as paid
+        if (isset($data['is_paid'])) {
+            if ($data['is_paid'] && !$appointment->is_paid) {
+                $data['paid_at'] = now();
+            } elseif (!$data['is_paid']) {
+                $data['paid_at'] = null;
+            }
         }
 
         $appointment->update($data);

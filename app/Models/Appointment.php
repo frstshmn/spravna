@@ -10,7 +10,7 @@ class Appointment extends Model
     protected $fillable = [
         'user_id', 'client_id', 'service_id', 'type', 'title',
         'scheduled_at', 'duration', 'status', 'price',
-        'deposit', 'deposit_paid', 'notes', 'internal_notes', 'color',
+        'deposit', 'deposit_paid', 'is_paid', 'paid_at', 'notes', 'internal_notes', 'color',
     ];
 
     protected function casts(): array
@@ -20,6 +20,8 @@ class Appointment extends Model
             'price' => 'decimal:2',
             'deposit' => 'decimal:2',
             'deposit_paid' => 'boolean',
+            'is_paid'      => 'boolean',
+            'paid_at'      => 'datetime',
         ];
     }
 

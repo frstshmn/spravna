@@ -112,7 +112,7 @@ const DashboardPage = {
             return upcoming.value.filter(a => !todayIds.has(a.id)).slice(0, 5);
         });
 
-        function openAppt(a) { editingAppt.value = a; showApptModal.value = true; }
+        function openAppt(a) { window.navigate('sessions', a.id); }
         function newAppt() { editingAppt.value = null; gapFillDate.value = ''; showApptModal.value = true; }
         function onApptSaved() { showApptModal.value = false; load(); }
 
@@ -864,7 +864,11 @@ const SchedulePage = {
             modalTitle.value = 'Новий запис'; showModal.value = true;
         }
         function openEdit(appt) {
-            editingAppt.value = appt; modalTitle.value = 'Редагувати запис'; showModal.value = true;
+            if (appt.type === 'block') {
+                editingAppt.value = appt; modalTitle.value = 'Редагувати запис'; showModal.value = true;
+            } else {
+                window.navigate('sessions', appt.id);
+            }
         }
         async function onSaved(appt) {
             showModal.value = false;
@@ -3597,5 +3601,328 @@ const StudioPage = {
 </div>`,
 };
 
+/* =====================================================================
+   SESSION DETAIL PAGE  /app/sessions/:id
+   ===================================================================== */
+const SessionDetailPage = {
+    props: ['api', 'sessionId'],
+    components: { MModal, MBadge, AppointmentFormBody, PageSkeleton },
+    setup(props) {
+        const loading      = ref(true);
+        const appt         = ref(null);
+        const client       = ref(null);
+        const clientStats  = ref(null);
+        const clientHistory = ref([]);
+        const error        = ref('');
+
+        const saving       = ref(false);
+        const showEdit     = ref(false);
+        const confirmingPay = ref(false);
+        const depositToggling = ref(false);
+
+        const statusLabels = { pending:'Очікує', confirmed:'Підтверджено', in_progress:'Виконується', completed:'Завершено', cancelled:'Скасовано', no_show:'Не з\'явився' };
+        const statusColors = { pending:'var(--pending)', confirmed:'var(--confirmed)', in_progress:'var(--in-progress)', completed:'var(--completed)', cancelled:'var(--cancelled)', no_show:'var(--no-show)' };
+
+        async function load() {
+            loading.value = true; error.value = '';
+            try {
+                const { data: a } = await props.api.get('/appointments/' + props.sessionId);
+                appt.value = a;
+                if (a.client_id) {
+                    const { data: cd } = await props.api.get('/clients/' + a.client_id);
+                    client.value = cd.client;
+                    clientStats.value = { total_spent: cd.total_spent, visits_count: cd.visits_count };
+                    clientHistory.value = (cd.client.appointments || []).slice(0, 8);
+                }
+            } catch(e) {
+                error.value = e.response?.status === 404 ? 'Сесію не знайдено.' : 'Не вдалося завантажити сесію.';
+            }
+            loading.value = false;
+        }
+
+        async function confirmPayment() {
+            confirmingPay.value = true;
+            try {
+                const { data } = await props.api.put('/appointments/' + props.sessionId, { is_paid: !appt.value.is_paid });
+                appt.value = data;
+            } catch {}
+            confirmingPay.value = false;
+        }
+
+        async function toggleDeposit() {
+            depositToggling.value = true;
+            try {
+                const { data } = await props.api.put('/appointments/' + props.sessionId, { deposit_paid: !appt.value.deposit_paid });
+                appt.value = data;
+            } catch {}
+            depositToggling.value = false;
+        }
+
+        async function changeStatus(status) {
+            try {
+                const { data } = await props.api.put('/appointments/' + props.sessionId, { status });
+                appt.value = data;
+            } catch {}
+        }
+
+        function onEditSaved(updated) {
+            appt.value = updated;
+            if (updated.client_id && updated.client_id !== client.value?.id) {
+                props.api.get('/clients/' + updated.client_id).then(({ data: cd }) => {
+                    client.value = cd.client;
+                    clientStats.value = { total_spent: cd.total_spent, visits_count: cd.visits_count };
+                    clientHistory.value = (cd.client.appointments || []).slice(0, 8);
+                }).catch(() => {});
+            }
+            showEdit.value = false;
+        }
+
+        function goBack() { window.history.back(); }
+        function goToClient() { if (client.value) window.navigate('clients'); }
+        function openSession(id) { window.navigate('sessions', id); }
+
+        const fmtDate = (d) => d ? new Date(d).toLocaleDateString('uk', { weekday:'long', day:'numeric', month:'long', year:'numeric' }) : '—';
+        const fmtTime = (d) => d ? new Date(d).toLocaleTimeString('uk', { hour:'2-digit', minute:'2-digit' }) : '—';
+        const fmtMoney = (v) => v != null ? '₴' + Number(v).toLocaleString('uk') : '—';
+        const paidAt   = computed(() => appt.value?.paid_at ? new Date(appt.value.paid_at).toLocaleDateString('uk', {day:'numeric',month:'short',year:'numeric'}) : null);
+        const endsAt   = computed(() => {
+            if (!appt.value?.scheduled_at) return '';
+            const s = new Date(appt.value.scheduled_at);
+            return fmtTime(new Date(s.getTime() + (appt.value.duration || 60) * 60000));
+        });
+        const balance = computed(() => {
+            const price = Number(appt.value?.price || 0);
+            const dep   = Number(appt.value?.deposit || 0);
+            return price - dep;
+        });
+
+        watch(() => props.sessionId, load, { immediate: true });
+
+        return {
+            loading, appt, client, clientStats, clientHistory, error,
+            saving, showEdit, confirmingPay, depositToggling,
+            statusLabels, statusColors, confirmPayment, toggleDeposit, changeStatus,
+            onEditSaved, goBack, goToClient, openSession,
+            fmtDate, fmtTime, fmtMoney, paidAt, endsAt, balance,
+        };
+    },
+    template: `
+<div class="sess-wrap">
+  <!-- Loading skeleton -->
+  <page-skeleton v-if="loading" type="list" :rows="6"></page-skeleton>
+
+  <!-- Error -->
+  <div v-else-if="error" class="empty-state" style="padding:80px 0;">
+    <div class="empty-state-icon"><i class="fa fa-circle-xmark"></i></div>
+    <p class="empty-state-title">{{ error }}</p>
+    <button class="btn btn-ghost btn-sm" @click="goBack"><i class="fa fa-arrow-left"></i> Назад</button>
+  </div>
+
+  <template v-else-if="appt">
+    <!-- Header bar -->
+    <div class="sess-header">
+      <button class="btn btn-ghost btn-sm sess-back" @click="goBack"><i class="fa fa-arrow-left"></i></button>
+      <div class="sess-header-info">
+        <span class="sess-header-title">{{ appt.type==='block' ? (appt.title||'Перерва') : (appt.service?.name || 'Сесія') }}</span>
+        <span class="badge" :style="{background: statusColors[appt.status]+'22', color: statusColors[appt.status], border:'none'}">{{ statusLabels[appt.status] }}</span>
+      </div>
+      <div class="sess-header-actions">
+        <select class="select" style="width:auto;font-size:12px;padding:5px 8px;" :value="appt.status" @change="changeStatus($event.target.value)">
+          <option value="pending">Очікує</option>
+          <option value="confirmed">Підтверджено</option>
+          <option value="in_progress">Виконується</option>
+          <option value="completed">Завершено</option>
+          <option value="cancelled">Скасовано</option>
+          <option value="no_show">Не з'явився</option>
+        </select>
+        <button class="btn btn-ghost btn-sm" @click="showEdit=true"><i class="fa fa-pen"></i> Редагувати</button>
+      </div>
+    </div>
+
+    <div class="sess-grid">
+
+      <!-- Left column: session + payment -->
+      <div class="sess-col sess-col-left">
+
+        <!-- Session details card -->
+        <div class="card sess-card">
+          <div class="sess-card-title"><i class="fa fa-calendar-check"></i> Деталі сесії</div>
+          <div class="sess-field-list">
+            <div class="sess-field">
+              <span class="sess-field-label">Дата</span>
+              <span class="sess-field-value">{{ fmtDate(appt.scheduled_at) }}</span>
+            </div>
+            <div class="sess-field">
+              <span class="sess-field-label">Час</span>
+              <span class="sess-field-value">{{ fmtTime(appt.scheduled_at) }}–{{ endsAt }}</span>
+            </div>
+            <div class="sess-field">
+              <span class="sess-field-label">Тривалість</span>
+              <span class="sess-field-value">{{ appt.duration || 60 }} хв</span>
+            </div>
+            <div class="sess-field" v-if="appt.service">
+              <span class="sess-field-label">Послуга</span>
+              <span class="sess-field-value" style="display:flex;align-items:center;gap:6px;">
+                <span style="width:10px;height:10px;border-radius:50%;display:inline-block;flex-shrink:0;" :style="{background:appt.service.color||'var(--accent)'}"></span>
+                {{ appt.service.name }}
+              </span>
+            </div>
+            <div class="sess-field" v-if="appt.notes">
+              <span class="sess-field-label">Нотатки</span>
+              <span class="sess-field-value" style="white-space:pre-wrap;">{{ appt.notes }}</span>
+            </div>
+            <div class="sess-field" v-if="appt.internal_notes">
+              <span class="sess-field-label">Внутрішнє</span>
+              <span class="sess-field-value" style="white-space:pre-wrap;color:var(--text-muted);">{{ appt.internal_notes }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Payment card -->
+        <div class="card sess-card">
+          <div class="sess-card-title"><i class="fa fa-wallet"></i> Оплата</div>
+
+          <!-- Full payment confirmation -->
+          <div class="sess-pay-confirm" :class="appt.is_paid ? 'sess-pay-done' : ''">
+            <div class="sess-pay-confirm-body">
+              <template v-if="appt.is_paid">
+                <i class="fa fa-circle-check" style="color:var(--completed);font-size:18px;"></i>
+                <div>
+                  <div style="font-weight:700;font-size:14px;color:var(--completed);">Оплату підтверджено</div>
+                  <div v-if="paidAt" style="font-size:12px;color:var(--text-muted);">{{ paidAt }}</div>
+                </div>
+              </template>
+              <template v-else>
+                <i class="fa fa-clock" style="color:var(--text-muted);font-size:18px;"></i>
+                <div>
+                  <div style="font-weight:700;font-size:14px;color:var(--text);">Очікує оплати</div>
+                  <div style="font-size:12px;color:var(--text-muted);">Натисніть, щоб підтвердити</div>
+                </div>
+              </template>
+            </div>
+            <button :class="'btn btn-sm ' + (appt.is_paid ? 'btn-ghost' : 'btn-primary')"
+              :disabled="confirmingPay" @click="confirmPayment">
+              <i :class="confirmingPay ? 'fa fa-spinner fa-spin' : (appt.is_paid ? 'fa fa-rotate-left' : 'fa fa-check')"></i>
+              {{ appt.is_paid ? 'Скасувати' : 'Підтвердити оплату' }}
+            </button>
+          </div>
+
+          <!-- Price breakdown -->
+          <div class="sess-field-list" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);">
+            <div class="sess-field">
+              <span class="sess-field-label">Вартість</span>
+              <span class="sess-field-value" style="font-weight:700;font-size:16px;">{{ fmtMoney(appt.price) }}</span>
+            </div>
+            <div class="sess-field" v-if="appt.deposit">
+              <span class="sess-field-label">Депозит</span>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <span class="sess-field-value">{{ fmtMoney(appt.deposit) }}</span>
+                <button :class="'btn btn-xs ' + (appt.deposit_paid ? 'btn-primary' : 'btn-ghost')"
+                  style="padding:2px 8px;font-size:11px;border-radius:20px;"
+                  :disabled="depositToggling" @click="toggleDeposit">
+                  <i :class="appt.deposit_paid ? 'fa fa-check' : 'fa fa-xmark'"></i>
+                  {{ appt.deposit_paid ? 'Сплачено' : 'Не сплачено' }}
+                </button>
+              </div>
+            </div>
+            <div class="sess-field" v-if="appt.deposit && appt.price">
+              <span class="sess-field-label">До сплати</span>
+              <span class="sess-field-value" style="font-weight:600;">{{ fmtMoney(balance) }}</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Right column: client -->
+      <div class="sess-col sess-col-right">
+
+        <!-- Client card -->
+        <div class="card sess-card" v-if="client">
+          <div class="sess-card-title"><i class="fa fa-user"></i> Клієнт</div>
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+            <div class="avatar av-lg" :style="{background:'var(--accent)'}">
+              <img v-if="client.avatar_url" :src="client.avatar_url" :alt="client.name">
+              <span v-else>{{ client.name?.charAt(0) }}</span>
+            </div>
+            <div>
+              <div style="font-size:16px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:6px;">
+                {{ client.name }}
+                <span v-if="client.is_vip" style="font-size:11px;background:rgba(245,158,11,.15);color:#d97706;padding:2px 7px;border-radius:12px;font-weight:700;">⭐ VIP</span>
+              </div>
+              <div style="font-size:12px;color:var(--text-muted);">{{ client.source || 'Клієнт' }}</div>
+            </div>
+          </div>
+          <div class="sess-field-list">
+            <div class="sess-field" v-if="client.phone">
+              <span class="sess-field-label"><i class="fa fa-phone"></i></span>
+              <a :href="'tel:'+client.phone" class="sess-field-value" style="color:var(--accent);">{{ client.phone }}</a>
+            </div>
+            <div class="sess-field" v-if="client.email">
+              <span class="sess-field-label"><i class="fa fa-envelope"></i></span>
+              <a :href="'mailto:'+client.email" class="sess-field-value" style="color:var(--accent);">{{ client.email }}</a>
+            </div>
+            <div class="sess-field" v-if="client.instagram">
+              <span class="sess-field-label"><i class="fa-brands fa-instagram"></i></span>
+              <span class="sess-field-value">{{ client.instagram }}</span>
+            </div>
+            <div class="sess-field" v-if="client.birthday">
+              <span class="sess-field-label"><i class="fa fa-cake-candles"></i></span>
+              <span class="sess-field-value">{{ new Date(client.birthday).toLocaleDateString('uk',{day:'numeric',month:'long'}) }}</span>
+            </div>
+          </div>
+          <!-- Client stats -->
+          <div class="sess-client-stats" v-if="clientStats">
+            <div class="sess-stat">
+              <div class="sess-stat-val">{{ clientStats.visits_count }}</div>
+              <div class="sess-stat-lbl">відвідувань</div>
+            </div>
+            <div class="sess-stat">
+              <div class="sess-stat-val">{{ fmtMoney(clientStats.total_spent) }}</div>
+              <div class="sess-stat-lbl">витрачено</div>
+            </div>
+          </div>
+          <!-- Notes -->
+          <div v-if="client.notes" class="sess-client-note">
+            <i class="fa fa-note-sticky" style="color:var(--pending);"></i> {{ client.notes }}
+          </div>
+          <div v-if="client.medical_notes" class="sess-client-note" style="background:rgba(220,38,38,.06);border-color:rgba(220,38,38,.15);">
+            <i class="fa fa-heart-pulse" style="color:var(--cancelled);"></i> {{ client.medical_notes }}
+          </div>
+        </div>
+
+        <!-- Client history -->
+        <div class="card sess-card" v-if="clientHistory.length">
+          <div class="sess-card-title"><i class="fa fa-clock-rotate-left"></i> Попередні сесії</div>
+          <div v-for="h in clientHistory" :key="h.id"
+            :class="['sess-hist-row', h.id == appt.id ? 'sess-hist-current' : '']"
+            @click="h.id != appt.id && openSession(h.id)">
+            <span :class="'appt-dot status-' + h.status" style="flex-shrink:0;"></span>
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                {{ h.service?.name || h.title || 'Запис' }}
+              </div>
+              <div style="font-size:11px;color:var(--text-muted);">
+                {{ h.scheduled_at ? new Date(h.scheduled_at).toLocaleDateString('uk',{day:'numeric',month:'short',year:'numeric'}) : '—' }}
+              </div>
+            </div>
+            <div style="text-align:right;flex-shrink:0;">
+              <div style="font-size:12px;font-weight:600;">{{ h.price ? fmtMoney(h.price) : '—' }}</div>
+              <i v-if="h.id != appt.id" class="fa fa-chevron-right" style="font-size:10px;color:var(--text-muted);"></i>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Edit modal -->
+    <m-modal :show="showEdit" :title="'Редагувати: ' + (appt.service?.name || 'Запис')" size="lg" @close="showEdit=false">
+      <appointment-form-body :api="api" :existing="appt" @saved="onEditSaved" @cancel="showEdit=false"></appointment-form-body>
+    </m-modal>
+  </template>
+</div>`,
+};
+
 /* Export all pages */
-window.SpravnaPages = { DashboardPage, SchedulePage, RequestsPage, ArchivePage, ClientsPage, SettingsPage, FinancesPage, AnalyticsPage, StudioPage };
+window.SpravnaPages = { DashboardPage, SchedulePage, RequestsPage, ArchivePage, ClientsPage, SettingsPage, FinancesPage, AnalyticsPage, StudioPage, SessionDetailPage };
