@@ -3606,19 +3606,22 @@ const StudioPage = {
    ===================================================================== */
 const SessionDetailPage = {
     props: ['api', 'sessionId'],
-    components: { MModal, MBadge, AppointmentFormBody, PageSkeleton },
+    components: { MBadge, PageSkeleton },
     setup(props) {
-        const loading      = ref(true);
-        const appt         = ref(null);
-        const client       = ref(null);
-        const clientStats  = ref(null);
+        const loading       = ref(true);
+        const appt          = ref(null);
+        const client        = ref(null);
+        const clientStats   = ref(null);
         const clientHistory = ref([]);
-        const error        = ref('');
+        const error         = ref('');
+        const services      = ref([]);
 
-        const saving       = ref(false);
-        const showEdit     = ref(false);
-        const confirmingPay = ref(false);
+        const confirmingPay   = ref(false);
         const depositToggling = ref(false);
+
+        const editField  = ref(null);
+        const editVal    = ref('');
+        const editSaving = ref(false);
 
         const statusLabels = { pending:'Очікує', confirmed:'Підтверджено', in_progress:'Виконується', completed:'Завершено', cancelled:'Скасовано', no_show:'Не з\'явився' };
         const statusColors = { pending:'var(--pending)', confirmed:'var(--confirmed)', in_progress:'var(--in-progress)', completed:'var(--completed)', cancelled:'var(--cancelled)', no_show:'var(--no-show)' };
@@ -3639,6 +3642,42 @@ const SessionDetailPage = {
             }
             loading.value = false;
         }
+
+        onMounted(async () => {
+            try {
+                const { data } = await props.api.get('/services', { params: { active_only: true } });
+                services.value = data;
+            } catch {}
+        });
+
+        function startEdit(field, val) {
+            editField.value = field;
+            editVal.value = val != null ? String(val) : '';
+        }
+
+        async function saveEdit() {
+            if (!editField.value || editSaving.value) return;
+            editSaving.value = true;
+            try {
+                const f = editField.value;
+                const payload = {};
+                if (f === 'duration') {
+                    payload.duration = Math.max(5, Number(editVal.value) || 60);
+                } else if (f === 'price' || f === 'deposit') {
+                    payload[f] = editVal.value === '' ? null : Number(editVal.value);
+                } else if (f === 'service_id') {
+                    payload.service_id = editVal.value || null;
+                } else {
+                    payload[f] = editVal.value || null;
+                }
+                const { data } = await props.api.put('/appointments/' + props.sessionId, payload);
+                appt.value = data;
+                editField.value = null;
+            } catch {}
+            editSaving.value = false;
+        }
+
+        function cancelEdit() { editField.value = null; editVal.value = ''; }
 
         async function confirmPayment() {
             confirmingPay.value = true;
@@ -3665,24 +3704,11 @@ const SessionDetailPage = {
             } catch {}
         }
 
-        function onEditSaved(updated) {
-            appt.value = updated;
-            if (updated.client_id && updated.client_id !== client.value?.id) {
-                props.api.get('/clients/' + updated.client_id).then(({ data: cd }) => {
-                    client.value = cd.client;
-                    clientStats.value = { total_spent: cd.total_spent, visits_count: cd.visits_count };
-                    clientHistory.value = (cd.client.appointments || []).slice(0, 8);
-                }).catch(() => {});
-            }
-            showEdit.value = false;
-        }
-
         function goBack() { window.history.back(); }
-        function goToClient() { if (client.value) window.navigate('clients'); }
         function openSession(id) { window.navigate('sessions', id); }
 
-        const fmtDate = (d) => d ? new Date(d).toLocaleDateString('uk', { weekday:'long', day:'numeric', month:'long', year:'numeric' }) : '—';
-        const fmtTime = (d) => d ? new Date(d).toLocaleTimeString('uk', { hour:'2-digit', minute:'2-digit' }) : '—';
+        const fmtDate  = (d) => d ? new Date(d).toLocaleDateString('uk', { weekday:'long', day:'numeric', month:'long', year:'numeric' }) : '—';
+        const fmtTime  = (d) => d ? new Date(d).toLocaleTimeString('uk', { hour:'2-digit', minute:'2-digit' }) : '—';
         const fmtMoney = (v) => v != null ? '₴' + Number(v).toLocaleString('uk') : '—';
         const paidAt   = computed(() => appt.value?.paid_at ? new Date(appt.value.paid_at).toLocaleDateString('uk', {day:'numeric',month:'short',year:'numeric'}) : null);
         const endsAt   = computed(() => {
@@ -3695,23 +3721,25 @@ const SessionDetailPage = {
             const dep   = Number(appt.value?.deposit || 0);
             return price - dep;
         });
+        const scheduledAtInput = computed(() => appt.value?.scheduled_at ? M.toLocalInput(new Date(appt.value.scheduled_at)) : '');
 
         watch(() => props.sessionId, load, { immediate: true });
 
         return {
-            loading, appt, client, clientStats, clientHistory, error,
-            saving, showEdit, confirmingPay, depositToggling,
-            statusLabels, statusColors, confirmPayment, toggleDeposit, changeStatus,
-            onEditSaved, goBack, goToClient, openSession,
-            fmtDate, fmtTime, fmtMoney, paidAt, endsAt, balance,
+            loading, appt, client, clientStats, clientHistory, error, services,
+            confirmingPay, depositToggling,
+            editField, editVal, editSaving,
+            statusLabels, statusColors,
+            confirmPayment, toggleDeposit, changeStatus,
+            startEdit, saveEdit, cancelEdit,
+            goBack, openSession,
+            fmtDate, fmtTime, fmtMoney, paidAt, endsAt, balance, scheduledAtInput,
         };
     },
     template: `
 <div class="sess-wrap">
-  <!-- Loading skeleton -->
   <page-skeleton v-if="loading" type="list" :rows="6"></page-skeleton>
 
-  <!-- Error -->
   <div v-else-if="error" class="empty-state" style="padding:80px 0;">
     <div class="empty-state-icon"><i class="fa fa-circle-xmark"></i></div>
     <p class="empty-state-title">{{ error }}</p>
@@ -3719,7 +3747,6 @@ const SessionDetailPage = {
   </div>
 
   <template v-else-if="appt">
-    <!-- Header bar -->
     <div class="sess-header">
       <button class="btn btn-ghost btn-sm sess-back" @click="goBack"><i class="fa fa-arrow-left"></i></button>
       <div class="sess-header-info">
@@ -3735,54 +3762,115 @@ const SessionDetailPage = {
           <option value="cancelled">Скасовано</option>
           <option value="no_show">Не з'явився</option>
         </select>
-        <button class="btn btn-ghost btn-sm" @click="showEdit=true"><i class="fa fa-pen"></i> Редагувати</button>
       </div>
     </div>
 
     <div class="sess-grid">
-
-      <!-- Left column: session + payment -->
       <div class="sess-col sess-col-left">
 
-        <!-- Session details card -->
         <div class="card sess-card">
           <div class="sess-card-title"><i class="fa fa-calendar-check"></i> Деталі сесії</div>
           <div class="sess-field-list">
+
             <div class="sess-field">
-              <span class="sess-field-label">Дата</span>
-              <span class="sess-field-value">{{ fmtDate(appt.scheduled_at) }}</span>
+              <span class="sess-field-label">Дата та час</span>
+              <div class="sess-field-editable">
+                <template v-if="editField==='scheduled_at'">
+                  <input type="datetime-local" class="input input-sm" v-model="editVal" @keydown.enter="saveEdit" @keydown.esc="cancelEdit">
+                  <div class="sess-edit-actions">
+                    <button class="btn btn-primary btn-xs" :disabled="editSaving" @click="saveEdit"><i :class="editSaving?'fa fa-spinner fa-spin':'fa fa-check'"></i></button>
+                    <button class="btn btn-ghost btn-xs" @click="cancelEdit"><i class="fa fa-xmark"></i></button>
+                  </div>
+                </template>
+                <template v-else>
+                  <div class="sess-field-value" style="line-height:1.6;">
+                    <div>{{ fmtDate(appt.scheduled_at) }}</div>
+                    <div style="font-size:12px;color:var(--text-sub);">{{ fmtTime(appt.scheduled_at) }} – {{ endsAt }}</div>
+                  </div>
+                  <button class="sess-edit-btn" @click="startEdit('scheduled_at', scheduledAtInput)"><i class="fa fa-pen"></i></button>
+                </template>
+              </div>
             </div>
-            <div class="sess-field">
-              <span class="sess-field-label">Час</span>
-              <span class="sess-field-value">{{ fmtTime(appt.scheduled_at) }}–{{ endsAt }}</span>
-            </div>
+
             <div class="sess-field">
               <span class="sess-field-label">Тривалість</span>
-              <span class="sess-field-value">{{ appt.duration || 60 }} хв</span>
+              <div class="sess-field-editable">
+                <template v-if="editField==='duration'">
+                  <input type="number" class="input input-sm" v-model="editVal" min="5" step="5" @keydown.enter="saveEdit" @keydown.esc="cancelEdit">
+                  <div class="sess-edit-actions">
+                    <button class="btn btn-primary btn-xs" :disabled="editSaving" @click="saveEdit"><i :class="editSaving?'fa fa-spinner fa-spin':'fa fa-check'"></i></button>
+                    <button class="btn btn-ghost btn-xs" @click="cancelEdit"><i class="fa fa-xmark"></i></button>
+                  </div>
+                </template>
+                <template v-else>
+                  <span class="sess-field-value">{{ appt.duration || 60 }} хв</span>
+                  <button class="sess-edit-btn" @click="startEdit('duration', appt.duration||60)"><i class="fa fa-pen"></i></button>
+                </template>
+              </div>
             </div>
-            <div class="sess-field" v-if="appt.service">
+
+            <div class="sess-field" v-if="appt.type !== 'block'">
               <span class="sess-field-label">Послуга</span>
-              <span class="sess-field-value" style="display:flex;align-items:center;gap:6px;">
-                <span style="width:10px;height:10px;border-radius:50%;display:inline-block;flex-shrink:0;" :style="{background:appt.service.color||'var(--accent)'}"></span>
-                {{ appt.service.name }}
-              </span>
+              <div class="sess-field-editable">
+                <template v-if="editField==='service_id'">
+                  <select class="select input-sm" v-model="editVal" @keydown.esc="cancelEdit">
+                    <option value="">— Без послуги —</option>
+                    <option v-for="s in services" :key="s.id" :value="String(s.id)">{{ s.name }}</option>
+                  </select>
+                  <div class="sess-edit-actions">
+                    <button class="btn btn-primary btn-xs" :disabled="editSaving" @click="saveEdit"><i :class="editSaving?'fa fa-spinner fa-spin':'fa fa-check'"></i></button>
+                    <button class="btn btn-ghost btn-xs" @click="cancelEdit"><i class="fa fa-xmark"></i></button>
+                  </div>
+                </template>
+                <template v-else>
+                  <span class="sess-field-value" style="display:flex;align-items:center;gap:6px;">
+                    <span v-if="appt.service" style="width:10px;height:10px;border-radius:50%;display:inline-block;flex-shrink:0;" :style="{background:appt.service.color||'var(--accent)'}"></span>
+                    {{ appt.service?.name || '—' }}
+                  </span>
+                  <button class="sess-edit-btn" @click="startEdit('service_id', String(appt.service_id||''))"><i class="fa fa-pen"></i></button>
+                </template>
+              </div>
             </div>
-            <div class="sess-field" v-if="appt.notes">
+
+            <div class="sess-field">
               <span class="sess-field-label">Нотатки</span>
-              <span class="sess-field-value" style="white-space:pre-wrap;">{{ appt.notes }}</span>
+              <div class="sess-field-editable" style="align-items:flex-start;">
+                <template v-if="editField==='notes'">
+                  <textarea class="textarea input-sm" v-model="editVal" rows="2" @keydown.esc="cancelEdit" style="flex:1;min-width:0;resize:vertical;min-height:56px;"></textarea>
+                  <div class="sess-edit-actions" style="align-self:flex-end;">
+                    <button class="btn btn-primary btn-xs" :disabled="editSaving" @click="saveEdit"><i :class="editSaving?'fa fa-spinner fa-spin':'fa fa-check'"></i></button>
+                    <button class="btn btn-ghost btn-xs" @click="cancelEdit"><i class="fa fa-xmark"></i></button>
+                  </div>
+                </template>
+                <template v-else>
+                  <span class="sess-field-value" style="white-space:pre-wrap;flex:1;">{{ appt.notes || '—' }}</span>
+                  <button class="sess-edit-btn" @click="startEdit('notes', appt.notes||'')"><i class="fa fa-pen"></i></button>
+                </template>
+              </div>
             </div>
-            <div class="sess-field" v-if="appt.internal_notes">
+
+            <div class="sess-field">
               <span class="sess-field-label">Внутрішнє</span>
-              <span class="sess-field-value" style="white-space:pre-wrap;color:var(--text-muted);">{{ appt.internal_notes }}</span>
+              <div class="sess-field-editable" style="align-items:flex-start;">
+                <template v-if="editField==='internal_notes'">
+                  <textarea class="textarea input-sm" v-model="editVal" rows="2" @keydown.esc="cancelEdit" style="flex:1;min-width:0;resize:vertical;min-height:56px;"></textarea>
+                  <div class="sess-edit-actions" style="align-self:flex-end;">
+                    <button class="btn btn-primary btn-xs" :disabled="editSaving" @click="saveEdit"><i :class="editSaving?'fa fa-spinner fa-spin':'fa fa-check'"></i></button>
+                    <button class="btn btn-ghost btn-xs" @click="cancelEdit"><i class="fa fa-xmark"></i></button>
+                  </div>
+                </template>
+                <template v-else>
+                  <span class="sess-field-value" style="white-space:pre-wrap;flex:1;color:var(--text-muted);">{{ appt.internal_notes || '—' }}</span>
+                  <button class="sess-edit-btn" @click="startEdit('internal_notes', appt.internal_notes||'')"><i class="fa fa-pen"></i></button>
+                </template>
+              </div>
             </div>
+
           </div>
         </div>
 
-        <!-- Payment card -->
         <div class="card sess-card">
           <div class="sess-card-title"><i class="fa fa-wallet"></i> Оплата</div>
-
-          <!-- Full payment confirmation -->
           <div class="sess-pay-confirm" :class="appt.is_paid ? 'sess-pay-done' : ''">
             <div class="sess-pay-confirm-body">
               <template v-if="appt.is_paid">
@@ -3806,23 +3894,45 @@ const SessionDetailPage = {
               {{ appt.is_paid ? 'Скасувати' : 'Підтвердити оплату' }}
             </button>
           </div>
-
-          <!-- Price breakdown -->
           <div class="sess-field-list" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);">
             <div class="sess-field">
               <span class="sess-field-label">Вартість</span>
-              <span class="sess-field-value" style="font-weight:700;font-size:16px;">{{ fmtMoney(appt.price) }}</span>
+              <div class="sess-field-editable">
+                <template v-if="editField==='price'">
+                  <input type="number" class="input input-sm" v-model="editVal" min="0" step="50" @keydown.enter="saveEdit" @keydown.esc="cancelEdit">
+                  <div class="sess-edit-actions">
+                    <button class="btn btn-primary btn-xs" :disabled="editSaving" @click="saveEdit"><i :class="editSaving?'fa fa-spinner fa-spin':'fa fa-check'"></i></button>
+                    <button class="btn btn-ghost btn-xs" @click="cancelEdit"><i class="fa fa-xmark"></i></button>
+                  </div>
+                </template>
+                <template v-else>
+                  <span class="sess-field-value" style="font-weight:700;font-size:16px;">{{ fmtMoney(appt.price) }}</span>
+                  <button class="sess-edit-btn" @click="startEdit('price', appt.price||'')"><i class="fa fa-pen"></i></button>
+                </template>
+              </div>
             </div>
-            <div class="sess-field" v-if="appt.deposit">
+            <div class="sess-field">
               <span class="sess-field-label">Депозит</span>
-              <div style="display:flex;align-items:center;gap:8px;">
-                <span class="sess-field-value">{{ fmtMoney(appt.deposit) }}</span>
-                <button :class="'btn btn-xs ' + (appt.deposit_paid ? 'btn-primary' : 'btn-ghost')"
-                  style="padding:2px 8px;font-size:11px;border-radius:20px;"
-                  :disabled="depositToggling" @click="toggleDeposit">
-                  <i :class="appt.deposit_paid ? 'fa fa-check' : 'fa fa-xmark'"></i>
-                  {{ appt.deposit_paid ? 'Сплачено' : 'Не сплачено' }}
-                </button>
+              <div class="sess-field-editable">
+                <template v-if="editField==='deposit'">
+                  <input type="number" class="input input-sm" v-model="editVal" min="0" step="50" @keydown.enter="saveEdit" @keydown.esc="cancelEdit">
+                  <div class="sess-edit-actions">
+                    <button class="btn btn-primary btn-xs" :disabled="editSaving" @click="saveEdit"><i :class="editSaving?'fa fa-spinner fa-spin':'fa fa-check'"></i></button>
+                    <button class="btn btn-ghost btn-xs" @click="cancelEdit"><i class="fa fa-xmark"></i></button>
+                  </div>
+                </template>
+                <template v-else>
+                  <div style="display:flex;align-items:center;gap:8px;flex:1;">
+                    <span class="sess-field-value">{{ fmtMoney(appt.deposit) }}</span>
+                    <button v-if="appt.deposit" :class="'btn btn-xs ' + (appt.deposit_paid ? 'btn-primary' : 'btn-ghost')"
+                      style="padding:2px 8px;font-size:11px;border-radius:20px;"
+                      :disabled="depositToggling" @click="toggleDeposit">
+                      <i :class="appt.deposit_paid ? 'fa fa-check' : 'fa fa-xmark'"></i>
+                      {{ appt.deposit_paid ? 'Сплачено' : 'Не сплачено' }}
+                    </button>
+                  </div>
+                  <button class="sess-edit-btn" @click="startEdit('deposit', appt.deposit||'')"><i class="fa fa-pen"></i></button>
+                </template>
               </div>
             </div>
             <div class="sess-field" v-if="appt.deposit && appt.price">
@@ -3834,10 +3944,8 @@ const SessionDetailPage = {
 
       </div>
 
-      <!-- Right column: client -->
       <div class="sess-col sess-col-right">
 
-        <!-- Client card -->
         <div class="card sess-card" v-if="client">
           <div class="sess-card-title"><i class="fa fa-user"></i> Клієнт</div>
           <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
@@ -3871,7 +3979,6 @@ const SessionDetailPage = {
               <span class="sess-field-value">{{ new Date(client.birthday).toLocaleDateString('uk',{day:'numeric',month:'long'}) }}</span>
             </div>
           </div>
-          <!-- Client stats -->
           <div class="sess-client-stats" v-if="clientStats">
             <div class="sess-stat">
               <div class="sess-stat-val">{{ clientStats.visits_count }}</div>
@@ -3882,7 +3989,6 @@ const SessionDetailPage = {
               <div class="sess-stat-lbl">витрачено</div>
             </div>
           </div>
-          <!-- Notes -->
           <div v-if="client.notes" class="sess-client-note">
             <i class="fa fa-note-sticky" style="color:var(--pending);"></i> {{ client.notes }}
           </div>
@@ -3891,7 +3997,6 @@ const SessionDetailPage = {
           </div>
         </div>
 
-        <!-- Client history -->
         <div class="card sess-card" v-if="clientHistory.length">
           <div class="sess-card-title"><i class="fa fa-clock-rotate-left"></i> Попередні сесії</div>
           <div v-for="h in clientHistory" :key="h.id"
@@ -3915,11 +4020,6 @@ const SessionDetailPage = {
 
       </div>
     </div>
-
-    <!-- Edit modal -->
-    <m-modal :show="showEdit" :title="'Редагувати: ' + (appt.service?.name || 'Запис')" size="lg" @close="showEdit=false">
-      <appointment-form-body :api="api" :existing="appt" @saved="onEditSaved" @cancel="showEdit=false"></appointment-form-body>
-    </m-modal>
   </template>
 </div>`,
 };
