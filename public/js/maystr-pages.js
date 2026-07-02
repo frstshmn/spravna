@@ -311,7 +311,8 @@ const DashboardPage = {
                 <span class="day-timeline-now-label-v">{{ nowLabel }}</span>
               </div>
               <div v-for="it in timeline.items" :key="it.a.id" class="day-timeline-block-v"
-                :style="{top: it.top + 'px', height: it.height + 'px', left: 0, width: 'calc(100% - 6px)', background: it.a.service?.color || 'var(--accent)'}"
+                :class="'appt-s-' + (it.a.status || 'confirmed')"
+                :style="{top: it.top + 'px', height: it.height + 'px', left: 0, width: 'calc(100% - 6px)'}"
                 :title="(it.a.client?.name || '') + ' — ' + (it.a.service?.name || 'Запис')"
                 @click="openAppt(it.a)">
                 <span class="dtb-time">{{ new Date(it.a.scheduled_at).toLocaleTimeString('uk',{hour:'2-digit',minute:'2-digit'}) }}</span>
@@ -325,7 +326,7 @@ const DashboardPage = {
                 <span class="dtc-time-start">{{ apptTimeLabel(it.a).start }}</span>
                 <span class="dtc-time-end">{{ apptTimeLabel(it.a).end }}</span>
               </div>
-              <span class="dtc-bar" :style="{background: it.a.service?.color || 'var(--accent)'}"></span>
+              <span class="dtc-bar" :class="'dtc-bar-' + (it.a.status || 'confirmed')"></span>
               <div class="dtc-info">
                 <div class="dtc-name truncate">{{ it.a.client?.name }}</div>
                 <div class="dtc-sub truncate">{{ it.a.service?.name || 'Запис' }}</div>
@@ -973,8 +974,8 @@ const SchedulePage = {
           <div class="appt-block-meta">{{ r.preferred_time?.slice(0,5) }}<span v-if="r.service"> · {{ r.service.name }}</span></div>
         </div>
         <div v-for="a in dayAppts(day.date)" :key="a.id"
-          :class="'appt-block' + (a.type==='block' ? ' is-block' : '') + (apptOverlaps(a, day.date) ? ' overlap' : '') + (draggingId===a.id ? ' dragging' : '')"
-          :style="[apptStyle(a), a.type!=='block' ? {background: a.service?.color || a.color || '#7c5cfc', color:'#fff'} : {}]"
+          :class="'appt-block' + (a.type==='block' ? ' is-block' : '') + (apptOverlaps(a, day.date) ? ' overlap' : '') + (draggingId===a.id ? ' dragging' : '') + (a.type!=='block' ? ' appt-s-' + (a.status || 'confirmed') : '')"
+          :style="apptStyle(a)"
           @pointerdown="onApptPointerDown($event, a)"
           @pointermove="onApptPointerMove($event)"
           @pointerup="onApptPointerUp($event, a)"
@@ -997,8 +998,8 @@ const SchedulePage = {
         @click="day.cur && openNew(day.date, 10)">
         <div class="mday-num">{{ day.d }}</div>
         <div v-for="a in monthAppts(day.date)" :key="a.id"
-          :class="'mday-appt' + (a.type==='block' ? ' is-block' : '')"
-          :style="a.type!=='block' ? {background: (a.service?.color || '#7c5cfc') + '33', color: a.service?.color || '#7c5cfc'} : {}"
+          :class="'mday-appt' + (a.type==='block' ? ' is-block' : '') + (a.type!=='block' ? ' appt-s-' + (a.status || 'confirmed') : '')"
+          :style="{}"
           @click.stop="openEdit(a)">
           {{ M.fmtTime(a.scheduled_at) }} {{ a.type==='block' ? (a.title || 'Перерва') : (a.client?.name || a.title_display) }}
         </div>

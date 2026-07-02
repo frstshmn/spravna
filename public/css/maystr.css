@@ -1066,15 +1066,14 @@ tbody td { padding: 11px 14px; font-size: 13px; vertical-align: middle; }
 }
 .day-timeline-block-v {
   position: absolute; min-height: 30px;
-  border-radius: var(--r-sm); padding: 4px 8px; color: #fff;
+  border-radius: 0 10px 10px 0; padding: 6px 10px;
   font-size: 11px; font-weight: 600;
-  display: flex; align-items: center; gap: 6px; overflow: hidden;
+  display: flex; flex-direction: column; align-items: flex-start; gap: 1px; overflow: hidden;
   cursor: pointer; transition: var(--t); z-index: 2;
-  box-shadow: var(--shadow-sm);
 }
-.day-timeline-block-v:hover { transform: scale(1.02); box-shadow: var(--shadow); filter: brightness(1.05); z-index: 5; }
-.dtb-time { font-weight: 700; opacity: 0.85; flex-shrink: 0; }
-.dtb-name { min-width: 0; }
+.day-timeline-block-v:hover { opacity: 0.88; z-index: 5; }
+.dtb-time { font-size: 10px; font-weight: 700; flex-shrink: 0; opacity: 0.8; }
+.dtb-name { min-width: 0; font-size: 11px; font-weight: 600; }
 
 /* Compact today list (mobile) */
 .day-timeline-compact-v { display: none; flex-direction: column; }
@@ -1218,23 +1217,37 @@ tbody td { padding: 11px 14px; font-size: 13px; vertical-align: middle; }
 .week-half-cell.day-start { border-top: 2px solid var(--accent); }
 .week-half-cell.day-end { border-bottom: 2px solid var(--accent); }
 
+/* ── Status-based appointment colors ── */
+.appt-s-confirmed   { background: var(--confirmed-soft);   border-left: 3px solid var(--confirmed);   color: var(--confirmed-text); }
+.appt-s-pending     { background: var(--pending-soft);     border-left: 3px solid var(--pending);     color: var(--pending-text); }
+.appt-s-completed   { background: var(--completed-soft);   border-left: 3px solid var(--completed);   color: var(--completed-text); }
+.appt-s-cancelled   { background: var(--cancelled-soft);   border-left: 3px solid var(--cancelled);   color: var(--cancelled-text); }
+.appt-s-no_show     { background: var(--no-show-soft);     border-left: 3px solid var(--no-show);     color: var(--no-show); }
+.appt-s-in_progress { background: var(--in-progress-soft); border-left: 3px solid var(--in-progress); color: var(--in-progress); }
+/* Bar variants (compact/mobile — solid color on 4px strip) */
+.dtc-bar-confirmed   { background: var(--confirmed); }
+.dtc-bar-pending     { background: var(--pending); }
+.dtc-bar-completed   { background: var(--completed); }
+.dtc-bar-cancelled   { background: var(--cancelled); }
+.dtc-bar-no_show     { background: var(--no-show); }
+.dtc-bar-in_progress { background: var(--in-progress); }
+
 .appt-block, .req-block {
   position: absolute; left: 2px; right: 2px;
-  border-radius: var(--r-xs); padding: 3px 5px;
+  border-radius: 0 6px 6px 0; padding: 3px 6px;
   font-size: 10px; overflow: hidden; line-height: 1.3;
 }
 .appt-block {
-  cursor: grab; z-index: 2; opacity: 0.92;
+  cursor: grab; z-index: 2;
   transition: opacity var(--t), box-shadow var(--t);
-  box-shadow: var(--shadow-sm); color: #fff;
   touch-action: none; user-select: none; -webkit-user-select: none;
 }
-.appt-block:hover { opacity: 1; box-shadow: var(--shadow); z-index: 3; }
+.appt-block:hover { box-shadow: var(--shadow); z-index: 3; }
 .appt-block:active { cursor: grabbing; }
 .appt-block.dragging { opacity: 0.35; }
 .appt-block.is-block {
   background: repeating-linear-gradient(135deg, rgba(40, 50, 40, 0.09) 0 6px, rgba(40, 50, 40, 0.03) 6px 12px);
-  border: 1px solid var(--border-2); color: var(--text-sub);
+  border: 1px solid var(--border-2); border-left: 3px solid var(--border-2); color: var(--text-sub);
 }
 .appt-block.overlap { outline: 2px solid #ef4444; outline-offset: -1px; z-index: 4; }
 
@@ -1317,7 +1330,7 @@ tbody td { padding: 11px 14px; font-size: 13px; vertical-align: middle; }
 }
 .month-day.other-month { opacity: 0.35; }
 .mday-num { font-size: 11px; font-weight: 600; margin-bottom: 3px; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; }
-.mday-appt { font-size: 9px; font-weight: 700; padding: 1px 4px; border-radius: 3px; margin-bottom: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mday-appt { font-size: 9px; font-weight: 600; padding: 2px 5px 2px 6px; border-radius: 0 4px 4px 0; margin-bottom: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mday-appt.is-block {
   background: repeating-linear-gradient(135deg, rgba(40, 50, 40, 0.09) 0 4px, rgba(40, 50, 40, 0.03) 4px 8px) !important;
   border: 1px dashed var(--border-2); color: var(--text-sub) !important;
