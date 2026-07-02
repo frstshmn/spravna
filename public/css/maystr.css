@@ -1066,14 +1066,14 @@ tbody td { padding: 11px 14px; font-size: 13px; vertical-align: middle; }
 }
 .day-timeline-block-v {
   position: absolute; min-height: 30px;
-  border-radius: 0 10px 10px 0; padding: 6px 10px;
-  font-size: 11px; font-weight: 600;
-  display: flex; flex-direction: column; align-items: flex-start; gap: 1px; overflow: hidden;
+  border-radius: 0 10px 10px 0; padding: 5px 9px;
+  display: flex; flex-direction: column; align-items: flex-start; gap: 2px; overflow: hidden;
   cursor: pointer; transition: var(--t); z-index: 2;
 }
 .day-timeline-block-v:hover { opacity: 0.88; z-index: 5; }
-.dtb-time { font-size: 10px; font-weight: 700; flex-shrink: 0; opacity: 0.8; }
-.dtb-name { min-width: 0; font-size: 11px; font-weight: 600; }
+.dtb-status { font-size: 9px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; flex-shrink: 0; opacity: 0.75; }
+.dtb-main   { font-size: 11px; font-weight: 700; line-height: 1.25; min-width: 0; max-width: 100%; }
+.dtb-sub    { font-size: 10px; font-weight: 500; line-height: 1.2; min-width: 0; max-width: 100%; opacity: 0.8; }
 
 /* Compact today list (mobile) */
 .day-timeline-compact-v { display: none; flex-direction: column; }
